@@ -1,0 +1,1 @@
+# workspaces schema stub

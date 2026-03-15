@@ -1,0 +1,1 @@
+# workspaces service stub

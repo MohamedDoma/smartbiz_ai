@@ -1,0 +1,1 @@
+# accounting schema stub

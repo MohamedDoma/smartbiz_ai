@@ -1,0 +1,27 @@
+# requirements.txt — SmartBiz AI Backend
+
+# Web Framework
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+
+# Database
+sqlalchemy[asyncio]==2.0.*
+asyncpg==0.30.*
+alembic==1.14.*
+
+# Settings
+pydantic-settings==2.7.*
+
+# Auth / Security
+python-jose[cryptography]==3.3.*
+passlib[bcrypt]==1.7.*
+
+# Redis (for background jobs / cache)
+redis==5.2.*
+
+# HTTP Client (for AI API calls)
+httpx==0.28.*
+
+# Utilities
+python-multipart==0.0.*
+python-dotenv==1.0.*

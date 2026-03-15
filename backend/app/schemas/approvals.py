@@ -1,0 +1,1 @@
+# approvals schema stub

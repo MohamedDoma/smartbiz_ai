@@ -1,0 +1,1 @@
+# accounting service stub
