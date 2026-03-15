@@ -1,0 +1,202 @@
+{
+    "workspace_ui_config_schema_version": "1.0",
+    "workspace_branding": {
+        "name": "string",
+        "logo_url": "string",
+        "primary_color": "string",
+        "accent_color": "string",
+        "theme": "light_or_dark"
+    },
+    "enabled_modules": [
+        "inventory",
+        "sales",
+        "invoices",
+        "accounting",
+        "hr",
+        "payroll",
+        "reports"
+    ],
+    "navigation": [
+        {
+            "group_id": "sales_group",
+            "title": "Sales",
+            "icon": "shopping_cart",
+            "items": [
+                {
+                    "page_id": "orders_page",
+                    "title": "Orders",
+                    "icon": "receipt",
+                    "route": "/orders",
+                    "permissions": [
+                        "orders.view"
+                    ]
+                },
+                {
+                    "page_id": "invoices_page",
+                    "title": "Invoices",
+                    "icon": "description",
+                    "route": "/invoices",
+                    "permissions": [
+                        "invoices.view"
+                    ]
+                },
+                {
+                    "page_id": "customers_page",
+                    "title": "Customers",
+                    "icon": "people",
+                    "route": "/customers",
+                    "permissions": [
+                        "contacts.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "inventory_group",
+            "title": "Inventory",
+            "icon": "inventory",
+            "items": [
+                {
+                    "page_id": "products_page",
+                    "title": "Products",
+                    "route": "/products",
+                    "permissions": [
+                        "products.view"
+                    ]
+                },
+                {
+                    "page_id": "stock_page",
+                    "title": "Stock",
+                    "route": "/inventory",
+                    "permissions": [
+                        "inventory.view"
+                    ]
+                },
+                {
+                    "page_id": "transfers_page",
+                    "title": "Transfers",
+                    "route": "/transfers",
+                    "permissions": [
+                        "inventory.transfer"
+                    ]
+                }
+            ]
+        }
+    ],
+    "dashboard": {
+        "widgets": [
+            {
+                "widget_id": "sales_today",
+                "type": "kpi",
+                "title": "Sales Today",
+                "data_source": "sales_today_api"
+            },
+            {
+                "widget_id": "low_stock",
+                "type": "table",
+                "title": "Low Stock Items",
+                "data_source": "low_stock_api"
+            },
+            {
+                "widget_id": "revenue_chart",
+                "type": "chart",
+                "title": "Revenue Trend",
+                "data_source": "revenue_chart_api"
+            }
+        ]
+    },
+    "pages": [
+        {
+            "page_id": "products_page",
+            "title": "Products",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/products",
+            "permissions": [
+                "products.view"
+            ],
+            "table_schema": {
+                "columns": [
+                    {
+                        "field": "name",
+                        "label": "Product Name",
+                        "type": "text"
+                    },
+                    {
+                        "field": "sku",
+                        "label": "SKU",
+                        "type": "text"
+                    },
+                    {
+                        "field": "price",
+                        "label": "Price",
+                        "type": "currency"
+                    },
+                    {
+                        "field": "stock",
+                        "label": "Stock",
+                        "type": "number"
+                    }
+                ]
+            },
+            "actions": [
+                {
+                    "type": "create",
+                    "label": "Add Product",
+                    "route": "/products/create",
+                    "permission": "products.create"
+                }
+            ]
+        }
+    ],
+    "forms": [
+        {
+            "form_id": "create_product_form",
+            "title": "Create Product",
+            "api_endpoint": "/api/v1/products",
+            "method": "POST",
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "text",
+                    "label": "Product Name",
+                    "required": true
+                },
+                {
+                    "name": "sku",
+                    "type": "text",
+                    "label": "SKU",
+                    "required": false
+                },
+                {
+                    "name": "price",
+                    "type": "number",
+                    "label": "Price",
+                    "required": true
+                },
+                {
+                    "name": "category_id",
+                    "type": "select",
+                    "label": "Category",
+                    "source": "/api/v1/categories"
+                }
+            ]
+        }
+    ],
+    "feature_flags": {
+        "enable_pos": true,
+        "enable_payroll": false,
+        "enable_hr_module": false
+    },
+    "ai_modifiable_sections": [
+        "navigation",
+        "dashboard",
+        "pages",
+        "forms",
+        "feature_flags"
+    ],
+    "protected_sections": [
+        "permissions",
+        "accounting_rules",
+        "security_settings"
+    ]
+}
