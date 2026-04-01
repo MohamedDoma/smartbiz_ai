@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://smartbiz:smartbiz@localhost:5432/smartbiz"
+    # For dev: uses SQLite.  For production: set DATABASE_URL env var to PostgreSQL.
+    # Example: postgresql+asyncpg://smartbiz:smartbiz@localhost:5432/smartbiz
+    DATABASE_URL: str = "sqlite+aiosqlite:///./smartbiz_dev.db"
     DATABASE_ECHO: bool = False
 
     # Redis

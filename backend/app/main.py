@@ -8,6 +8,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
+from app.db.base import Base
+from app.db.session import engine
+
+# Ensure all models are imported so Base.metadata is populated
+import app.models  # noqa: F401
+
 from app.routers import (
     accounting,
     ai,
@@ -31,10 +37,12 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    # TODO: verify database connection on startup
-    # TODO: initialize Redis connection pool
+    # Dev convenience: create tables if they don't exist.
+    # In production use Alembic migrations instead.
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
-    # TODO: cleanup connections on shutdown
+    await engine.dispose()
 
 
 app = FastAPI(
@@ -63,18 +71,8 @@ async def health():
 _routers = [
     auth,
     workspaces,
-    users,
     products,
     inventory,
-    orders,
-    invoices,
-    payments,
-    accounting,
-    ai,
-    notifications,
-    approvals,
-    sync,
-    platform_admin,
 ]
 
 for _mod in _routers:
