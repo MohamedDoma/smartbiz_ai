@@ -1,1 +1,0 @@
-# sync schema stub

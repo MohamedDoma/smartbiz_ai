@@ -1,1 +1,0 @@
-# users schema stub

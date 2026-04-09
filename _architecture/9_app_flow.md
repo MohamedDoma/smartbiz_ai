@@ -323,6 +323,14 @@ Flow:
 4. system assigns intended role after validation
 5. optional owner approval if role is sensitive
 
+### 11.1 Invite Expiry & Revocation
+
+- Invite links and codes expire after **72 hours** (workspace-configurable, minimum: 1 hour, maximum: 30 days)
+- Expired invites MUST be rejected at submission time with a clear message: "This invite has expired. Please request a new one."
+- Workspace admins may revoke active invites at any time via workspace settings
+- Revoked invites are immediately invalid — any in-progress signup using a revoked code MUST fail at the join-request step
+- Schema: `workspaces.invite_expires_at` (migration 011)
+
 ---
 
 ## 12. Daily ERP Operation Flows

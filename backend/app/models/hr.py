@@ -1,1 +1,0 @@
-# hr model stub

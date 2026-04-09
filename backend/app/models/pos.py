@@ -1,1 +1,0 @@
-# pos model stub

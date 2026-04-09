@@ -1,1 +1,0 @@
-# invoices schema stub

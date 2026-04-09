@@ -92,7 +92,7 @@ Duration estimate: **1–2 weeks**
 
 Deliverables:
 
-* FastAPI backend
+* Laravel backend
 * database connection
 * migration system
 * auth system

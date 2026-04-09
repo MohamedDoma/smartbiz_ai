@@ -21,42 +21,43 @@ The backend must support:
 ## 2. Core Stack
 
 ### Backend Framework
-- Python
-- FastAPI
+- PHP 8.3+
+- Laravel 11
 
 ### Database
 - PostgreSQL
 
 ### ORM / DB Access
-- SQLAlchemy 2.x
-- Alembic for migrations
+- Eloquent ORM
+- Laravel Migrations
 
 ### Auth / Security
-- JWT access tokens
-- refresh tokens
-- password hashing with Argon2 or bcrypt
+- Laravel Sanctum (API tokens for Flutter clients, SPA auth for web admin)
+- refresh tokens (via Sanctum token rotation)
+- password hashing with bcrypt (Laravel default)
 - RBAC + workspace-scoped permissions
 - PostgreSQL Row Level Security
 
 ### Background Jobs
-- Celery or Dramatiq
+- Laravel Queue (Redis driver)
+- Laravel Horizon for queue monitoring
 - Redis as broker / cache
 
 ### AI Layer
-- OpenAI API
+- OpenAI API (via Laravel HTTP client or dedicated AI microservice)
 - structured JSON outputs only for all ERP generation / AI modifications
 
 ### Storage
-- AWS S3 or compatible object storage
+- AWS S3 or compatible object storage (via Laravel Filesystem)
 
 ### Realtime / Notifications
+- Laravel Broadcasting (Reverb, Pusher, or Ably driver) for websockets
+- Laravel Notifications for push (FCM), email, and in-app channels
 - Firebase Cloud Messaging for mobile push
-- Web notifications via websocket or polling fallback
-- email notifications via provider later
 
 ### Infra
 - Docker
-- Nginx
+- Nginx + PHP-FPM (or Laravel Octane with FrankenPHP for high-concurrency)
 - AWS deployment target
 
 ---
@@ -162,131 +163,137 @@ Responsible for:
 ```text
 backend/
 ├── app/
-│   ├── main.py
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── security.py
-│   │   ├── db.py
-│   │   ├── logging.py
-│   │   ├── tenant.py
-│   │   ├── permissions.py
-│   │   ├── exceptions.py
-│   │   └── constants.py
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   └── Api/V1/
+│   │   │       ├── AuthController.php
+│   │   │       ├── WorkspaceController.php
+│   │   │       ├── UserController.php
+│   │   │       ├── RoleController.php
+│   │   │       ├── BranchController.php
+│   │   │       ├── DepartmentController.php
+│   │   │       ├── ProductController.php
+│   │   │       ├── InventoryController.php
+│   │   │       ├── ContactController.php
+│   │   │       ├── OrderController.php
+│   │   │       ├── InvoiceController.php
+│   │   │       ├── PaymentController.php
+│   │   │       ├── TransactionController.php
+│   │   │       ├── DashboardController.php
+│   │   │       ├── NotificationController.php
+│   │   │       ├── ApprovalController.php
+│   │   │       ├── AiController.php
+│   │   │       ├── SyncController.php
+│   │   │       └── FileController.php
+│   │   │
+│   │   ├── Middleware/
+│   │   │   ├── WorkspaceContext.php
+│   │   │   ├── PermissionGate.php
+│   │   │   ├── RequestId.php
+│   │   │   └── ActivityLogger.php
+│   │   │
+│   │   ├── Requests/              # Form Request validation classes
+│   │   │   ├── Auth/
+│   │   │   ├── Workspace/
+│   │   │   ├── Product/
+│   │   │   ├── Order/
+│   │   │   ├── Invoice/
+│   │   │   ├── Payment/
+│   │   │   └── Ai/
+│   │   │
+│   │   └── Resources/             # API Resource serializers
+│   │       ├── WorkspaceResource.php
+│   │       ├── UserResource.php
+│   │       ├── ProductResource.php
+│   │       ├── OrderResource.php
+│   │       ├── InvoiceResource.php
+│   │       ├── PaymentResource.php
+│   │       ├── AiResource.php
+│   │       └── CommonResource.php
 │   │
-│   ├── api/
-│   │   ├── deps.py
-│   │   ├── router.py
-│   │   └── v1/
-│   │       ├── auth.py
-│   │       ├── workspaces.py
-│   │       ├── users.py
-│   │       ├── roles.py
-│   │       ├── branches.py
-│   │       ├── departments.py
-│   │       ├── products.py
-│   │       ├── inventory.py
-│   │       ├── contacts.py
-│   │       ├── orders.py
-│   │       ├── invoices.py
-│   │       ├── payments.py
-│   │       ├── transactions.py
-│   │       ├── dashboards.py
-│   │       ├── notifications.py
-│   │       ├── approvals.py
-│   │       ├── ai.py
-│   │       ├── sync.py
-│   │       └── files.py
+│   ├── Models/
+│   │   ├── Workspace.php
+│   │   ├── User.php
+│   │   ├── Role.php
+│   │   ├── Product.php
+│   │   ├── InventoryLevel.php
+│   │   ├── Order.php
+│   │   ├── Invoice.php
+│   │   ├── Payment.php
+│   │   ├── Account.php
+│   │   ├── JournalEntry.php
+│   │   ├── ApprovalRequest.php
+│   │   ├── AiRequestLog.php
+│   │   ├── AuditLog.php
+│   │   └── ...                    # One model per DB table
 │   │
-│   ├── schemas/
-│   │   ├── auth.py
-│   │   ├── workspace.py
-│   │   ├── user.py
-│   │   ├── product.py
-│   │   ├── inventory.py
-│   │   ├── order.py
-│   │   ├── invoice.py
-│   │   ├── payment.py
-│   │   ├── ai.py
-│   │   └── common.py
+│   ├── Services/
+│   │   ├── AuthService.php
+│   │   ├── WorkspaceService.php
+│   │   ├── UserService.php
+│   │   ├── JoinService.php
+│   │   ├── ProductService.php
+│   │   ├── InventoryService.php
+│   │   ├── OrderService.php
+│   │   ├── InvoiceService.php
+│   │   ├── PaymentService.php
+│   │   ├── AccountingService.php
+│   │   ├── DashboardService.php
+│   │   ├── NotificationService.php
+│   │   ├── ApprovalService.php
+│   │   ├── AiOnboardingService.php
+│   │   ├── AiChangeService.php
+│   │   ├── AiAdvisorService.php
+│   │   ├── UiConfigService.php
+│   │   ├── OfflineSyncService.php
+│   │   └── FileService.php
 │   │
-│   ├── models/
-│   │   ├── workspace.py
-│   │   ├── user.py
-│   │   ├── role.py
-│   │   ├── product.py
-│   │   ├── inventory.py
-│   │   ├── order.py
-│   │   ├── invoice.py
-│   │   ├── accounting.py
-│   │   ├── approval.py
-│   │   ├── ai.py
-│   │   └── audit.py
+│   ├── Repositories/              # Optional repository pattern
+│   │   ├── WorkspaceRepository.php
+│   │   ├── UserRepository.php
+│   │   ├── ProductRepository.php
+│   │   ├── InventoryRepository.php
+│   │   ├── OrderRepository.php
+│   │   ├── InvoiceRepository.php
+│   │   ├── PaymentRepository.php
+│   │   ├── ApprovalRepository.php
+│   │   └── AiRepository.php
 │   │
-│   ├── repositories/
-│   │   ├── workspace_repo.py
-│   │   ├── user_repo.py
-│   │   ├── product_repo.py
-│   │   ├── inventory_repo.py
-│   │   ├── order_repo.py
-│   │   ├── invoice_repo.py
-│   │   ├── payment_repo.py
-│   │   ├── approval_repo.py
-│   │   └── ai_repo.py
+│   ├── AI/
+│   │   ├── Client.php
+│   │   ├── Prompts/
+│   │   ├── Parsers/
+│   │   ├── Validators/
+│   │   ├── Policies.php
+│   │   └── Tools.php
 │   │
-│   ├── services/
-│   │   ├── auth_service.py
-│   │   ├── workspace_service.py
-│   │   ├── user_service.py
-│   │   ├── join_service.py
-│   │   ├── product_service.py
-│   │   ├── inventory_service.py
-│   │   ├── order_service.py
-│   │   ├── invoice_service.py
-│   │   ├── payment_service.py
-│   │   ├── accounting_service.py
-│   │   ├── dashboard_service.py
-│   │   ├── notification_service.py
-│   │   ├── approval_service.py
-│   │   ├── ai_onboarding_service.py
-│   │   ├── ai_change_service.py
-│   │   ├── ai_advisor_service.py
-│   │   ├── ui_config_service.py
-│   │   ├── offline_sync_service.py
-│   │   └── file_service.py
+│   ├── Jobs/
+│   │   ├── RefreshBalances.php
+│   │   ├── SendNotification.php
+│   │   ├── ProcessAiRequest.php
+│   │   ├── ProcessSync.php
+│   │   ├── RunAnalytics.php
+│   │   └── RefreshCache.php
 │   │
-│   ├── ai/
-│   │   ├── client.py
-│   │   ├── prompts/
-│   │   ├── parsers/
-│   │   ├── validators/
-│   │   ├── policies.py
-│   │   └── tools.py
-│   │
-│   ├── jobs/
-│   │   ├── worker.py
-│   │   ├── notifications.py
-│   │   ├── ai_tasks.py
-│   │   ├── sync_tasks.py
-│   │   ├── analytics_tasks.py
-│   │   └── cache_tasks.py
-│   │
-│   ├── middleware/
-│   │   ├── auth.py
-│   │   ├── request_id.py
-│   │   ├── workspace_context.py
-│   │   └── logging.py
-│   │
-│   └── utils/
-│       ├── datetime.py
-│       ├── money.py
-│       ├── pagination.py
-│       ├── validators.py
-│       └── ids.py
+│   ├── Policies/                  # Laravel authorization policies
+│   ├── Providers/
+│   ├── Exceptions/
+│   │   └── Handler.php
+│   └── Console/
+│       └── Commands/
 │
-├── alembic/
+├── config/
+├── database/
+│   ├── migrations/
+│   ├── seeders/
+│   └── factories/
+├── routes/
+│   ├── api.php
+│   └── channels.php
 ├── tests/
-├── scripts/
-├── requirements.txt
+│   ├── Unit/
+│   └── Feature/
+├── composer.json
 ├── Dockerfile
 └── .env.example
 ```
@@ -1008,17 +1015,16 @@ Single deployable backend service initially is acceptable.
 
 Recommended production components:
 
-* api container
-* worker container
-* postgres
-* redis
-* nginx
-* object storage
+* Laravel app container (Nginx + PHP-FPM, or Laravel Octane with FrankenPHP)
+* Laravel Queue Worker container (with Horizon dashboard)
+* PostgreSQL
+* Redis
+* object storage (S3)
 * monitoring/logging
 
 Later optional separation:
 
-* AI service
+* AI service (may remain a separate Python/Node microservice if beneficial)
 * analytics service
 * notification service
 

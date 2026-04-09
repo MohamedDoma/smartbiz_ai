@@ -1,5 +1,5 @@
 {
-    "workspace_ui_config_schema_version": "1.0",
+    "workspace_ui_config_schema_version": "2.0",
     "workspace_branding": {
         "name": "string",
         "logo_url": "string",
@@ -10,13 +10,32 @@
     "enabled_modules": [
         "inventory",
         "sales",
-        "invoices",
-        "accounting",
+        "pos",
+        "finance",
         "hr",
-        "payroll",
-        "reports"
+        "crm",
+        "manufacturing",
+        "purchasing",
+        "projects",
+        "reports",
+        "admin",
+        "ai"
     ],
     "navigation": [
+        {
+            "group_id": "dashboard_group",
+            "title": "Dashboard",
+            "icon": "dashboard",
+            "items": [
+                {
+                    "page_id": "dashboard_page",
+                    "title": "Overview",
+                    "icon": "home",
+                    "route": "/dashboard",
+                    "permissions": []
+                }
+            ]
+        },
         {
             "group_id": "sales_group",
             "title": "Sales",
@@ -28,7 +47,7 @@
                     "icon": "receipt",
                     "route": "/orders",
                     "permissions": [
-                        "orders.view"
+                        "sales.orders.view"
                     ]
                 },
                 {
@@ -37,7 +56,7 @@
                     "icon": "description",
                     "route": "/invoices",
                     "permissions": [
-                        "invoices.view"
+                        "finance.invoices.view"
                     ]
                 },
                 {
@@ -46,7 +65,78 @@
                     "icon": "people",
                     "route": "/customers",
                     "permissions": [
-                        "contacts.view"
+                        "shared.contacts.view"
+                    ]
+                },
+                {
+                    "page_id": "pricing_page",
+                    "title": "Price Lists",
+                    "icon": "sell",
+                    "route": "/pricing",
+                    "permissions": [
+                        "sales.pricing.view"
+                    ]
+                },
+                {
+                    "page_id": "promotions_page",
+                    "title": "Promotions",
+                    "icon": "loyalty",
+                    "route": "/promotions",
+                    "permissions": [
+                        "sales.promotions.view"
+                    ]
+                },
+                {
+                    "page_id": "coupons_page",
+                    "title": "Coupons",
+                    "icon": "confirmation_number",
+                    "route": "/coupons",
+                    "permissions": [
+                        "sales.coupons.view"
+                    ]
+                },
+                {
+                    "page_id": "bookings_page",
+                    "title": "Bookings",
+                    "icon": "event",
+                    "route": "/bookings",
+                    "permissions": [
+                        "sales.bookings.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "pos_group",
+            "title": "POS",
+            "icon": "point_of_sale",
+            "module_flag": "enable_pos",
+            "items": [
+                {
+                    "page_id": "pos_terminal_page",
+                    "title": "Terminal",
+                    "icon": "storefront",
+                    "route": "/pos/terminal",
+                    "permissions": [
+                        "sales.pos.view"
+                    ]
+                },
+                {
+                    "page_id": "pos_sessions_page",
+                    "title": "Sessions",
+                    "icon": "access_time",
+                    "route": "/pos/sessions",
+                    "permissions": [
+                        "sales.pos_sessions.view"
+                    ]
+                },
+                {
+                    "page_id": "dining_page",
+                    "title": "Dining",
+                    "icon": "restaurant",
+                    "route": "/pos/dining",
+                    "permissions": [
+                        "sales.dining.view"
                     ]
                 }
             ]
@@ -59,25 +149,428 @@
                 {
                     "page_id": "products_page",
                     "title": "Products",
+                    "icon": "category",
                     "route": "/products",
                     "permissions": [
-                        "products.view"
+                        "inventory.products.view"
+                    ]
+                },
+                {
+                    "page_id": "categories_page",
+                    "title": "Categories",
+                    "icon": "folder",
+                    "route": "/categories",
+                    "permissions": [
+                        "inventory.categories.view"
                     ]
                 },
                 {
                     "page_id": "stock_page",
-                    "title": "Stock",
-                    "route": "/inventory",
+                    "title": "Stock Levels",
+                    "icon": "assessment",
+                    "route": "/inventory/stock",
                     "permissions": [
-                        "inventory.view"
+                        "inventory.levels.view"
+                    ]
+                },
+                {
+                    "page_id": "warehouses_page",
+                    "title": "Warehouses",
+                    "icon": "warehouse",
+                    "route": "/warehouses",
+                    "permissions": [
+                        "inventory.warehouses.view"
                     ]
                 },
                 {
                     "page_id": "transfers_page",
                     "title": "Transfers",
+                    "icon": "swap_horiz",
                     "route": "/transfers",
                     "permissions": [
-                        "inventory.transfer"
+                        "inventory.transfers.view"
+                    ]
+                },
+                {
+                    "page_id": "batches_page",
+                    "title": "Batches",
+                    "icon": "layers",
+                    "route": "/batches",
+                    "permissions": [
+                        "inventory.batches.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "purchasing_group",
+            "title": "Purchasing",
+            "icon": "shopping_bag",
+            "items": [
+                {
+                    "page_id": "purchase_orders_page",
+                    "title": "Purchase Orders",
+                    "icon": "receipt_long",
+                    "route": "/purchasing/orders",
+                    "permissions": [
+                        "purchasing.orders.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "finance_group",
+            "title": "Finance",
+            "icon": "account_balance",
+            "items": [
+                {
+                    "page_id": "accounts_page",
+                    "title": "Chart of Accounts",
+                    "icon": "account_tree",
+                    "route": "/finance/accounts",
+                    "permissions": [
+                        "finance.accounts.view"
+                    ]
+                },
+                {
+                    "page_id": "journal_entries_page",
+                    "title": "Journal Entries",
+                    "icon": "menu_book",
+                    "route": "/finance/journals",
+                    "permissions": [
+                        "finance.journal_entries.view"
+                    ]
+                },
+                {
+                    "page_id": "transactions_page",
+                    "title": "Transactions",
+                    "icon": "swap_vert",
+                    "route": "/finance/transactions",
+                    "permissions": [
+                        "finance.transactions.view"
+                    ]
+                },
+                {
+                    "page_id": "payments_page",
+                    "title": "Payments",
+                    "icon": "payments",
+                    "route": "/finance/payments",
+                    "permissions": [
+                        "finance.payments.view"
+                    ]
+                },
+                {
+                    "page_id": "taxes_page",
+                    "title": "Taxes",
+                    "icon": "receipt",
+                    "route": "/finance/taxes",
+                    "permissions": [
+                        "finance.taxes.view"
+                    ]
+                },
+                {
+                    "page_id": "fixed_assets_page",
+                    "title": "Fixed Assets",
+                    "icon": "business",
+                    "route": "/finance/assets",
+                    "permissions": [
+                        "finance.fixed_assets.view"
+                    ]
+                },
+                {
+                    "page_id": "recurring_expenses_page",
+                    "title": "Recurring Expenses",
+                    "icon": "repeat",
+                    "route": "/finance/recurring",
+                    "permissions": [
+                        "finance.recurring_expenses.view"
+                    ]
+                },
+                {
+                    "page_id": "exchange_rates_page",
+                    "title": "Exchange Rates",
+                    "icon": "currency_exchange",
+                    "route": "/finance/exchange-rates",
+                    "permissions": [
+                        "finance.accounts.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "hr_group",
+            "title": "HR",
+            "icon": "groups",
+            "module_flag": "enable_hr_module",
+            "items": [
+                {
+                    "page_id": "employees_page",
+                    "title": "Employees",
+                    "icon": "badge",
+                    "route": "/hr/employees",
+                    "permissions": [
+                        "hr.employees.view"
+                    ]
+                },
+                {
+                    "page_id": "attendance_page",
+                    "title": "Attendance",
+                    "icon": "fingerprint",
+                    "route": "/hr/attendance",
+                    "permissions": [
+                        "hr.attendance.view"
+                    ]
+                },
+                {
+                    "page_id": "leaves_page",
+                    "title": "Leave Requests",
+                    "icon": "event_busy",
+                    "route": "/hr/leaves",
+                    "permissions": [
+                        "hr.leaves.view"
+                    ]
+                },
+                {
+                    "page_id": "shifts_page",
+                    "title": "Shifts",
+                    "icon": "schedule",
+                    "route": "/hr/shifts",
+                    "permissions": [
+                        "hr.shifts.view"
+                    ]
+                },
+                {
+                    "page_id": "payroll_page",
+                    "title": "Payroll",
+                    "icon": "paid",
+                    "route": "/hr/payroll",
+                    "module_flag": "enable_payroll",
+                    "permissions": [
+                        "hr.payroll.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "crm_group",
+            "title": "CRM",
+            "icon": "contact_phone",
+            "items": [
+                {
+                    "page_id": "leads_page",
+                    "title": "Leads",
+                    "icon": "person_search",
+                    "route": "/crm/leads",
+                    "permissions": [
+                        "crm.leads.view"
+                    ]
+                },
+                {
+                    "page_id": "opportunities_page",
+                    "title": "Opportunities",
+                    "icon": "trending_up",
+                    "route": "/crm/opportunities",
+                    "permissions": [
+                        "crm.opportunities.view"
+                    ]
+                },
+                {
+                    "page_id": "activities_page",
+                    "title": "Activities",
+                    "icon": "event_note",
+                    "route": "/crm/activities",
+                    "permissions": [
+                        "crm.activities.view"
+                    ]
+                },
+                {
+                    "page_id": "subscriptions_page",
+                    "title": "Subscriptions",
+                    "icon": "card_membership",
+                    "route": "/crm/subscriptions",
+                    "permissions": [
+                        "crm.subscriptions.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "manufacturing_group",
+            "title": "Manufacturing",
+            "icon": "precision_manufacturing",
+            "items": [
+                {
+                    "page_id": "bom_page",
+                    "title": "Bill of Materials",
+                    "icon": "list_alt",
+                    "route": "/manufacturing/bom",
+                    "permissions": [
+                        "manufacturing.bom.view"
+                    ]
+                },
+                {
+                    "page_id": "production_orders_page",
+                    "title": "Production Orders",
+                    "icon": "factory",
+                    "route": "/manufacturing/production",
+                    "permissions": [
+                        "manufacturing.production.view"
+                    ]
+                },
+                {
+                    "page_id": "work_centers_page",
+                    "title": "Work Centers",
+                    "icon": "build",
+                    "route": "/manufacturing/work-centers",
+                    "permissions": [
+                        "manufacturing.work_centers.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "reports_group",
+            "title": "Reports",
+            "icon": "bar_chart",
+            "items": [
+                {
+                    "page_id": "operational_reports_page",
+                    "title": "Operational",
+                    "icon": "analytics",
+                    "route": "/reports/operational",
+                    "permissions": [
+                        "reports.operational.view"
+                    ]
+                },
+                {
+                    "page_id": "financial_reports_page",
+                    "title": "Financial",
+                    "icon": "account_balance_wallet",
+                    "route": "/reports/financial",
+                    "permissions": [
+                        "reports.financial.view"
+                    ]
+                },
+                {
+                    "page_id": "executive_reports_page",
+                    "title": "Executive",
+                    "icon": "insights",
+                    "route": "/reports/executive",
+                    "permissions": [
+                        "reports.executive.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "admin_group",
+            "title": "Administration",
+            "icon": "settings",
+            "items": [
+                {
+                    "page_id": "workspace_settings_page",
+                    "title": "Workspace Settings",
+                    "icon": "tune",
+                    "route": "/admin/settings",
+                    "permissions": [
+                        "admin.workspace.view"
+                    ]
+                },
+                {
+                    "page_id": "users_page",
+                    "title": "Users",
+                    "icon": "people",
+                    "route": "/admin/users",
+                    "permissions": [
+                        "admin.users.view"
+                    ]
+                },
+                {
+                    "page_id": "roles_page",
+                    "title": "Roles & Permissions",
+                    "icon": "security",
+                    "route": "/admin/roles",
+                    "permissions": [
+                        "admin.roles.view"
+                    ]
+                },
+                {
+                    "page_id": "branches_page",
+                    "title": "Branches",
+                    "icon": "location_on",
+                    "route": "/admin/branches",
+                    "permissions": [
+                        "admin.branches.view"
+                    ]
+                },
+                {
+                    "page_id": "departments_page",
+                    "title": "Departments",
+                    "icon": "corporate_fare",
+                    "route": "/admin/departments",
+                    "permissions": [
+                        "admin.departments.view"
+                    ]
+                },
+                {
+                    "page_id": "sequences_page",
+                    "title": "Number Sequences",
+                    "icon": "format_list_numbered",
+                    "route": "/admin/sequences",
+                    "permissions": [
+                        "admin.sequences.view"
+                    ]
+                },
+                {
+                    "page_id": "subscription_page",
+                    "title": "Subscription",
+                    "icon": "card_membership",
+                    "route": "/admin/subscription",
+                    "permissions": [
+                        "admin.subscription.view"
+                    ]
+                },
+                {
+                    "page_id": "audit_logs_page",
+                    "title": "Audit Logs",
+                    "icon": "history",
+                    "route": "/admin/audit-logs",
+                    "permissions": [
+                        "shared.audit_logs.view"
+                    ]
+                },
+                {
+                    "page_id": "approvals_page",
+                    "title": "Approvals",
+                    "icon": "approval",
+                    "route": "/admin/approvals",
+                    "permissions": [
+                        "shared.approvals.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "ai_group",
+            "title": "AI Assistant",
+            "icon": "smart_toy",
+            "items": [
+                {
+                    "page_id": "ai_chat_page",
+                    "title": "Chat",
+                    "icon": "chat",
+                    "route": "/ai/chat",
+                    "permissions": [
+                        "ai.chat.use"
+                    ]
+                },
+                {
+                    "page_id": "ai_change_requests_page",
+                    "title": "Change Requests",
+                    "icon": "rate_review",
+                    "route": "/ai/change-requests",
+                    "permissions": [
+                        "ai.changes.request"
                     ]
                 }
             ]
@@ -89,19 +582,86 @@
                 "widget_id": "sales_today",
                 "type": "kpi",
                 "title": "Sales Today",
-                "data_source": "sales_today_api"
+                "data_source": "/api/v1/reports/sales-summary?period=today",
+                "permissions": ["reports.operational.view"],
+                "refresh_interval_seconds": 60
+            },
+            {
+                "widget_id": "revenue_chart",
+                "type": "chart",
+                "chart_type": "line",
+                "title": "Revenue Trend",
+                "data_source": "/api/v1/reports/sales-summary?group_by=day",
+                "permissions": ["reports.operational.view"],
+                "refresh_interval_seconds": 300
             },
             {
                 "widget_id": "low_stock",
                 "type": "table",
                 "title": "Low Stock Items",
-                "data_source": "low_stock_api"
+                "data_source": "/api/v1/inventory/stock?below_reorder=true&page_size=10",
+                "permissions": ["inventory.levels.view"],
+                "columns": ["name", "sku", "current_stock", "reorder_point"],
+                "refresh_interval_seconds": 300
             },
             {
-                "widget_id": "revenue_chart",
+                "widget_id": "pending_orders",
+                "type": "kpi",
+                "title": "Pending Orders",
+                "data_source": "/api/v1/orders?status=pending&count_only=true",
+                "permissions": ["sales.orders.view"],
+                "refresh_interval_seconds": 120
+            },
+            {
+                "widget_id": "pending_approvals",
+                "type": "kpi",
+                "title": "Pending Approvals",
+                "data_source": "/api/v1/approvals?status=pending&count_only=true",
+                "permissions": ["shared.approvals.view"],
+                "refresh_interval_seconds": 120
+            },
+            {
+                "widget_id": "active_employees",
+                "type": "kpi",
+                "title": "Active Employees",
+                "data_source": "/api/v1/employees?status=active&count_only=true",
+                "permissions": ["hr.employees.view"],
+                "module_flag": "enable_hr_module",
+                "refresh_interval_seconds": 600
+            },
+            {
+                "widget_id": "outstanding_invoices",
+                "type": "kpi",
+                "title": "Outstanding Invoices",
+                "data_source": "/api/v1/invoices?status=sent&sum=total_amount",
+                "permissions": ["finance.invoices.view"],
+                "refresh_interval_seconds": 300
+            },
+            {
+                "widget_id": "open_leads",
+                "type": "kpi",
+                "title": "Open Leads",
+                "data_source": "/api/v1/crm/leads?status=new,contacted&count_only=true",
+                "permissions": ["crm.leads.view"],
+                "refresh_interval_seconds": 300
+            },
+            {
+                "widget_id": "production_status",
                 "type": "chart",
-                "title": "Revenue Trend",
-                "data_source": "revenue_chart_api"
+                "chart_type": "donut",
+                "title": "Production Orders",
+                "data_source": "/api/v1/production-orders?group_by=status",
+                "permissions": ["manufacturing.production.view"],
+                "refresh_interval_seconds": 300
+            },
+            {
+                "widget_id": "cash_flow",
+                "type": "chart",
+                "chart_type": "bar",
+                "title": "Cash Flow",
+                "data_source": "/api/v1/reports/cash-flow?group_by=week",
+                "permissions": ["reports.financial.view"],
+                "refresh_interval_seconds": 600
             }
         ]
     },
@@ -111,40 +671,463 @@
             "title": "Products",
             "type": "table_page",
             "api_endpoint": "/api/v1/products",
-            "permissions": [
-                "products.view"
-            ],
+            "permissions": ["inventory.products.view"],
             "table_schema": {
                 "columns": [
-                    {
-                        "field": "name",
-                        "label": "Product Name",
-                        "type": "text"
-                    },
-                    {
-                        "field": "sku",
-                        "label": "SKU",
-                        "type": "text"
-                    },
-                    {
-                        "field": "price",
-                        "label": "Price",
-                        "type": "currency"
-                    },
-                    {
-                        "field": "stock",
-                        "label": "Stock",
-                        "type": "number"
-                    }
-                ]
+                    { "field": "name", "label": "Product Name", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "sku", "label": "SKU", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "category_name", "label": "Category", "type": "text", "sortable": true },
+                    { "field": "price", "label": "Price", "type": "currency", "sortable": true },
+                    { "field": "stock", "label": "Stock", "type": "number", "sortable": true },
+                    { "field": "is_active", "label": "Status", "type": "boolean_badge", "sortable": true }
+                ],
+                "default_sort": { "field": "name", "direction": "asc" },
+                "searchable_fields": ["name", "sku"],
+                "filterable_fields": ["category_id", "is_active"]
             },
             "actions": [
-                {
-                    "type": "create",
-                    "label": "Add Product",
-                    "route": "/products/create",
-                    "permission": "products.create"
+                { "type": "create", "label": "Add Product", "route": "/products/create", "permission": "inventory.products.create" },
+                { "type": "export", "label": "Export", "permission": "inventory.products.export" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/products/{id}", "permission": "inventory.products.view" },
+                { "type": "edit", "label": "Edit", "route": "/products/{id}/edit", "permission": "inventory.products.update" },
+                { "type": "delete", "label": "Delete", "confirm": true, "permission": "inventory.products.delete" }
+            ]
+        },
+        {
+            "page_id": "orders_page",
+            "title": "Orders",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/orders",
+            "permissions": ["sales.orders.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "order_number", "label": "Order #", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "customer_name", "label": "Customer", "type": "text", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "total_amount", "label": "Total", "type": "currency", "sortable": true },
+                    { "field": "created_at", "label": "Date", "type": "datetime", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "customer_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "New Order", "route": "/orders/create", "permission": "sales.orders.create" },
+                { "type": "export", "label": "Export", "permission": "sales.orders.export" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/orders/{id}", "permission": "sales.orders.view" },
+                { "type": "cancel", "label": "Cancel", "confirm": true, "permission": "sales.orders.cancel" }
+            ]
+        },
+        {
+            "page_id": "invoices_page",
+            "title": "Invoices",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/invoices",
+            "permissions": ["finance.invoices.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "invoice_number", "label": "Invoice #", "type": "text", "sortable": true },
+                    { "field": "customer_name", "label": "Customer", "type": "text", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "total_amount", "label": "Total", "type": "currency", "sortable": true },
+                    { "field": "due_date", "label": "Due Date", "type": "date", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "customer_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "New Invoice", "route": "/invoices/create", "permission": "finance.invoices.create" },
+                { "type": "export", "label": "Export", "permission": "finance.invoices.export" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/invoices/{id}", "permission": "finance.invoices.view" },
+                { "type": "approve", "label": "Approve", "permission": "finance.invoices.approve" },
+                { "type": "cancel", "label": "Cancel", "confirm": true, "permission": "finance.invoices.cancel" }
+            ]
+        },
+        {
+            "page_id": "accounts_page",
+            "title": "Chart of Accounts",
+            "type": "tree_page",
+            "api_endpoint": "/api/v1/accounts",
+            "permissions": ["finance.accounts.view"],
+            "tree_config": {
+                "parent_field": "parent_id",
+                "label_field": "name",
+                "code_field": "code",
+                "type_field": "account_type"
+            },
+            "actions": [
+                { "type": "create", "label": "Add Account", "route": "/finance/accounts/create", "permission": "finance.accounts.create" }
+            ]
+        },
+        {
+            "page_id": "journal_entries_page",
+            "title": "Journal Entries",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/journal-entries",
+            "permissions": ["finance.journal_entries.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "reference", "label": "Reference", "type": "text", "sortable": true },
+                    { "field": "description", "label": "Description", "type": "text" },
+                    { "field": "date", "label": "Date", "type": "date", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "currency", "label": "Currency", "type": "text" },
+                    { "field": "total_debit", "label": "Debit", "type": "currency" }
+                ],
+                "default_sort": { "field": "date", "direction": "desc" },
+                "filterable_fields": ["status", "currency"]
+            },
+            "actions": [
+                { "type": "create", "label": "New Journal Entry", "route": "/finance/journals/create", "permission": "finance.journal_entries.create" },
+                { "type": "export", "label": "Export", "permission": "finance.journal_entries.export" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/finance/journals/{id}", "permission": "finance.journal_entries.view" },
+                { "type": "approve", "label": "Post", "permission": "finance.journal_entries.approve" }
+            ]
+        },
+        {
+            "page_id": "employees_page",
+            "title": "Employees",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/employees",
+            "permissions": ["hr.employees.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "full_name", "label": "Name", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "department_name", "label": "Department", "type": "text", "sortable": true },
+                    { "field": "branch_name", "label": "Branch", "type": "text", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "hire_date", "label": "Hire Date", "type": "date", "sortable": true }
+                ],
+                "default_sort": { "field": "full_name", "direction": "asc" },
+                "filterable_fields": ["department_id", "branch_id", "status"]
+            },
+            "actions": [
+                { "type": "create", "label": "Add Employee", "route": "/hr/employees/create", "permission": "hr.employees.create" },
+                { "type": "export", "label": "Export", "permission": "hr.employees.export" }
+            ]
+        },
+        {
+            "page_id": "leaves_page",
+            "title": "Leave Requests",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/leave-requests",
+            "permissions": ["hr.leaves.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "employee_name", "label": "Employee", "type": "text", "sortable": true },
+                    { "field": "leave_type_name", "label": "Type", "type": "text", "sortable": true },
+                    { "field": "start_date", "label": "From", "type": "date", "sortable": true },
+                    { "field": "end_date", "label": "To", "type": "date" },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "leave_type_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "Request Leave", "route": "/hr/leaves/create", "permission": "hr.leaves.create" }
+            ],
+            "row_actions": [
+                { "type": "approve", "label": "Approve", "permission": "hr.leaves.approve" },
+                { "type": "cancel", "label": "Cancel", "confirm": true, "permission": "hr.leaves.cancel" }
+            ]
+        },
+        {
+            "page_id": "payroll_page",
+            "title": "Payroll",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/payroll-runs",
+            "permissions": ["hr.payroll.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "period_label", "label": "Period", "type": "text", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "employee_count", "label": "Employees", "type": "number" },
+                    { "field": "total_gross", "label": "Gross", "type": "currency" },
+                    { "field": "total_net", "label": "Net", "type": "currency" }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" }
+            },
+            "actions": [
+                { "type": "create", "label": "New Payroll Run", "route": "/hr/payroll/create", "permission": "hr.payroll.process" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/hr/payroll/{id}", "permission": "hr.payroll.view" },
+                { "type": "approve", "label": "Approve", "permission": "hr.payroll.approve" }
+            ]
+        },
+        {
+            "page_id": "leads_page",
+            "title": "Leads",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/crm/leads",
+            "permissions": ["crm.leads.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "name", "label": "Lead Name", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "company", "label": "Company", "type": "text" },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "source", "label": "Source", "type": "text" },
+                    { "field": "assigned_to_name", "label": "Assigned To", "type": "text" },
+                    { "field": "created_at", "label": "Created", "type": "datetime", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "source", "assigned_to"]
+            },
+            "actions": [
+                { "type": "create", "label": "Add Lead", "route": "/crm/leads/create", "permission": "crm.leads.create" },
+                { "type": "export", "label": "Export", "permission": "crm.leads.export" }
+            ]
+        },
+        {
+            "page_id": "opportunities_page",
+            "title": "Opportunities",
+            "type": "kanban_page",
+            "api_endpoint": "/api/v1/crm/opportunities",
+            "permissions": ["crm.opportunities.view"],
+            "kanban_config": {
+                "column_field": "stage",
+                "stages": ["new", "qualified", "proposal", "negotiation", "won", "lost"],
+                "card_title_field": "name",
+                "card_subtitle_field": "company",
+                "card_value_field": "expected_revenue"
+            },
+            "actions": [
+                { "type": "create", "label": "Add Opportunity", "route": "/crm/opportunities/create", "permission": "crm.opportunities.create" }
+            ]
+        },
+        {
+            "page_id": "bom_page",
+            "title": "Bill of Materials",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/bom",
+            "permissions": ["manufacturing.bom.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "product_name", "label": "Product", "type": "text", "sortable": true },
+                    { "field": "components_count", "label": "Components", "type": "number" },
+                    { "field": "total_cost", "label": "Cost", "type": "currency" },
+                    { "field": "is_active", "label": "Active", "type": "boolean_badge" }
+                ],
+                "default_sort": { "field": "product_name", "direction": "asc" }
+            },
+            "actions": [
+                { "type": "create", "label": "New BOM", "route": "/manufacturing/bom/create", "permission": "manufacturing.bom.create" }
+            ]
+        },
+        {
+            "page_id": "production_orders_page",
+            "title": "Production Orders",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/production-orders",
+            "permissions": ["manufacturing.production.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "order_number", "label": "Order #", "type": "text", "sortable": true },
+                    { "field": "product_name", "label": "Product", "type": "text", "sortable": true },
+                    { "field": "quantity", "label": "Qty", "type": "number" },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "planned_start_date", "label": "Start", "type": "date", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "product_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "New Production Order", "route": "/manufacturing/production/create", "permission": "manufacturing.production.create" }
+            ],
+            "row_actions": [
+                { "type": "view", "label": "View", "route": "/manufacturing/production/{id}", "permission": "manufacturing.production.view" },
+                { "type": "approve", "label": "Release", "permission": "manufacturing.production.approve" }
+            ]
+        },
+        {
+            "page_id": "purchase_orders_page",
+            "title": "Purchase Orders",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/purchase-orders",
+            "permissions": ["purchasing.orders.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "po_number", "label": "PO #", "type": "text", "sortable": true },
+                    { "field": "supplier_name", "label": "Supplier", "type": "text", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "total_amount", "label": "Total", "type": "currency", "sortable": true },
+                    { "field": "expected_date", "label": "Expected", "type": "date", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "supplier_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "New PO", "route": "/purchasing/orders/create", "permission": "purchasing.orders.create" },
+                { "type": "approve", "label": "Approve Selected", "permission": "purchasing.orders.approve" }
+            ]
+        },
+        {
+            "page_id": "users_page",
+            "title": "Users",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/members",
+            "permissions": ["admin.users.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "full_name", "label": "Name", "type": "text", "sortable": true, "searchable": true },
+                    { "field": "email", "label": "Email", "type": "text", "searchable": true },
+                    { "field": "roles", "label": "Roles", "type": "tag_list" },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "joined_at", "label": "Joined", "type": "datetime", "sortable": true }
+                ],
+                "default_sort": { "field": "full_name", "direction": "asc" },
+                "filterable_fields": ["status", "role_id"]
+            },
+            "actions": [
+                { "type": "create", "label": "Invite User", "route": "/admin/users/invite", "permission": "admin.users.create" }
+            ],
+            "row_actions": [
+                { "type": "edit", "label": "Edit", "route": "/admin/users/{id}/edit", "permission": "admin.users.update" },
+                { "type": "delete", "label": "Remove", "confirm": true, "permission": "admin.users.delete" }
+            ]
+        },
+        {
+            "page_id": "roles_page",
+            "title": "Roles & Permissions",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/roles",
+            "permissions": ["admin.roles.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "name", "label": "Role", "type": "text", "sortable": true },
+                    { "field": "is_system", "label": "System", "type": "boolean_badge" },
+                    { "field": "permissions_count", "label": "Permissions", "type": "number" },
+                    { "field": "members_count", "label": "Members", "type": "number" }
+                ],
+                "default_sort": { "field": "name", "direction": "asc" }
+            },
+            "actions": [
+                { "type": "create", "label": "New Role", "route": "/admin/roles/create", "permission": "admin.roles.create" }
+            ],
+            "row_actions": [
+                { "type": "edit", "label": "Edit", "route": "/admin/roles/{id}/edit", "permission": "admin.roles.update" },
+                { "type": "delete", "label": "Delete", "confirm": true, "permission": "admin.roles.delete" }
+            ]
+        },
+        {
+            "page_id": "approvals_page",
+            "title": "Approvals",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/approvals",
+            "permissions": ["shared.approvals.view"],
+            "table_schema": {
+                "columns": [
+                    { "field": "entity_type", "label": "Type", "type": "text", "sortable": true },
+                    { "field": "requester_name", "label": "Requester", "type": "text" },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "created_at", "label": "Requested", "type": "datetime", "sortable": true }
+                ],
+                "default_sort": { "field": "created_at", "direction": "desc" },
+                "filterable_fields": ["status", "entity_type"]
+            },
+            "actions": [
+                { "type": "batch_approve", "label": "Approve Selected", "permission": "shared.approvals.approve" }
+            ],
+            "row_actions": [
+                { "type": "approve", "label": "Approve", "permission": "shared.approvals.approve" },
+                { "type": "reject", "label": "Reject", "permission": "shared.approvals.approve" },
+                { "type": "escalate", "label": "Escalate", "permission": "shared.approvals.escalate" }
+            ]
+        },
+        {
+            "page_id": "ai_chat_page",
+            "title": "AI Assistant",
+            "type": "chat_page",
+            "api_endpoint": "/api/v1/ai/conversations",
+            "permissions": ["ai.chat.use"],
+            "chat_config": {
+                "modes": ["general", "advisory", "change_request"],
+                "supports_voice": false,
+                "supports_file_upload": true,
+                "max_message_length": 4000,
+                "typing_indicator": true
+            }
+        },
+        {
+            "page_id": "ai_change_requests_page",
+            "title": "AI Change Requests",
+            "type": "table_page",
+            "api_endpoint": "/api/v1/ai/change-requests",
+            "permissions": ["ai.changes.request"],
+            "table_schema": {
+                "columns": [
+                    { "field": "change_type", "label": "Type", "type": "text", "sortable": true },
+                    { "field": "risk_level", "label": "Risk", "type": "status_badge", "sortable": true },
+                    { "field": "status", "label": "Status", "type": "status_badge", "sortable": true },
+                    { "field": "proposed_at", "label": "Proposed", "type": "datetime", "sortable": true }
+                ],
+                "default_sort": { "field": "proposed_at", "direction": "desc" },
+                "filterable_fields": ["status", "risk_level", "change_type"]
+            },
+            "row_actions": [
+                { "type": "view", "label": "Review", "route": "/ai/change-requests/{id}", "permission": "ai.changes.request" },
+                { "type": "approve", "label": "Approve", "permission": "ai.changes.approve" },
+                { "type": "reject", "label": "Reject", "permission": "ai.changes.approve" }
+            ]
+        },
+        {
+            "page_id": "operational_reports_page",
+            "title": "Operational Reports",
+            "type": "report_page",
+            "permissions": ["reports.operational.view"],
+            "reports": [
+                { "report_id": "sales_summary", "title": "Sales Summary", "api_endpoint": "/api/v1/reports/sales-summary", "export_permission": "reports.operational.export" },
+                { "report_id": "inventory_report", "title": "Inventory Report", "api_endpoint": "/api/v1/reports/inventory", "export_permission": "reports.operational.export" },
+                { "report_id": "purchasing_report", "title": "Purchasing Report", "api_endpoint": "/api/v1/reports/purchasing", "export_permission": "reports.operational.export" }
+            ],
+            "filters": ["period_start", "period_end", "group_by", "branch_id"]
+        },
+        {
+            "page_id": "financial_reports_page",
+            "title": "Financial Reports",
+            "type": "report_page",
+            "permissions": ["reports.financial.view"],
+            "reports": [
+                { "report_id": "trial_balance", "title": "Trial Balance", "api_endpoint": "/api/v1/reports/trial-balance", "export_permission": "reports.financial.export" },
+                { "report_id": "profit_loss", "title": "Profit & Loss", "api_endpoint": "/api/v1/reports/profit-loss", "export_permission": "reports.financial.export" },
+                { "report_id": "balance_sheet", "title": "Balance Sheet", "api_endpoint": "/api/v1/reports/balance-sheet", "export_permission": "reports.financial.export" },
+                { "report_id": "cash_flow", "title": "Cash Flow", "api_endpoint": "/api/v1/reports/cash-flow", "export_permission": "reports.financial.export" }
+            ],
+            "filters": ["period_start", "period_end", "currency"]
+        },
+        {
+            "page_id": "pos_terminal_page",
+            "title": "POS Terminal",
+            "type": "custom_page",
+            "permissions": ["sales.pos.view"],
+            "layout": "pos_terminal",
+            "components": {
+                "product_grid": { "api_endpoint": "/api/v1/products?is_active=true", "display": "grid" },
+                "cart": { "position": "right" },
+                "payment_methods": ["cash", "card", "mobile_wallet"],
+                "session_actions": {
+                    "open": { "permission": "sales.pos_sessions.open" },
+                    "close": { "permission": "sales.pos_sessions.close" }
                 }
+            }
+        },
+        {
+            "page_id": "workspace_settings_page",
+            "title": "Workspace Settings",
+            "type": "settings_page",
+            "api_endpoint": "/api/v1/workspaces/current",
+            "permissions": ["admin.workspace.view"],
+            "sections": [
+                { "section_id": "general", "title": "General", "fields": ["name", "industry_type", "business_size", "default_locale", "default_currency", "timezone"], "edit_permission": "admin.workspace.configure" },
+                { "section_id": "branding", "title": "Branding", "fields": ["logo_url", "primary_color", "accent_color", "theme"], "edit_permission": "admin.workspace.configure" },
+                { "section_id": "modules", "title": "Enabled Modules", "fields": ["enabled_modules"], "edit_permission": "admin.workspace.configure" }
             ]
         }
     ],
@@ -154,38 +1137,174 @@
             "title": "Create Product",
             "api_endpoint": "/api/v1/products",
             "method": "POST",
+            "permission": "inventory.products.create",
             "fields": [
-                {
-                    "name": "name",
-                    "type": "text",
-                    "label": "Product Name",
-                    "required": true
-                },
-                {
-                    "name": "sku",
-                    "type": "text",
-                    "label": "SKU",
-                    "required": false
-                },
-                {
-                    "name": "price",
-                    "type": "number",
-                    "label": "Price",
-                    "required": true
-                },
-                {
-                    "name": "category_id",
-                    "type": "select",
-                    "label": "Category",
-                    "source": "/api/v1/categories"
-                }
+                { "name": "name", "type": "text", "label": "Product Name", "required": true },
+                { "name": "sku", "type": "text", "label": "SKU", "required": false },
+                { "name": "price", "type": "number", "label": "Price", "required": true, "min": 0 },
+                { "name": "cost_price", "type": "number", "label": "Cost Price", "required": false, "min": 0, "visibility_permission": "finance.transactions.view" },
+                { "name": "category_id", "type": "select", "label": "Category", "source": "/api/v1/categories" },
+                { "name": "unit_id", "type": "select", "label": "Unit", "source": "/api/v1/units" },
+                { "name": "description", "type": "textarea", "label": "Description" },
+                { "name": "is_active", "type": "toggle", "label": "Active", "default": true }
+            ]
+        },
+        {
+            "form_id": "create_order_form",
+            "title": "Create Order",
+            "api_endpoint": "/api/v1/orders",
+            "method": "POST",
+            "permission": "sales.orders.create",
+            "fields": [
+                { "name": "customer_id", "type": "select", "label": "Customer", "source": "/api/v1/contacts?type=customer", "required": true },
+                { "name": "currency", "type": "select", "label": "Currency", "source": "workspace_currencies", "default": "workspace_default" },
+                { "name": "items", "type": "line_items", "label": "Order Items", "required": true, "item_fields": [
+                    { "name": "product_id", "type": "select", "label": "Product", "source": "/api/v1/products" },
+                    { "name": "quantity", "type": "number", "label": "Qty", "min": 1 },
+                    { "name": "unit_price", "type": "number", "label": "Unit Price" },
+                    { "name": "discount_amount", "type": "number", "label": "Discount", "min": 0 }
+                ]},
+                { "name": "notes", "type": "textarea", "label": "Notes" }
+            ]
+        },
+        {
+            "form_id": "create_invoice_form",
+            "title": "Create Invoice",
+            "api_endpoint": "/api/v1/invoices",
+            "method": "POST",
+            "permission": "finance.invoices.create",
+            "fields": [
+                { "name": "customer_id", "type": "select", "label": "Customer", "source": "/api/v1/contacts?type=customer", "required": true },
+                { "name": "order_id", "type": "select", "label": "From Order", "source": "/api/v1/orders?status=confirmed" },
+                { "name": "due_date", "type": "date", "label": "Due Date", "required": true },
+                { "name": "currency", "type": "select", "label": "Currency", "source": "workspace_currencies", "default": "workspace_default" },
+                { "name": "items", "type": "line_items", "label": "Invoice Lines", "required": true, "item_fields": [
+                    { "name": "description", "type": "text", "label": "Description" },
+                    { "name": "quantity", "type": "number", "label": "Qty", "min": 1 },
+                    { "name": "unit_price", "type": "number", "label": "Unit Price" },
+                    { "name": "tax_id", "type": "select", "label": "Tax", "source": "/api/v1/taxes" }
+                ]}
+            ]
+        },
+        {
+            "form_id": "create_journal_entry_form",
+            "title": "Create Journal Entry",
+            "api_endpoint": "/api/v1/journal-entries",
+            "method": "POST",
+            "permission": "finance.journal_entries.create",
+            "fields": [
+                { "name": "date", "type": "date", "label": "Date", "required": true, "default": "today" },
+                { "name": "reference", "type": "text", "label": "Reference" },
+                { "name": "description", "type": "text", "label": "Description", "required": true },
+                { "name": "currency", "type": "select", "label": "Currency", "source": "workspace_currencies", "default": "workspace_default" },
+                { "name": "lines", "type": "line_items", "label": "Journal Lines", "required": true, "validation": "debit_credit_balanced", "item_fields": [
+                    { "name": "account_id", "type": "select", "label": "Account", "source": "/api/v1/accounts" },
+                    { "name": "debit", "type": "number", "label": "Debit", "min": 0 },
+                    { "name": "credit", "type": "number", "label": "Credit", "min": 0 },
+                    { "name": "description", "type": "text", "label": "Description" }
+                ]}
+            ]
+        },
+        {
+            "form_id": "create_employee_form",
+            "title": "Add Employee",
+            "api_endpoint": "/api/v1/employees",
+            "method": "POST",
+            "permission": "hr.employees.create",
+            "fields": [
+                { "name": "email", "type": "email", "label": "Email", "required": true },
+                { "name": "first_name", "type": "text", "label": "First Name", "required": true },
+                { "name": "last_name", "type": "text", "label": "Last Name", "required": true },
+                { "name": "department_id", "type": "select", "label": "Department", "source": "/api/v1/departments" },
+                { "name": "branch_id", "type": "select", "label": "Branch", "source": "/api/v1/branches" },
+                { "name": "role_id", "type": "select", "label": "Role", "source": "/api/v1/roles" },
+                { "name": "hire_date", "type": "date", "label": "Hire Date" },
+                { "name": "base_salary", "type": "number", "label": "Base Salary", "min": 0, "visibility_permission": "hr.payroll.view" }
+            ]
+        },
+        {
+            "form_id": "create_leave_request_form",
+            "title": "Request Leave",
+            "api_endpoint": "/api/v1/leave-requests",
+            "method": "POST",
+            "permission": "hr.leaves.create",
+            "fields": [
+                { "name": "leave_type_id", "type": "select", "label": "Leave Type", "source": "/api/v1/leave-types", "required": true },
+                { "name": "start_date", "type": "date", "label": "Start Date", "required": true },
+                { "name": "end_date", "type": "date", "label": "End Date", "required": true },
+                { "name": "half_day", "type": "toggle", "label": "Half Day", "default": false },
+                { "name": "reason", "type": "textarea", "label": "Reason" }
+            ]
+        },
+        {
+            "form_id": "create_lead_form",
+            "title": "Add Lead",
+            "api_endpoint": "/api/v1/crm/leads",
+            "method": "POST",
+            "permission": "crm.leads.create",
+            "fields": [
+                { "name": "name", "type": "text", "label": "Lead Name", "required": true },
+                { "name": "company", "type": "text", "label": "Company" },
+                { "name": "email", "type": "email", "label": "Email" },
+                { "name": "phone", "type": "phone", "label": "Phone" },
+                { "name": "source", "type": "select", "label": "Source", "options": ["website", "referral", "social_media", "cold_call", "trade_show", "other"] },
+                { "name": "notes", "type": "textarea", "label": "Notes" }
+            ]
+        },
+        {
+            "form_id": "create_production_order_form",
+            "title": "New Production Order",
+            "api_endpoint": "/api/v1/production-orders",
+            "method": "POST",
+            "permission": "manufacturing.production.create",
+            "fields": [
+                { "name": "product_id", "type": "select", "label": "Product", "source": "/api/v1/products?type=manufactured", "required": true },
+                { "name": "bom_id", "type": "select", "label": "Bill of Materials", "source": "/api/v1/bom?product_id={product_id}" },
+                { "name": "quantity", "type": "number", "label": "Quantity", "required": true, "min": 1 },
+                { "name": "warehouse_id", "type": "select", "label": "Output Warehouse", "source": "/api/v1/warehouses", "required": true },
+                { "name": "planned_start_date", "type": "date", "label": "Planned Start" },
+                { "name": "planned_end_date", "type": "date", "label": "Planned End" }
+            ]
+        },
+        {
+            "form_id": "create_purchase_order_form",
+            "title": "New Purchase Order",
+            "api_endpoint": "/api/v1/purchase-orders",
+            "method": "POST",
+            "permission": "purchasing.orders.create",
+            "fields": [
+                { "name": "supplier_id", "type": "select", "label": "Supplier", "source": "/api/v1/contacts?type=supplier", "required": true },
+                { "name": "currency", "type": "select", "label": "Currency", "source": "workspace_currencies", "default": "workspace_default" },
+                { "name": "expected_date", "type": "date", "label": "Expected Delivery" },
+                { "name": "items", "type": "line_items", "label": "PO Lines", "required": true, "item_fields": [
+                    { "name": "product_id", "type": "select", "label": "Product", "source": "/api/v1/products" },
+                    { "name": "quantity", "type": "number", "label": "Qty", "min": 1 },
+                    { "name": "unit_price", "type": "number", "label": "Unit Price" }
+                ]}
+            ]
+        },
+        {
+            "form_id": "create_exchange_rate_form",
+            "title": "Add Exchange Rate",
+            "api_endpoint": "/api/v1/exchange-rates",
+            "method": "POST",
+            "permission": "finance.accounts.view",
+            "fields": [
+                { "name": "base_currency", "type": "text", "label": "Base Currency", "default": "workspace_default_currency", "required": true, "max_length": 3 },
+                { "name": "target_currency", "type": "text", "label": "Target Currency", "required": true, "max_length": 3 },
+                { "name": "rate", "type": "number", "label": "Rate", "required": true, "min": 0, "decimal_places": 8 },
+                { "name": "effective_date", "type": "date", "label": "Effective Date", "required": true, "default": "today" },
+                { "name": "source", "type": "select", "label": "Source", "options": ["manual", "api", "central_bank"], "default": "manual" }
             ]
         }
     ],
     "feature_flags": {
         "enable_pos": true,
         "enable_payroll": false,
-        "enable_hr_module": false
+        "enable_hr_module": false,
+        "enable_crm": true,
+        "enable_manufacturing": false,
+        "enable_projects": false
     },
     "ai_modifiable_sections": [
         "navigation",
@@ -198,5 +1317,13 @@
         "permissions",
         "accounting_rules",
         "security_settings"
-    ]
+    ],
+    "global_config": {
+        "pagination_default": 25,
+        "pagination_options": [10, 25, 50, 100],
+        "date_format": "workspace_locale",
+        "currency_format": "workspace_locale",
+        "timezone": "workspace_timezone",
+        "rtl_locales": ["ar", "he", "fa"]
+    }
 }
