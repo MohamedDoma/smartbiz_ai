@@ -63,11 +63,35 @@ Breaking changes MUST NOT occur within the same version.
 
 ### 3.1 Workspace Auth
 
-- **Credential**: `phone_number` + `password`
+- **Primary credential**: `email` + `password` (globally unique identity per migration 011/012)
+- **Alternative credential**: `phone_number` + `password` (workspace-scoped, requires `X-Workspace-ID` header)
 - **Tokens**: JWT access (default 30min) + refresh (rotated on each use)
 - **Concurrent sessions**: configurable, default 5
+- **Auth database connection**: service-role (bypasses RLS — no workspace context exists at login time)
 
-### 3.2 Headers (all workspace endpoints)
+**Login flow**:
+1. User authenticates via `POST /api/v1/auth/login` with `email + password` (or `phone_number + password + X-Workspace-ID`)
+2. On success, backend returns user identity + list of workspace memberships
+3. Client selects workspace → backend sets `app.workspace_id` for RLS on all subsequent requests
+4. Token payload includes: `user_id`, `workspace_id`, `membership_id`
+
+### 3.2 Password Reset
+
+**`POST /api/v1/auth/forgot-password`**
+
+- Request: `{ "email": "string" }`
+- Success: `200` (always — prevents email enumeration)
+- Side-effect: sends password reset email with time-limited token (1 hour)
+- Rate limit: 3 requests per email per hour
+
+**`POST /api/v1/auth/reset-password`**
+
+- Request: `{ "token": "string", "new_password": "string" }`
+- Success: `200` with new access + refresh tokens
+- Errors: `400` (invalid/expired token), `422` (password policy violation)
+- Side-effect: invalidates all existing sessions for the user (security measure)
+
+### 3.3 Headers (all workspace endpoints)
 
 ```
 Authorization: Bearer <access_token>
@@ -77,8 +101,9 @@ X-Workspace-ID: <workspace_uuid>
 Backend resolves membership via `workspace_memberships` table. Validates: active membership, permission, scope, RLS.
 
 ✅ Resolved: `workspace_memberships` table implemented in migration 002.
+✅ Resolved: dual RLS policy (`ws_users` + `ws_users_via_membership`) implemented in migration 012.
 
-### 3.3 Platform Auth
+### 3.4 Platform Auth
 
 - **Credential**: `email` + `password` (via `platform_users` table)
 - **Namespace**: `/api/v1/platform/`
@@ -105,6 +130,8 @@ Error: `{ "success": false, "error": { "code": "...", "message": "...", "details
 | Text search | `?q=term` | — |
 | Include | `?include=items,contact` | minimal (no nesting) |
 
+**Search implementation rule** [Core v1]: All `?q=` text search queries MUST be routed through `SearchService` (§28 backend architecture). Controllers MUST NOT use raw SQL `LIKE` / `ILIKE` queries. The SearchService uses PostgreSQL `tsvector` + GIN indexes for v1 and can be swapped to Meilisearch without API changes.
+
 ---
 
 ## 6. Error, Validation & Concurrency Standard
@@ -117,8 +144,12 @@ Error: `{ "success": false, "error": { "code": "...", "message": "...", "details
 | `not_found` | 404 | Resource not found or out of scope |
 | `conflict_error` | 409 | Duplicate, invalid transition, stale data |
 | `approval_required` | 202 | Action needs approval first |
+| `entitlement_required` | 402 | Feature requires plan upgrade (BR-SYS-006 Layer 1) |
 | `rate_limit` | 429 | Rate limit exceeded |
+| `quota_exceeded` | 429 | Usage quota exhausted (BR-SYS-006 Layer 4) |
 | `ai_error` | 503 | AI service unavailable |
+
+**Entitlement enforcement** [Core v1]: All feature-gated endpoints pass through `EntitlementMiddleware` (§31 backend architecture). Denial responses include `error_code`, `required_plan`, and `upgrade_url` for frontend upgrade prompts.
 | `internal_error` | 500 | Unexpected |
 
 **Stale-transition prevention**: Transition endpoints accept optional `expected_status`. Mismatch → `409`.
@@ -2527,3 +2558,782 @@ Schema: `workspace_subscriptions`
 | **Path** | `/api/v1/jobs/{job_id}/cancel` |
 | **Permission** | Authenticated (own jobs only) |
 | **Errors** | `409 conflict_error` (already completed or failed) |
+
+---
+
+## 41. Communications Endpoints [Core v1]
+
+### 41.1 Channel CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/communications/channels` | `communications.templates.view @ ws` | List configured channels |
+| POST | `/api/v1/communications/channels` | `communications.automations.manage @ ws` | Register channel provider |
+| PATCH | `/api/v1/communications/channels/{id}` | `communications.automations.manage @ ws` | Update channel config |
+| DELETE | `/api/v1/communications/channels/{id}` | `communications.automations.manage @ ws` | Remove channel |
+
+- **Request body (POST)**: `{ type: "email"|"sms"|"whatsapp"|"push", provider_name: string, provider_config: object, is_default?: boolean }`
+- **Errors**: `422 validation_error` (duplicate type+provider), `400 bad_request` (invalid provider_config schema)
+- **Schema**: `communication_channels` (migration 013)
+
+### 41.2 Template CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/communications/templates` | `communications.templates.view @ scope` | List templates |
+| POST | `/api/v1/communications/templates` | `communications.templates.create @ scope` | Create template |
+| GET | `/api/v1/communications/templates/{id}` | `communications.templates.view @ scope` | Get template detail |
+| PATCH | `/api/v1/communications/templates/{id}` | `communications.templates.update @ scope` | Update template |
+| DELETE | `/api/v1/communications/templates/{id}` | `communications.templates.delete @ scope` | Delete template |
+
+- **Request body (POST)**: `{ channel_type: string, name: string, subject?: string, body: string, variables?: [{key, label, default}], locale?: string }`
+- **Query params**: `?channel_type=&locale=&page=&page_size=`
+- **Errors**: `422 validation_error` (duplicate name+channel+locale)
+- **Schema**: `message_templates` (migration 013)
+
+### 41.3 Send Message
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/communications/send` |
+| **Permission** | `communications.messages.send @ scope` |
+| **Request body** | `{ channel_type: string, template_id?: UUID, recipient_contact_id?: UUID, recipient_user_id?: UUID, recipient_address: string, subject?: string, body?: string, variables?: object }` |
+| **Success** | `202` message queued `{ message_id, status: "queued" }` |
+| **Errors** | `422 validation_error` (no channel configured for type), `400 bad_request` (missing recipient) |
+| **Business rules** | BR-COM-001, BR-COM-004 |
+| **Side-effects** | Creates `outbound_messages` row, enqueues dispatch job |
+
+### 41.4 Communication Logs
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/communications/logs` | `communications.messages.view @ scope` | List all sent/received messages |
+| GET | `/api/v1/communications/logs/contact/{contact_id}` | `communications.messages.view @ scope` | Contact communication timeline |
+
+- **Query params**: `?channel_type=&status=&date_from=&date_to=&page=&page_size=`
+- **Response**: Paginated list of `outbound_messages` + `inbound_messages` (merged, sorted by date)
+
+### 41.5 Export Communication Logs
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/communications/logs/export` |
+| **Permission** | `communications.logs.export @ ws` |
+| **Request body** | `{ date_from: date, date_to: date, channel_type?: string, format?: "csv"|"xlsx" }` |
+| **Success** | `202` async job started `{ job_id }` |
+
+### 41.6 Automation CRUD [Expansion Pack]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/communications/automations` | `communications.automations.view @ scope` | List automations |
+| POST | `/api/v1/communications/automations` | `communications.automations.manage @ scope` | Create automation |
+| PATCH | `/api/v1/communications/automations/{id}` | `communications.automations.manage @ scope` | Update automation |
+| DELETE | `/api/v1/communications/automations/{id}` | `communications.automations.manage @ scope` | Delete automation |
+
+- **Request body (POST)**: `{ name: string, trigger_event: string, conditions?: object, template_id: UUID, channel_type: string, delay_minutes?: int }`
+- **Business rules**: BR-COM-002
+- **Schema**: `communication_automations` (migration 013)
+
+### 41.7 Message Threads [Expansion Pack]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/communications/threads` | `communications.messages.view @ scope` | List threads |
+| GET | `/api/v1/communications/threads/{id}` | `communications.messages.view @ scope` | Get thread with messages |
+
+### 41.8 Channel Analytics
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/communications/analytics` |
+| **Permission** | `communications.messages.view @ ws` |
+| **Query params** | `?date_from=&date_to=&channel_type=` |
+| **Response** | `{ sent_count, delivered_count, failed_count, bounce_count, delivery_rate_pct, by_channel: [{type, sent, delivered, failed}] }` |
+
+---
+
+## 42. Marketing Endpoints [Mixed]
+
+### 42.1 Campaign CRUD [Expansion Pack]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/marketing/campaigns` | `marketing.campaigns.view @ scope` | List campaigns |
+| POST | `/api/v1/marketing/campaigns` | `marketing.campaigns.create @ scope` | Create campaign |
+| GET | `/api/v1/marketing/campaigns/{id}` | `marketing.campaigns.view @ scope` | Get campaign detail + metrics |
+| PATCH | `/api/v1/marketing/campaigns/{id}` | `marketing.campaigns.update @ scope` | Update campaign |
+| DELETE | `/api/v1/marketing/campaigns/{id}` | `marketing.campaigns.delete @ scope` | Delete (draft only) |
+
+- **Request body (POST)**: `{ name: string, type: "email"|"sms"|"multi_channel", segment_id?: UUID, template_id?: UUID, budget?: decimal, scheduled_at?: datetime }`
+- **Errors**: `422 validation_error` (cannot delete non-draft campaign)
+- **Schema**: `campaigns`, `campaign_metrics` (migration 013)
+
+### 42.2 Launch / Pause Campaign [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/marketing/campaigns/{id}/launch` |
+| **Permission** | `marketing.campaigns.launch @ scope` |
+| **Pre-conditions** | Status = `draft` or `paused`, segment has > 0 contacts |
+| **Success** | `200` status → `active`, messages begin queueing |
+| **Errors** | `409 conflict_error` (already active/completed), `422 validation_error` (empty segment) |
+| **Business rules** | BR-MKT-003 |
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/marketing/campaigns/{id}/pause` |
+| **Permission** | `marketing.campaigns.update @ scope` |
+| **Pre-conditions** | Status = `active` |
+
+### 42.3 Campaign Metrics [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/marketing/campaigns/{id}/metrics` |
+| **Permission** | `marketing.campaigns.view @ scope` |
+| **Response** | `{ sent_count, delivered_count, opened_count, clicked_count, converted_count, unsubscribed_count, open_rate_pct, click_rate_pct }` |
+
+### 42.4 Segment CRUD [Core v1]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/marketing/segments` | `marketing.segments.view @ scope` | List segments |
+| POST | `/api/v1/marketing/segments` | `marketing.segments.manage @ scope` | Create segment |
+| GET | `/api/v1/marketing/segments/{id}` | `marketing.segments.view @ scope` | Get segment detail |
+| PATCH | `/api/v1/marketing/segments/{id}` | `marketing.segments.manage @ scope` | Update segment rules |
+| DELETE | `/api/v1/marketing/segments/{id}` | `marketing.segments.manage @ scope` | Delete segment |
+
+- **Request body (POST)**: `{ name: string, rules: [{field: string, operator: string, value: any}], is_dynamic?: boolean }`
+- **Business rules**: BR-MKT-005
+- **Schema**: `segments`, `segment_contacts` (migration 013)
+
+### 42.5 Segment Contacts
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/marketing/segments/{id}/contacts` |
+| **Permission** | `marketing.segments.view @ scope` |
+| **Query params** | `?page=&page_size=` |
+| **Response** | Paginated list of contacts in segment |
+
+### 42.6 Loyalty Program CRUD [Core v1]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/marketing/loyalty/programs` | `marketing.loyalty.view @ scope` | List programs |
+| POST | `/api/v1/marketing/loyalty/programs` | `marketing.loyalty.manage @ scope` | Create program |
+| PATCH | `/api/v1/marketing/loyalty/programs/{id}` | `marketing.loyalty.manage @ scope` | Update program |
+
+- **Request body (POST)**: `{ name: string, earn_rules: [{type, rate}], burn_rules: [{points, discount}], tiers?: [{name, min_points, benefits}] }`
+- **Schema**: `loyalty_programs` (migration 013)
+
+### 42.7 Loyalty Account Lookup [Core v1]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/marketing/loyalty/accounts/{contact_id}` |
+| **Permission** | `marketing.loyalty.view @ scope` |
+| **Response** | `{ account_id, contact_id, program: {name, tiers}, points_balance, lifetime_points, current_tier, recent_transactions: [...] }` |
+
+### 42.8 Redeem Loyalty Points [Core v1]
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/marketing/loyalty/redeem` |
+| **Permission** | `marketing.loyalty.manage @ scope` |
+| **Request body** | `{ account_id: UUID, points: int, reason?: string, reference_entity_type?: string, reference_entity_id?: UUID }` |
+| **Success** | `200` `{ new_balance, transaction_id }` |
+| **Errors** | `422 validation_error` (insufficient points) |
+| **Business rules** | BR-MKT-001 |
+| **Schema**: `loyalty_transactions` (type = `burn`) |
+
+### 42.9 Referral Program CRUD [Expansion Pack]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/marketing/referrals/programs` | `marketing.referrals.view @ scope` | List programs |
+| POST | `/api/v1/marketing/referrals/programs` | `marketing.referrals.manage @ scope` | Create program |
+| PATCH | `/api/v1/marketing/referrals/programs/{id}` | `marketing.referrals.manage @ scope` | Update program |
+
+- **Request body (POST)**: `{ name: string, referrer_reward: {type, amount}, referee_reward: {type, amount} }`
+- **Business rules**: BR-MKT-004
+- **Schema**: `referral_programs`, `referrals` (migration 013)
+
+### 42.10 Nurturing Sequence CRUD [Expansion Pack]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/marketing/nurturing/sequences` | `marketing.nurturing.view @ scope` | List sequences |
+| POST | `/api/v1/marketing/nurturing/sequences` | `marketing.nurturing.manage @ scope` | Create sequence |
+| PATCH | `/api/v1/marketing/nurturing/sequences/{id}` | `marketing.nurturing.manage @ scope` | Update sequence |
+| DELETE | `/api/v1/marketing/nurturing/sequences/{id}` | `marketing.nurturing.manage @ scope` | Delete sequence |
+
+- **Request body (POST)**: `{ name: string, trigger_event: string, steps: [{delay_days, template_id, channel}] }`
+- **Schema**: `nurturing_sequences`, `nurturing_enrollments` (migration 013)
+
+### 42.11 Marketing Analytics [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/marketing/analytics` |
+| **Permission** | `marketing.analytics.view @ ws` |
+| **Query params** | `?date_from=&date_to=` |
+| **Response** | `{ total_campaigns, active_campaigns, total_segments, loyalty_programs_active, points_issued, points_redeemed, referrals_converted, top_segments: [...], campaign_summary: [...] }` |
+
+---
+
+## 43. Delivery & Fleet Endpoints [Core v1]
+
+### 43.1 Driver CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/delivery/drivers` | `delivery.drivers.view @ scope` | List drivers |
+| POST | `/api/v1/delivery/drivers` | `delivery.drivers.manage @ scope` | Register driver |
+| GET | `/api/v1/delivery/drivers/{id}` | `delivery.drivers.view @ scope` | Get driver detail |
+| PATCH | `/api/v1/delivery/drivers/{id}` | `delivery.drivers.manage @ scope` | Update driver |
+
+- **Request body (POST)**: `{ user_id: UUID, vehicle_type?: string, vehicle_plate?: string, license_number?: string, zone_ids?: [UUID], branch_id?: UUID }`
+- **Query params**: `?status=available|busy|offline|suspended&branch_id=&page=&page_size=`
+- **Scope**: `branch` = drivers at my branch; `ws` = all drivers
+- **Schema**: `drivers` (migration 013)
+
+### 43.2 Zone CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/delivery/zones` | `delivery.drivers.view @ ws` | List zones |
+| POST | `/api/v1/delivery/zones` | `delivery.zones.manage @ ws` | Create zone |
+| PATCH | `/api/v1/delivery/zones/{id}` | `delivery.zones.manage @ ws` | Update zone |
+| DELETE | `/api/v1/delivery/zones/{id}` | `delivery.zones.manage @ ws` | Delete zone |
+
+- **Request body (POST)**: `{ name: string, boundary_geojson?: object, sla_minutes?: int }`
+- **Schema**: `delivery_zones` (migration 013)
+
+### 43.3 Assign Delivery
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assign` |
+| **Permission** | `delivery.assignments.create @ scope` |
+| **Request body** | `{ order_id: UUID, driver_id: UUID, zone_id?: UUID }` |
+| **Pre-conditions** | Driver status = `available`, order not already assigned to an active assignment |
+| **Success** | `201` assignment in `pending` status, driver status → `busy` |
+| **Errors** | `409 conflict_error` (driver not available), `409 conflict_error` (order already assigned) |
+| **Business rules** | BR-DEL-001 |
+| **Audit** | `delivery_assigned` |
+| **Schema**: `delivery_assignments` (migration 013) |
+
+### 43.4 Driver Accept / Reject
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assignments/{id}/accept` |
+| **Permission** | `delivery.assignments.update @ own` |
+| **Pre-conditions** | Status = `pending`, caller is assigned driver |
+| **Success** | `200` status → `accepted` |
+| **Business rules** | BR-DEL-002 |
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assignments/{id}/reject` |
+| **Permission** | `delivery.assignments.update @ own` |
+| **Pre-conditions** | Status = `pending`, caller is assigned driver |
+| **Success** | `200` status → `rejected`, driver status → `available`, requeue for reassignment |
+
+### 43.5 Mark Picked Up
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assignments/{id}/pickup` |
+| **Permission** | `delivery.assignments.update @ own` |
+| **Pre-conditions** | Status = `accepted` |
+| **Success** | `200` status → `picked_up`, `picked_up_at` set |
+| **Business rules** | BR-DEL-002 |
+
+### 43.6 Mark Delivered (with proof)
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assignments/{id}/deliver` |
+| **Permission** | `delivery.proof.capture @ own` |
+| **Request body** | `{ receiver_name?: string, photo?: file_upload, signature?: file_upload, pin_code?: string, cod_amount_collected?: decimal }` |
+| **Pre-conditions** | Status = `picked_up` or `in_transit` |
+| **Success** | `200` status → `delivered`, proof saved, COD collection created (if applicable) |
+| **Business rules** | BR-DEL-002, BR-DEL-004 |
+| **Transaction** | Yes (assignment + proof + COD in one transaction) |
+
+### 43.7 Mark Failed
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/assignments/{id}/fail` |
+| **Permission** | `delivery.assignments.update @ own` |
+| **Request body** | `{ reason: string }` |
+| **Pre-conditions** | Status in (`accepted`, `picked_up`, `in_transit`) |
+| **Success** | `200` status → `failed`, driver status → `available` |
+
+### 43.8 Live Tracking [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/delivery/tracking/{assignment_id}` |
+| **Permission** | `delivery.tracking.view @ scope` |
+| **Response** | `{ assignment_id, driver: {name, vehicle_type}, status, current_location: {lat, lng, captured_at}, eta_minutes?: int, history: [{lat, lng, captured_at}] }` |
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/tracking/{assignment_id}/location` |
+| **Permission** | `delivery.proof.capture @ own` (driver only) |
+| **Request body** | `{ latitude: decimal, longitude: decimal }` |
+| **Rate limit** | Max 1 per 10 seconds per driver |
+
+### 43.9 COD Reconciliation
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/delivery/cod/daily` |
+| **Permission** | `delivery.cod.view @ scope` |
+| **Query params** | `?date=&driver_id=&settled=true|false` |
+| **Response** | `{ total_expected, total_collected, total_variance, items: [{assignment_id, driver, expected, collected, variance, settled}] }` |
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/delivery/cod/{id}/settle` |
+| **Permission** | `delivery.cod.reconcile @ ws` |
+| **Pre-conditions** | COD record not already settled |
+| **Success** | `200` `settled = true`, `settled_at` set |
+| **Errors** | `409 conflict_error` (already settled) |
+| **Business rules** | BR-DEL-003 |
+
+### 43.10 SLA Report [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/delivery/sla/report` |
+| **Permission** | `delivery.sla.view @ scope` |
+| **Query params** | `?date_from=&date_to=&zone_id=&driver_id=` |
+| **Response** | `{ total_deliveries, on_time_count, breach_count, on_time_pct, by_zone: [{zone_id, name, deliveries, breaches, avg_minutes}], by_driver: [{driver_id, name, deliveries, breaches}] }` |
+
+---
+
+## 44. Compliance Endpoints [Core v1 framework]
+
+### 44.1 List Country Packs
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/compliance/packs` |
+| **Permission** | `compliance.packs.view @ ws` |
+| **Response** | `{ installed: [{pack_id, country_code, name, version, installed_at}], available: [{pack_id, country_code, name, version, description}] }` |
+
+### 44.2 Install Country Pack
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/compliance/packs/{pack_id}/install` |
+| **Permission** | `compliance.packs.install @ ws` |
+| **Request body** | `{ config_overrides?: object }` |
+| **Pre-conditions** | Pack not already installed for this workspace |
+| **Success** | `201` pack installed, tax rules seeded from pack defaults |
+| **Side-effects** | Creates `workspace_country_packs` row + copies default `tax_rules` from pack |
+| **Business rules** | BR-CMP-001 |
+| **Errors** | `409 conflict_error` (already installed) |
+
+### 44.3 Tax Rules
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/compliance/tax-rules` | `compliance.tax_rules.view @ ws` | List active tax rules |
+| POST | `/api/v1/compliance/tax-rules` | `compliance.tax_rules.manage @ ws` | Create custom tax rule |
+| PATCH | `/api/v1/compliance/tax-rules/{id}` | `compliance.tax_rules.manage @ ws` | Update tax rule |
+
+- **Request body (POST)**: `{ rule_type: string, rate: decimal, conditions?: object, effective_from: date, effective_to?: date, country_pack_id?: UUID }`
+- **Query params (GET)**: `?effective_date=&rule_type=&country_pack_id=`
+- **Business rules**: BR-CMP-002 (never delete, only supersede via `effective_to`)
+- **Schema**: `tax_rules` (migration 013)
+
+### 44.4 Generate VAT Return [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/compliance/exports/vat-return` |
+| **Permission** | `compliance.exports.generate @ ws` |
+| **Request body** | `{ period_from: date, period_to: date, format?: "xml"|"json"|"csv" }` |
+| **Success** | `202` async job started `{ job_id }` |
+| **Side-effects** | Creates `export_jobs` row |
+
+### 44.5 Generate Payroll Filing [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/compliance/exports/payroll-filing` |
+| **Permission** | `compliance.exports.generate @ ws` |
+| **Request body** | `{ period_from: date, period_to: date, country_code: string }` |
+| **Success** | `202` async job started `{ job_id }` |
+
+### 44.6 Retention Policy Status [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/compliance/retention/status` |
+| **Permission** | `compliance.retention.view @ ws` |
+| **Response** | `{ policies: [{entity_type, retention_years, action, records_subject_to_archival_count, last_archival_at}] }` |
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| POST | `/api/v1/compliance/retention/policies` | `compliance.retention.manage @ ws` | Create/update retention policy |
+| DELETE | `/api/v1/compliance/retention/policies/{id}` | `compliance.retention.manage @ ws` | Remove policy |
+
+- **Business rules**: BR-CMP-003 (cannot set below regulatory minimum), BR-CMP-004
+- **Schema**: `retention_policies`, `archival_jobs` (migration 013)
+
+---
+
+## 45. Media & Content Endpoints [Core v1 basic]
+
+### 45.1 Asset Library CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/media/assets` | `media.assets.view @ scope` | List assets |
+| POST | `/api/v1/media/assets` | `media.assets.upload @ scope` | Upload asset |
+| GET | `/api/v1/media/assets/{id}` | `media.assets.view @ scope` | Get asset detail + pre-signed download URL |
+| DELETE | `/api/v1/media/assets/{id}` | `media.assets.delete @ scope` | Delete asset |
+
+- **Request body (POST)**: Multipart file upload + `{ name: string, tags?: [string], folder?: string }`
+- **Query params (GET)**: `?folder=&tags=&source=upload|ai_generated&status=draft|approved|archived&page=&page_size=`
+- **Schema**: `media_assets` (migration 013)
+
+### 45.2 Asset Search
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/media/assets/search` |
+| **Permission** | `media.assets.view @ scope` |
+| **Query params** | `?q=&tags=&folder=&mime_type=&source=&page=&page_size=` |
+| **Response** | Paginated asset list with thumbnail URLs |
+
+### 45.3 Approve Asset
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/media/assets/{id}/approve` |
+| **Permission** | `media.generation.approve @ scope` |
+| **Pre-conditions** | Status = `draft` |
+| **Success** | `200` status → `approved`, `approved_by` + `approved_at` set |
+| **Business rules** | BR-MDA-001 |
+
+### 45.4 AI Content Generation [Expansion Pack]
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/media/generate` |
+| **Permission** | `media.generation.request @ scope` |
+| **Request body** | `{ prompt: string, brand_kit_id?: UUID, ai_model?: string }` |
+| **Success** | `202` generation request queued `{ request_id, status: "pending" }` |
+| **Business rules** | BR-MDA-003 (consumes AI token quota) |
+| **Side-effects** | Creates `media_generation_requests` row, enqueues AI job |
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/media/generate/{request_id}/status` |
+| **Permission** | `media.generation.request @ scope` |
+| **Response** | `{ request_id, status, result_asset_id?, tokens_used, error_message? }` |
+
+### 45.5 Brand Kit CRUD [Core v1]
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/media/brand-kit` | `media.brand_kit.view @ scope` | Get workspace brand kit (singleton) |
+| PUT | `/api/v1/media/brand-kit` | `media.brand_kit.manage @ scope` | Create or update brand kit |
+
+- **Request body (PUT)**: `{ primary_color?: string, secondary_color?: string, accent_color?: string, font_family?: string, logo?: file_upload, tone_description?: string, guidelines?: object }`
+- **Business rules**: BR-MDA-002 (singleton per workspace — upsert)
+- **Schema**: `brand_kits` (migration 013)
+
+---
+
+## 46. Integration Hub Endpoints [Core v1]
+
+### 46.1 List Available Providers
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/integrations/providers` |
+| **Permission** | `integrations.providers.view @ ws` |
+| **Response** | `{ providers: [{id, type, name, config_schema, is_available}] }` |
+| **Notes** | Reads from platform-scoped `integration_providers` table (no RLS) |
+
+### 46.2 Connect Provider
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/connect` |
+| **Permission** | `integrations.connections.manage @ ws` |
+| **Request body** | `{ provider_id: UUID, credentials: object }` |
+| **Success** | `201` connection in `pending` status, test connection triggered |
+| **Side-effects** | Creates `workspace_integrations` row, enqueues connection test job |
+| **Errors** | `409 conflict_error` (provider already connected), `422 validation_error` (credentials don't match provider config_schema) |
+| **Business rules** | BR-INT-003 |
+
+### 46.3 Test Connection
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/{integration_id}/test` |
+| **Permission** | `integrations.connections.manage @ ws` |
+| **Success** | `200` `{ status: "active"|"error", message?: string }` |
+
+### 46.4 Disconnect Provider
+
+| Field | Value |
+|-------|-------|
+| **Method** | DELETE |
+| **Path** | `/api/v1/integrations/{integration_id}/disconnect` |
+| **Permission** | `integrations.connections.manage @ ws` |
+| **Success** | `200` status → `disconnected` |
+| **Business rules** | BR-INT-004 (does not delete sync history) |
+
+### 46.5 Integration Health Dashboard
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/integrations/health` |
+| **Permission** | `integrations.health.view @ ws` |
+| **Response** | `{ connections: [{integration_id, provider_name, type, status, last_sync_at, error_message?, failure_count}] }` |
+
+### 46.6 Webhook CRUD
+
+| Method | Path | Permission | Purpose |
+|--------|------|-----------|---------|
+| GET | `/api/v1/integrations/webhooks` | `integrations.webhooks.view @ ws` | List webhook subscriptions |
+| POST | `/api/v1/integrations/webhooks` | `integrations.webhooks.manage @ ws` | Create subscription |
+| PATCH | `/api/v1/integrations/webhooks/{id}` | `integrations.webhooks.manage @ ws` | Update subscription |
+| DELETE | `/api/v1/integrations/webhooks/{id}` | `integrations.webhooks.manage @ ws` | Delete subscription |
+
+- **Request body (POST)**: `{ event_type: string, target_url: string, secret?: string }`
+- **Available events**: `order.confirmed`, `order.shipped`, `order.delivered`, `payment.received`, `payment.refunded`, `invoice.issued`, `contact.created`, `product.updated`, `inventory.low_stock`
+- **Business rules**: BR-INT-001 (retry policy), BR-INT-005 (signature verification for inbound)
+- **Schema**: `webhook_subscriptions` (migration 013)
+
+### 46.7 Webhook Deliveries
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/integrations/webhooks/{id}/deliveries` |
+| **Permission** | `integrations.webhooks.view @ ws` |
+| **Query params** | `?status=pending|delivered|failed&page=&page_size=` |
+| **Response** | Paginated list of `{ delivery_id, event_type, status, attempts, last_attempted_at, response_code }` |
+
+### 46.8 Import Job
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/import` |
+| **Permission** | `integrations.import.manage @ ws` |
+| **Request body** | Multipart file upload + `{ entity_type: "products"|"contacts"|"accounts"|"inventory", column_mapping?: object }` |
+| **Success** | `202` job created in `uploaded` status `{ job_id }` |
+| **Side-effects** | Creates `import_jobs` row, enqueues validation job |
+| **Business rules** | BR-INT-002 |
+
+### 46.9 Import Preview & Apply
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/integrations/import/{job_id}/preview` |
+| **Permission** | `integrations.import.manage @ ws` |
+| **Pre-conditions** | Job status = `preview` (validation complete) |
+| **Response** | `{ job_id, total_rows, valid_rows, error_rows, errors: [{row, column, message}], preview_rows: [first 10 valid rows] }` |
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/import/{job_id}/apply` |
+| **Permission** | `integrations.import.manage @ ws` |
+| **Pre-conditions** | Job status = `preview`, valid_rows > 0 |
+| **Success** | `202` job moves to `applying`, runs as background job |
+| **Errors** | `409 conflict_error` (job not in preview state) |
+
+### 46.10 Export Job
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/export` |
+| **Permission** | `integrations.export.manage @ ws` |
+| **Request body** | `{ entity_type: string, format: "csv"|"xlsx"|"xml"|"json", filters?: object }` |
+| **Success** | `202` job queued `{ job_id }` |
+| **Side-effects** | Creates `export_jobs` row, enqueues export job |
+
+### 46.11 Sync Logs
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/integrations/sync-logs` |
+| **Permission** | `integrations.sync.view @ ws` |
+| **Query params** | `?integration_id=&direction=inbound|outbound&status=success|conflict|error&date_from=&date_to=&page=&page_size=` |
+| **Response** | Paginated list of sync activity entries |
+
+### 46.12 Trigger Manual Sync
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/integrations/{integration_id}/sync` |
+| **Permission** | `integrations.sync.trigger @ ws` |
+| **Success** | `202` sync job queued |
+| **Errors** | `409 conflict_error` (sync already in progress) |
+
+---
+
+## §47 Task Feed Endpoints [Core v1]
+
+**Module flag**: N/A (always available for authenticated users)
+**Entitlement**: No plan gating — tasks are core infrastructure
+**Backend**: `TaskFeedService` read model (§33 backend architecture)
+
+### 47.1 My Tasks
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/tasks/my` |
+| **Permission** | Implicit — each source query filters by the user's existing RBAC permissions (approval viewer, driver, manager, etc.) |
+| **Query params** | `?type=approval,delivery,leave_review,ai_change,import_review,media_approval&status=pending&page=&page_size=` |
+| **Response** | Paginated list of task items: `{ task_type, entity_type, entity_id, title, description, created_at, urgency: high|medium|low, action_url, source_permission }` |
+| **Sorting** | Default: urgency DESC, created_at DESC |
+| **Notes** | No new permission key needed — permission filtering is delegated to each source entity query. Results are merged from 6 source tables (§33.3 backend architecture). |
+
+---
+
+## §48 Knowledge Document Endpoints [Expansion Pack]
+
+**Module flag**: `enable_knowledge` (sub-feature of AI module)
+**Entitlement**: Plan-gated via `EntitlementMiddleware` — requires Business or Enterprise plan
+**Backend**: Knowledge documents + pgvector RAG (§Decision 7 refinement report)
+**Event bus**: Dispatches `ai.knowledge.uploaded`, `ai.knowledge.deleted` events (§29 backend architecture)
+
+### 48.1 List Knowledge Documents
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/knowledge/documents` |
+| **Permission** | `ai.knowledge.view @ ws` |
+| **Query params** | `?q=&content_type=text,pdf,url&status=processing,ready,failed&page=&page_size=` |
+| **Response** | Paginated list: `{ id, title, content_type, status, chunk_count, token_count, uploaded_by, created_at }` |
+| **Search** | `?q=` uses SearchService (§28) against `knowledge_documents.title` |
+
+### 48.2 Upload Knowledge Document
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Path** | `/api/v1/knowledge/documents` |
+| **Permission** | `ai.knowledge.upload @ ws` |
+| **Body** | `{ title, content_type: "text"|"pdf"|"url", content?: string, file?: multipart }` |
+| **Success** | `201` document created with `status: processing` |
+| **Side-effects** | Background job: chunk text → generate embeddings → store in `knowledge_chunks`. Dispatches `ai.knowledge.uploaded` event on completion. |
+| **Errors** | `413` file exceeds 10MB limit, `402` plan does not include knowledge feature, `429` workspace document quota exceeded |
+
+### 48.3 Get Knowledge Document
+
+| Field | Value |
+|-------|-------|
+| **Method** | GET |
+| **Path** | `/api/v1/knowledge/documents/{id}` |
+| **Permission** | `ai.knowledge.view @ ws` |
+| **Response** | Document detail with chunk list: `{ id, title, content_type, status, chunks: [{ chunk_index, content_preview, token_count }], uploaded_by, created_at }` |
+
+### 48.4 Delete Knowledge Document
+
+| Field | Value |
+|-------|-------|
+| **Method** | DELETE |
+| **Path** | `/api/v1/knowledge/documents/{id}` |
+| **Permission** | `ai.knowledge.manage @ ws` |
+| **Success** | `204` document and all chunks deleted |
+| **Side-effects** | Dispatches `ai.knowledge.deleted` event. |
+
+### 48.5 Knowledge RAG Query (Internal)
+
+| Field | Value |
+|-------|-------|
+| **Method** | Internal service call (not exposed as public API) |
+| **Called by** | AI chat service when processing advisory/chat requests |
+| **Logic** | Generate embedding for user query → cosine similarity search on `knowledge_chunks.embedding` via pgvector → return top-K chunks (K=5, configurable) → inject into AI context window as "Business Knowledge" section |
+| **Access** | Workspace-scoped via RLS — AI can only retrieve chunks belonging to the current workspace |
+
+---
+
+## §49 External Portal Endpoints [Architecture-Ready]
+
+> These endpoints are NOT built in v1. This section defines the architectural contract for future portal implementation.
+
+**Access model**: Token-based guest access via `portal_tokens` (future migration)
+**Authentication**: `Authorization: Bearer {portal_token}` → resolved by `PortalAuthMiddleware`
+**Scope restriction**: Portal users can ONLY access entities linked to their `contact_id`
+
+### 49.1 Portal-Eligible Endpoints (future)
+
+| Endpoint | Method | Portal Access | Scope |
+|----------|--------|--------------|-------|
+| `/api/v1/portal/orders` | GET | Customer | Own orders only (contact_id filter) |
+| `/api/v1/portal/orders/{id}` | GET | Customer | Own order detail |
+| `/api/v1/portal/invoices` | GET | Customer | Own invoices only |
+| `/api/v1/portal/invoices/{id}` | GET | Customer | Own invoice detail |
+| `/api/v1/portal/invoices/{id}/pay` | POST | Customer | Submit payment for own invoice |
+| `/api/v1/portal/shipments` | GET | Customer / Supplier | Own shipments |
+| `/api/v1/portal/purchase-orders` | GET | Supplier | POs addressed to supplier |
+| `/api/v1/portal/purchase-orders/{id}/acknowledge` | POST | Supplier | Acknowledge PO receipt |
+
+### 49.2 Portal Access Rules
+
+1. Portal tokens are workspace-scoped and expire (default 30 days, renewable)
+2. Portal users can NEVER access: admin, HR, finance, AI, platform, or settings endpoints
+3. All portal queries enforce `WHERE contact_id = :portal_contact_id` in addition to workspace RLS
+4. Portal authentication failures return `401` with generic error (no information leakage)
+
+---
+
+*End of API contracts. Version 3.0 — 2026-04-10. Added §47 Task Feed, §48 Knowledge Documents, §49 Portal (architecture-ready). Updated §5 search standard and §6 entitlement errors.*

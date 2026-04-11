@@ -19,7 +19,13 @@
         "projects",
         "reports",
         "admin",
-        "ai"
+        "ai",
+        "communications",
+        "marketing",
+        "delivery",
+        "compliance",
+        "media",
+        "integrations"
     ],
     "navigation": [
         {
@@ -33,6 +39,22 @@
                     "icon": "home",
                     "route": "/dashboard",
                     "permissions": []
+                }
+            ]
+        },
+        {
+            "group_id": "tasks_group",
+            "title": "My Tasks",
+            "icon": "task_alt",
+            "scope": "Core v1",
+            "items": [
+                {
+                    "page_id": "my_tasks_page",
+                    "title": "Task Feed",
+                    "icon": "checklist",
+                    "route": "/tasks/my",
+                    "permissions": [],
+                    "_comment": "No explicit permission — TaskFeedService filters by user's existing role permissions per source entity (§33 backend architecture)"
                 }
             ]
         },
@@ -572,6 +594,281 @@
                     "permissions": [
                         "ai.changes.request"
                     ]
+                },
+                {
+                    "page_id": "knowledge_documents_page",
+                    "title": "Knowledge Base",
+                    "icon": "library_books",
+                    "route": "/ai/knowledge",
+                    "module_flag": "enable_knowledge",
+                    "scope": "Expansion Pack",
+                    "permissions": [
+                        "ai.knowledge.view"
+                    ]
+                }
+            ]
+        },
+        {
+            "group_id": "communications_group",
+            "title": "Communications",
+            "icon": "mail",
+            "module_flag": "enable_communications",
+            "scope": "core_v1",
+            "items": [
+                {
+                    "page_id": "comm_templates_page",
+                    "title": "Templates",
+                    "icon": "article",
+                    "route": "/communications/templates",
+                    "permissions": ["communications.templates.view"]
+                },
+                {
+                    "page_id": "comm_outbox_page",
+                    "title": "Message Log",
+                    "icon": "send",
+                    "route": "/communications/logs",
+                    "permissions": ["communications.messages.view"]
+                },
+                {
+                    "page_id": "comm_automations_page",
+                    "title": "Automations",
+                    "icon": "auto_fix_high",
+                    "route": "/communications/automations",
+                    "permissions": ["communications.automations.view"],
+                    "scope": "expansion_pack"
+                },
+                {
+                    "page_id": "comm_analytics_page",
+                    "title": "Analytics",
+                    "icon": "analytics",
+                    "route": "/communications/analytics",
+                    "permissions": ["communications.messages.view"]
+                }
+            ]
+        },
+        {
+            "group_id": "marketing_group",
+            "title": "Marketing",
+            "icon": "campaign",
+            "module_flag": "enable_marketing",
+            "scope": "mixed",
+            "items": [
+                {
+                    "page_id": "segments_page",
+                    "title": "Segments",
+                    "icon": "filter_alt",
+                    "route": "/marketing/segments",
+                    "permissions": ["marketing.segments.view"],
+                    "scope": "core_v1"
+                },
+                {
+                    "page_id": "loyalty_programs_page",
+                    "title": "Loyalty Programs",
+                    "icon": "loyalty",
+                    "route": "/marketing/loyalty",
+                    "permissions": ["marketing.loyalty.view"],
+                    "scope": "core_v1"
+                },
+                {
+                    "page_id": "campaigns_page",
+                    "title": "Campaigns",
+                    "icon": "rocket_launch",
+                    "route": "/marketing/campaigns",
+                    "permissions": ["marketing.campaigns.view"],
+                    "scope": "expansion_pack"
+                },
+                {
+                    "page_id": "referrals_page",
+                    "title": "Referrals",
+                    "icon": "share",
+                    "route": "/marketing/referrals",
+                    "permissions": ["marketing.referrals.view"],
+                    "scope": "expansion_pack"
+                },
+                {
+                    "page_id": "nurturing_page",
+                    "title": "Nurturing",
+                    "icon": "auto_stories",
+                    "route": "/marketing/nurturing",
+                    "permissions": ["marketing.nurturing.view"],
+                    "scope": "expansion_pack"
+                },
+                {
+                    "page_id": "marketing_analytics_page",
+                    "title": "Analytics",
+                    "icon": "insights",
+                    "route": "/marketing/analytics",
+                    "permissions": ["marketing.analytics.view"],
+                    "scope": "expansion_pack"
+                }
+            ]
+        },
+        {
+            "group_id": "delivery_group",
+            "title": "Delivery",
+            "icon": "local_shipping",
+            "module_flag": "enable_delivery",
+            "scope": "core_v1",
+            "items": [
+                {
+                    "page_id": "dispatch_board_page",
+                    "title": "Dispatch Board",
+                    "icon": "dashboard_customize",
+                    "route": "/delivery/dispatch",
+                    "permissions": ["delivery.assignments.view"],
+                    "metadata": {"real_time": true, "refresh_interval_seconds": 15}
+                },
+                {
+                    "page_id": "drivers_page",
+                    "title": "Drivers",
+                    "icon": "person_pin",
+                    "route": "/delivery/drivers",
+                    "permissions": ["delivery.drivers.view"]
+                },
+                {
+                    "page_id": "delivery_zones_page",
+                    "title": "Zones",
+                    "icon": "map",
+                    "route": "/delivery/zones",
+                    "permissions": ["delivery.zones.manage"]
+                },
+                {
+                    "page_id": "live_tracking_page",
+                    "title": "Live Tracking",
+                    "icon": "my_location",
+                    "route": "/delivery/tracking",
+                    "permissions": ["delivery.tracking.view"],
+                    "scope": "expansion_pack",
+                    "metadata": {"real_time": true, "map_view": true}
+                },
+                {
+                    "page_id": "cod_reconciliation_page",
+                    "title": "COD Reconciliation",
+                    "icon": "payments",
+                    "route": "/delivery/cod",
+                    "permissions": ["delivery.cod.view"]
+                },
+                {
+                    "page_id": "delivery_sla_page",
+                    "title": "SLA Report",
+                    "icon": "timer",
+                    "route": "/delivery/sla",
+                    "permissions": ["delivery.sla.view"],
+                    "scope": "expansion_pack"
+                }
+            ]
+        },
+        {
+            "group_id": "compliance_group",
+            "title": "Compliance",
+            "icon": "gavel",
+            "module_flag": "enable_compliance",
+            "scope": "core_v1",
+            "items": [
+                {
+                    "page_id": "country_packs_page",
+                    "title": "Country Packs",
+                    "icon": "public",
+                    "route": "/compliance/packs",
+                    "permissions": ["compliance.packs.view"]
+                },
+                {
+                    "page_id": "tax_rules_page",
+                    "title": "Tax Rules",
+                    "icon": "receipt_long",
+                    "route": "/compliance/tax-rules",
+                    "permissions": ["compliance.tax_rules.view"]
+                },
+                {
+                    "page_id": "compliance_exports_page",
+                    "title": "Regulatory Exports",
+                    "icon": "download",
+                    "route": "/compliance/exports",
+                    "permissions": ["compliance.exports.view"],
+                    "scope": "expansion_pack"
+                },
+                {
+                    "page_id": "retention_policies_page",
+                    "title": "Data Retention",
+                    "icon": "delete_sweep",
+                    "route": "/compliance/retention",
+                    "permissions": ["compliance.retention.view"],
+                    "scope": "expansion_pack"
+                }
+            ]
+        },
+        {
+            "group_id": "media_group",
+            "title": "Media",
+            "icon": "photo_library",
+            "module_flag": "enable_media",
+            "scope": "core_v1",
+            "items": [
+                {
+                    "page_id": "media_library_page",
+                    "title": "Asset Library",
+                    "icon": "perm_media",
+                    "route": "/media/assets",
+                    "permissions": ["media.assets.view"]
+                },
+                {
+                    "page_id": "brand_kit_page",
+                    "title": "Brand Kit",
+                    "icon": "palette",
+                    "route": "/media/brand-kit",
+                    "permissions": ["media.brand_kit.view"]
+                },
+                {
+                    "page_id": "ai_generation_page",
+                    "title": "AI Content Studio",
+                    "icon": "auto_awesome",
+                    "route": "/media/generate",
+                    "permissions": ["media.generation.request"],
+                    "scope": "expansion_pack"
+                }
+            ]
+        },
+        {
+            "group_id": "integrations_group",
+            "title": "Integrations",
+            "icon": "hub",
+            "module_flag": "enable_integrations",
+            "scope": "core_v1",
+            "items": [
+                {
+                    "page_id": "integrations_dashboard_page",
+                    "title": "Dashboard",
+                    "icon": "speed",
+                    "route": "/integrations",
+                    "permissions": ["integrations.health.view"]
+                },
+                {
+                    "page_id": "integration_providers_page",
+                    "title": "Providers",
+                    "icon": "extension",
+                    "route": "/integrations/providers",
+                    "permissions": ["integrations.providers.view"]
+                },
+                {
+                    "page_id": "webhooks_page",
+                    "title": "Webhooks",
+                    "icon": "webhook",
+                    "route": "/integrations/webhooks",
+                    "permissions": ["integrations.webhooks.view"]
+                },
+                {
+                    "page_id": "import_export_page",
+                    "title": "Import / Export",
+                    "icon": "swap_vert",
+                    "route": "/integrations/import-export",
+                    "permissions": ["integrations.import.manage"]
+                },
+                {
+                    "page_id": "sync_logs_page",
+                    "title": "Sync Logs",
+                    "icon": "sync",
+                    "route": "/integrations/sync-logs",
+                    "permissions": ["integrations.sync.view"]
                 }
             ]
         }
@@ -662,6 +959,66 @@
                 "data_source": "/api/v1/reports/cash-flow?group_by=week",
                 "permissions": ["reports.financial.view"],
                 "refresh_interval_seconds": 600
+            },
+            {
+                "widget_id": "delivery_active",
+                "type": "kpi",
+                "title": "Active Deliveries",
+                "data_source": "/api/v1/delivery/assignments?status=in_transit,picked_up&count_only=true",
+                "permissions": ["delivery.assignments.view"],
+                "refresh_interval_seconds": 30,
+                "module_flag": "enable_delivery",
+                "scope": "core_v1"
+            },
+            {
+                "widget_id": "loyalty_points_today",
+                "type": "kpi",
+                "title": "Loyalty Points Issued Today",
+                "data_source": "/api/v1/marketing/analytics?metric=points_issued&period=today",
+                "permissions": ["marketing.loyalty.view"],
+                "refresh_interval_seconds": 300,
+                "module_flag": "enable_marketing",
+                "scope": "core_v1"
+            },
+            {
+                "widget_id": "unsent_messages",
+                "type": "kpi",
+                "title": "Queued Messages",
+                "data_source": "/api/v1/communications/logs?status=queued&count_only=true",
+                "permissions": ["communications.messages.view"],
+                "refresh_interval_seconds": 60,
+                "module_flag": "enable_communications",
+                "scope": "core_v1"
+            },
+            {
+                "widget_id": "cod_unsettled",
+                "type": "kpi",
+                "title": "COD Unsettled",
+                "data_source": "/api/v1/delivery/cod/daily?settled=false&count_only=true",
+                "permissions": ["delivery.cod.view"],
+                "refresh_interval_seconds": 120,
+                "module_flag": "enable_delivery",
+                "scope": "core_v1"
+            },
+            {
+                "widget_id": "integration_health",
+                "type": "status_list",
+                "title": "Integration Health",
+                "data_source": "/api/v1/integrations/health",
+                "permissions": ["integrations.health.view"],
+                "refresh_interval_seconds": 300,
+                "module_flag": "enable_integrations",
+                "scope": "core_v1"
+            },
+            {
+                "widget_id": "active_campaigns",
+                "type": "kpi",
+                "title": "Active Campaigns",
+                "data_source": "/api/v1/marketing/campaigns?status=active&count_only=true",
+                "permissions": ["marketing.campaigns.view"],
+                "refresh_interval_seconds": 300,
+                "module_flag": "enable_marketing",
+                "scope": "expansion_pack"
             }
         ]
     },
@@ -1304,7 +1661,20 @@
         "enable_hr_module": false,
         "enable_crm": true,
         "enable_manufacturing": false,
-        "enable_projects": false
+        "enable_projects": false,
+        "enable_communications": true,
+        "enable_marketing": true,
+        "enable_delivery": false,
+        "enable_compliance": true,
+        "enable_media": true,
+        "enable_integrations": true,
+        "enable_campaigns": false,
+        "enable_referrals": false,
+        "enable_nurturing": false,
+        "enable_live_tracking": false,
+        "enable_ai_content_generation": false,
+        "enable_retention_policies": false,
+        "enable_knowledge": false
     },
     "ai_modifiable_sections": [
         "navigation",

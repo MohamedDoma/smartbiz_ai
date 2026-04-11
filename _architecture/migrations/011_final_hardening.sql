@@ -191,7 +191,10 @@ COMMENT ON COLUMN workspaces.invite_expires_at IS
 --   order_items, invoice_items, journal_lines, product_variants,
 --   price_list_items, shipment_items (migration 005), return_items (migration 005),
 --   grn_items (migration 005), purchase_order_items (migration 005),
---   credit_note_items (migration 003), bom_lines (base schema as part of bill_of_materials)
+--   bom_lines (base schema as part of bill_of_materials)
+--
+--   NOTE: credit_note_items is NOT in this list — it has its own workspace_id
+--   column and RLS policy (migration 003, FIX #3).
 --
 -- This is BY DESIGN. These child tables:
 --   1. Are always accessed via JOIN with their RLS-protected parent table

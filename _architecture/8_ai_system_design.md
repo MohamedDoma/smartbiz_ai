@@ -431,6 +431,274 @@ The AI system is considered correctly implemented when:
 - AI usage is observable
 - AI token usage is controlled
 - AI outputs are validated
-```
 
 ---
+
+# 22. AI in Expansion Domains — Overview
+
+The AI system extends into expansion domains while following the same governance model (§2):
+- AI proposes → Humans approve → Backend applies
+- All tool calls are structured with schema validation
+- All AI actions respect workspace RBAC and RLS
+
+---
+
+# 23. Expansion Domain AI Capabilities
+
+## 23.1 AI in Communications [Core v1]
+
+**Capabilities:**
+- **Message drafting**: AI generates message body from context (e.g. "draft an overdue payment reminder for contact X")
+- **Reply suggestions**: AI analyzes inbound message and suggests 2-3 reply options
+- **Tone adjustment**: AI rewrites existing draft in specified tone (formal, friendly, urgent)
+- **Template generation**: AI proposes new message templates from business context
+- **Subject line optimization**: AI suggests optimized email subject lines from body content
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_draft_message` | `{context: string, channel: string, contact_id?: UUID, tone?: string}` | `{subject?: string, body: string, variables_used: [string]}` | `communications.messages.send` |
+| `ai_suggest_replies` | `{inbound_message_id: UUID, count?: int}` | `{suggestions: [{body: string, tone: string}]}` | `communications.messages.send` |
+| `ai_generate_template` | `{purpose: string, channel: string, example_context?: string}` | `{name: string, subject?: string, body: string, variables: [{key, label}]}` | `communications.templates.create` |
+
+**Governance**: AI drafts are always returned to the user for review. The user must explicitly click "Send" — AI never sends messages autonomously.
+
+## 23.2 AI in Marketing [Expansion Pack]
+
+**Capabilities:**
+- **Segment suggestions**: AI analyzes customer data and suggests segmentation rules
+- **Campaign optimization**: AI recommends best send time, subject line variants, channel mix
+- **Loyalty tier analysis**: AI identifies customers near tier thresholds for targeted offers
+- **Churn prediction**: AI flags contacts with declining engagement for retention campaigns
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_suggest_segment` | `{goal: string, existing_segments?: [UUID]}` | `{segment_name: string, rules: [{field, operator, value}], estimated_count: int}` | `marketing.segments.manage` |
+| `ai_optimize_campaign` | `{campaign_id: UUID}` | `{recommendations: [{type: string, current: string, suggested: string, reason: string}]}` | `marketing.campaigns.update` |
+| `ai_churn_analysis` | `{segment_id?: UUID, period_days?: int}` | `{at_risk_contacts: [{contact_id, risk_score, last_activity, recommendation}]}` | `marketing.analytics.view` |
+
+**Governance**: All suggestions are presented as proposals. Segment creation, campaign changes, and targeted actions require explicit user confirmation.
+
+## 23.3 AI in Delivery [Core v1]
+
+**Capabilities:**
+- **Dispatch optimization**: AI suggests optimal driver for an order based on location, zone, vehicle type, current workload
+- **Anomaly detection**: AI flags unusual patterns (excessive failures, long delivery times, COD variance spikes)
+- **Route grouping**: AI suggests batching nearby orders for the same driver
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_suggest_driver` | `{order_id: UUID, available_drivers: [UUID]}` | `{recommended_driver_id: UUID, reason: string, estimated_time_minutes: int}` | `delivery.assignments.create` |
+| `ai_delivery_anomalies` | `{period_days?: int, branch_id?: UUID}` | `{anomalies: [{type: string, entity_id: UUID, description: string, severity: string}]}` | `delivery.sla.view` |
+| `ai_batch_orders` | `{unassigned_order_ids: [UUID]}` | `{batches: [{driver_suggestion: UUID, order_ids: [UUID], reason: string}]}` | `delivery.assignments.create` |
+
+**Governance**: AI dispatch suggestions appear in the Dispatch Board as "AI Recommended" badges. Dispatcher must click "Assign" to confirm.
+
+## 23.4 AI in Compliance [Core v1 framework]
+
+**Capabilities:**
+- **Rule interpretation**: AI explains tax rules and compliance requirements in plain language
+- **Country pack guidance**: AI recommends relevant country packs based on workspace configuration
+- **Report assistance**: AI helps users understand generated compliance reports and identify required actions
+- **Regulatory update alerts**: AI summarizes impact when country pack versions are updated
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_explain_tax_rule` | `{tax_rule_id: UUID}` | `{explanation: string, applies_to: [string], examples: [{scenario, tax_amount}]}` | `compliance.tax_rules.view` |
+| `ai_recommend_packs` | `{workspace_id: UUID}` | `{recommendations: [{country_code, pack_name, reason}]}` | `compliance.packs.view` |
+| `ai_summarize_report` | `{report_type: string, report_data: object}` | `{summary: string, action_items: [string], warnings: [string]}` | `compliance.exports.view` |
+
+**Governance**: AI explanations are informational only. AI never modifies tax rules, installs packs, or generates regulatory filings autonomously.
+
+## 23.5 AI in Media [Expansion Pack]
+
+**Capabilities:**
+- **Content generation**: AI generates text content, descriptions, and marketing copy
+- **Brand-aware outputs**: AI uses workspace brand kit (colors, tone, guidelines) as generation context
+- **Image prompt enhancement**: AI optimizes user prompts for better AI image generation results
+- **Asset tagging**: AI auto-suggests tags for uploaded media assets
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_generate_content` | `{prompt: string, content_type: "copy"|"description"|"social_post"|"email_body", brand_kit_id?: UUID}` | `{content: string, tone_used: string, tokens_used: int}` | `media.generation.request` |
+| `ai_enhance_prompt` | `{user_prompt: string, brand_kit_id?: UUID}` | `{enhanced_prompt: string, style_keywords: [string]}` | `media.generation.request` |
+| `ai_suggest_tags` | `{asset_id: UUID}` | `{suggested_tags: [string]}` | `media.assets.upload` |
+
+**Governance**: All generated content enters the asset library as `status = draft`. Human approval required before use (BR-MDA-001). Token consumption tracked and quota-limited (BR-MDA-003).
+
+## 23.6 AI in Integrations [Core v1]
+
+**Capabilities:**
+- **Data mapping**: AI suggests column mappings for import files based on header analysis
+- **Error diagnosis**: AI analyzes integration sync errors and suggests fixes
+- **Webhook debugging**: AI explains webhook delivery failures and recommends resolution steps
+
+**Tool functions:**
+
+| Tool | Input | Output | Permission |
+|------|-------|--------|------------|
+| `ai_suggest_mapping` | `{import_job_id: UUID, source_headers: [string], target_fields: [string]}` | `{mappings: [{source: string, target: string, confidence: float}]}` | `integrations.import.manage` |
+| `ai_diagnose_sync_error` | `{sync_log_id: UUID}` | `{diagnosis: string, probable_cause: string, suggested_fix: string}` | `integrations.sync.view` |
+| `ai_debug_webhook` | `{delivery_id: UUID}` | `{analysis: string, status_code_meaning: string, fix_steps: [string]}` | `integrations.webhooks.view` |
+
+**Governance**: AI mapping suggestions are presented in the Import Wizard as pre-filled dropdowns. User can override any suggestion. AI never auto-applies mappings or triggers syncs.
+
+---
+
+# 24. AI Brand Kit & Historical Data Usage
+
+## 24.1 Brand Kit Integration
+
+When a workspace has a configured `brand_kits` record (§5 migration 013):
+1. AI automatically retrieves the brand kit as system context for content generation
+2. Brand kit fields used: `primary_color`, `secondary_color`, `font_family`, `tone_description`, `guidelines`
+3. AI prompt system message includes: "Use the following brand identity: [brand kit summary]"
+4. If no brand kit is configured, AI uses neutral professional defaults
+
+## 24.2 Historical Data as Context
+
+AI uses workspace historical data to improve advisory quality:
+
+| Data Source | Use Case | Access Method |
+|-------------|----------|--------------|
+| `orders` (last 90 days) | Sales trend analysis, demand forecasting | Aggregated query via API |
+| `loyalty_transactions` (all time) | Customer value scoring, tier recommendations | Aggregated query via API |
+| `outbound_messages` (last 30 days) | Communication effectiveness analysis | Aggregated metrics |
+| `delivery_assignments` (last 30 days) | Delivery performance insights | Aggregated metrics |
+| `sync_logs` (last 7 days) | Integration health diagnosis | Recent entries |
+| `campaigns.campaign_metrics` | Campaign optimization suggestions | Aggregated metrics |
+
+**Data safety rules:**
+- AI accesses data ONLY through the workspace-scoped API (RLS enforced)
+- AI never receives raw PII in bulk — only aggregated summaries
+- AI context window is capped at 8K tokens of business data per request
+- Historical data queries use read-only database connections
+
+---
+
+# 25. Expansion AI Tool Registry (Summary)
+
+Total new AI tool functions added for expansion domains: **18**
+
+| Domain | Tools | Scope |
+|--------|-------|-------|
+| Communications | 3 (`ai_draft_message`, `ai_suggest_replies`, `ai_generate_template`) | Core v1 |
+| Marketing | 3 (`ai_suggest_segment`, `ai_optimize_campaign`, `ai_churn_analysis`) | Expansion Pack |
+| Delivery | 3 (`ai_suggest_driver`, `ai_delivery_anomalies`, `ai_batch_orders`) | Core v1 |
+| Compliance | 3 (`ai_explain_tax_rule`, `ai_recommend_packs`, `ai_summarize_report`) | Core v1 |
+| Media | 3 (`ai_generate_content`, `ai_enhance_prompt`, `ai_suggest_tags`) | Expansion Pack |
+| Integrations | 3 (`ai_suggest_mapping`, `ai_diagnose_sync_error`, `ai_debug_webhook`) | Core v1 |
+
+All tools follow the same governance model:
+- Structured input/output schemas
+- Permission-gated (tool caller must have the required RBAC key)
+- Output presented as proposals for human review
+- Logged to `ai_requests` for observability
+- Token consumption counted against daily quota
+
+---
+
+*End of expansion domain AI capabilities.*
+
+---
+
+# 26. Knowledge / RAG Retrieval Layer [Expansion Pack]
+
+**Feature flag**: `enable_knowledge`
+**Permission**: `ai.knowledge.view @ ws` (implicit — RAG retrieval is transparent to user)
+**Entitlement**: Plan-gated (Business+ plan)
+**API**: §48 API contracts (CRUD), internal RAG service (§48.5)
+**Event bus**: Consumes `ai.knowledge.uploaded` to update retrieval index
+**Schema**: `knowledge_documents`, `knowledge_chunks` (future migration 014 — NOT in v1 schema)
+
+## 26.1 Purpose
+
+The knowledge layer gives AI persistent, workspace-specific business context. Without it, AI responses are generic. With it, AI can ground answers in the company's own documents (SOPs, policies, product catalogs, HR handbooks, compliance guides).
+
+## 26.2 Retrieval Pipeline
+
+```
+User sends AI chat message
+    ↓
+1. AI system checks: enable_knowledge == true for workspace?
+    → If false: skip RAG, proceed with standard AI context only
+    ↓
+2. Generate embedding for user query (OpenAI text-embedding-3-small, 1536 dimensions)
+    ↓
+3. Cosine similarity search on knowledge_chunks.embedding via pgvector
+    → SELECT content_text, document_title
+      FROM knowledge_chunks
+      WHERE workspace_id = :current_workspace
+      ORDER BY embedding <=> :query_embedding
+      LIMIT 5
+    ↓
+4. Inject top-K chunks into AI system message:
+    "Business Knowledge (from your workspace documents):
+     [chunk 1 — from: {document_title}]
+     [chunk 2 — from: {document_title}]
+     ..."
+    ↓
+5. AI generates response grounded in both API data (§24) AND knowledge chunks
+    ↓
+6. Response metadata includes: knowledge_chunks_used: [{document_id, chunk_index}]
+    → Frontend shows "📚 Used knowledge from: {document_title}" indicator
+```
+
+## 26.3 Embedding Strategy
+
+| Parameter | Value |
+|-----------|-------|
+| Model | OpenAI `text-embedding-3-small` (or equivalent) |
+| Dimensions | 1536 |
+| Chunk size | ~500 tokens per chunk |
+| Overlap | 50 tokens between adjacent chunks |
+| Index type | pgvector `ivfflat` (switch to `hnsw` if >100K chunks per workspace) |
+
+## 26.4 Document Processing Pipeline
+
+Triggered by: `POST /api/v1/knowledge/documents` (§48.2)
+
+```
+1. Document created → status = processing
+2. Queue job: KnowledgeProcessJob
+   a. Extract text (plain text, PDF via parser, URL via fetch)
+   b. Split into ~500-token chunks with 50-token overlap
+   c. For each chunk: generate embedding via AI provider
+   d. Store chunks + embeddings in knowledge_chunks table
+   e. Update document: status = ready, chunk_count, total_token_count
+   f. Dispatch event: ai.knowledge.uploaded
+3. On failure: status = failed, error logged
+```
+
+## 26.5 Context Budget
+
+AI context window is shared between:
+- System prompt (~500 tokens)
+- Knowledge chunks (max 2,500 tokens — ~5 chunks)
+- Historical data summaries (max 2,000 tokens — §24.2)
+- Conversation history (max 2,000 tokens)
+- User message (variable)
+
+**Total budget**: 8,000 tokens of context per AI request (§24.2 unchanged)
+
+Knowledge chunks are prioritized over historical data when both are available and the query matches knowledge documents with high similarity.
+
+## 26.6 Knowledge Freshness
+
+- Documents can be re-uploaded to update content (delete + re-create)
+- Chunks are NOT incrementally updated — full reprocessing on re-upload
+- Stale detection: documents older than 90 days get a "May be outdated" badge in UI
+- Admin can set document expiry reminders (manual, via document metadata)
+
+---
+
+*End of AI system design. Version 3.0 — 2026-04-10. Added §26 Knowledge/RAG retrieval layer.*

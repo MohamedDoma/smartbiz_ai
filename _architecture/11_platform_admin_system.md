@@ -740,3 +740,238 @@ After this file, create:
 4. `4_frontend_architecture.md`
 
 These files must remain aligned with this platform admin system.
+
+---
+
+## 25. Country Pack Management [Core v1 framework]
+
+Platform admins manage the global country pack catalog.
+
+### 25.1 CRUD Operations
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| List all country packs | `platform.country_packs.view` | Includes installed count per pack |
+| Create country pack | `platform.country_packs.manage` | Defines country, version, tax_config, payroll_config, invoice_format |
+| Update country pack | `platform.country_packs.manage` | Version bump required — existing installs retain old version until manual upgrade |
+| Deprecate country pack | `platform.country_packs.manage` | Sets `is_active = false` — no new installs, existing installs unaffected |
+
+### 25.2 Pack Structure
+
+Each country pack contains:
+```
+country_packs
+├── country_code (ISO 3166-1 alpha-2)
+├── name (display name, e.g. "Egypt Tax Pack")
+├── version (semver, e.g. "1.2.0")
+├── tax_config (JSONB)
+│   ├── default_tax_rules: [{name, rate, type, applies_to}]
+│   └── withholding_rules: [{threshold, rate}]
+├── payroll_config (JSONB)
+│   ├── statutory_deductions: [{name, rate, cap}]
+│   └── employer_contributions: [{name, rate}]
+├── invoice_format (JSONB)
+│   ├── required_fields: [string]
+│   └── sequence_format: string
+├── constants (JSONB)
+│   └── min_retention_years: {invoices: 7, payroll: 10, ...}
+└── is_active: boolean
+```
+
+### 25.3 Version Management
+
+- Major version changes (1.x → 2.x) notify all workspaces using the pack
+- Minor/patch updates are available for opt-in upgrade
+- Platform admin can force-upgrade all installs in critical compliance updates
+- Upgrade preserves workspace overrides — only adds new defaults
+
+### 25.4 Platform Dashboard View
+
+Country Pack management page shows:
+- Total packs: active vs deprecated
+- Installation heatmap: packs ranked by install count
+- Version distribution: how many workspaces use each pack version
+- Recently updated packs
+
+---
+
+## 26. Integration Catalog Control [Core v1]
+
+Platform admins manage the global integration provider catalog.
+
+### 26.1 Provider Management
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| List providers | `platform.integrations.view` | Shows all providers with connection counts |
+| Create provider | `platform.integrations.manage` | Defines type, config_schema, auth_type |
+| Update provider | `platform.integrations.manage` | Schema changes do not break existing connections |
+| Disable provider | `platform.integrations.manage` | Sets `is_active = false` — blocks new connections |
+| View global health | `platform.integrations.view` | Aggregate failure rate across all workspaces |
+
+### 26.2 Provider Definition
+
+Each provider record contains:
+```
+integration_providers
+├── name (e.g. "Stripe", "Twilio", "QuickBooks")
+├── type (payment | email | sms | ecommerce | accounting | storage | custom)
+├── auth_type (api_key | oauth2 | basic | custom)
+├── config_schema (JSONB — JSON Schema for credential form generation)
+├── webhook_config (JSONB — signature validation method, header names)
+├── documentation_url (string)
+├── logo_url (string)
+└── is_active (boolean)
+```
+
+### 26.3 Platform Health Dashboard
+
+Global integration health view:
+- Provider availability: % of workspace connections in `active` state
+- Failure rate: webhook delivery failures per provider (last 24h)
+- Top errors: most common error messages per provider
+- Alert: providers with >10% failure rate highlighted
+
+---
+
+## 27. Media Quota Management [Expansion Pack]
+
+Platform admins control AI content generation quotas.
+
+### 27.1 Quota Model
+
+Quotas are configured at the subscription plan level:
+
+| Plan | Daily AI Requests | Storage Limit | AI Content Generation |
+|------|-------------------|--------------|----------------------|
+| Free | 20 | 500 MB | Disabled |
+| Starter | 100 | 5 GB | 10 requests/day |
+| Business | 500 | 25 GB | 50 requests/day |
+| Enterprise | Unlimited | 100 GB | 200 requests/day |
+
+### 27.2 Platform Controls
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| View quota usage | `platform.quotas.view` | Per-workspace breakdown: AI requests, storage, generation |
+| Override workspace quota | `platform.quotas.manage` | Temporary or permanent override for individual workspace |
+| Set plan defaults | `platform.subscription_plans.manage` | Updates apply to new and renewing subscriptions |
+| View abuse alerts | `platform.quotas.view` | Workspaces exceeding 90% of quota highlighted |
+
+### 27.3 Monitoring
+
+- Real-time quota consumption dashboard
+- Daily usage trends (line chart per plan tier)
+- Alert when any workspace hits quota ceiling
+- Cost projection based on current AI provider token pricing
+
+---
+
+## 28. Expansion Module Gating per Subscription Plan [Core v1]
+
+Platform admins control which expansion modules are available per subscription plan.
+
+### 28.1 Module-Plan Matrix
+
+| Module | Free | Starter | Business | Enterprise |
+|--------|------|---------|----------|------------|
+| Communications (basic) | ✓ | ✓ | ✓ | ✓ |
+| Communication Automations | ✗ | ✗ | ✓ | ✓ |
+| Marketing (segments, loyalty) | ✗ | ✓ | ✓ | ✓ |
+| Marketing (campaigns, referrals) | ✗ | ✗ | ✓ | ✓ |
+| Delivery (basic dispatch) | ✗ | ✓ | ✓ | ✓ |
+| Delivery (live tracking, SLA) | ✗ | ✗ | ✗ | ✓ |
+| Compliance (country packs) | ✓ | ✓ | ✓ | ✓ |
+| Compliance (retention policies) | ✗ | ✗ | ✓ | ✓ |
+| Media (asset library, brand kit) | ✓ | ✓ | ✓ | ✓ |
+| Media (AI content generation) | ✗ | ✗ | ✓ | ✓ |
+| Integrations (connect, import/export) | ✗ | ✓ | ✓ | ✓ |
+| Integrations (webhooks, advanced sync) | ✗ | ✗ | ✓ | ✓ |
+
+### 28.2 Implementation
+
+Module gating is implemented through:
+1. `subscription_plans.features` JSONB contains feature flag defaults per plan
+2. On workspace login, backend resolves active plan → populates feature flags
+3. Feature flags sent to frontend in workspace config response
+4. Frontend hides nav items and pages based on flags (§26 frontend architecture)
+5. Backend validates feature flag access on every API request (middleware)
+
+### 28.3 Platform Admin Controls
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| View plan-module matrix | `platform.subscription_plans.view` | Read-only matrix view |
+| Edit plan features | `platform.subscription_plans.manage` | Toggle modules per plan |
+| Override workspace features | `platform.quotas.manage` | Enable/disable specific modules for a workspace regardless of plan |
+| View feature adoption | `platform.analytics.view` | % of workspaces using each module, grouped by plan |
+
+### 28.4 Upgrade Prompts
+
+When a user accesses a gated feature:
+- Frontend shows "Upgrade Required" modal with feature description and plan comparison
+- CTA links to `/admin/subscription` for self-service upgrade
+- Event logged for platform analytics (feature_gate_hit)
+
+---
+
+*End of expansion platform admin controls.*
+
+---
+
+## 29. Entitlement Override Management [Core v1]
+
+Platform admins manage workspace-level entitlement overrides to handle exceptions to plan-based gating.
+
+**Backend**: `EntitlementService` 4-layer resolution chain (§31 backend architecture)
+**Business rule**: BR-SYS-006 (Layer 2 — workspace overrides take precedence over plan defaults)
+
+### 29.1 Override CRUD
+
+| Action | Permission | Notes |
+|--------|-----------|-------|
+| List workspace overrides | `platform.quotas.view` | Shows all active overrides for a workspace |
+| Create override | `platform.quotas.manage` | Enable/disable specific feature for a workspace regardless of plan |
+| Update override | `platform.quotas.manage` | Change expiry, reason, or enabled status |
+| Delete override | `platform.quotas.manage` | Removes override — workspace falls back to plan defaults |
+
+### 29.2 Override Types
+
+| Type | Example | Use Case |
+|------|---------|----------|
+| Feature enable | `enable_campaigns = true` on Starter plan workspace | Customer negotiated enterprise feature at lower tier |
+| Feature disable | `enable_delivery = false` on Enterprise workspace | Customer requested module removal (compliance) |
+| Quota override | `max_ai_requests = 1000` (exceeds plan default of 500) | High-value customer needs temporary AI burst |
+| Trial extension | `grace_ends_at = +30 days` | Sales team extending trial for prospect |
+
+### 29.3 Override Record
+
+```
+workspace_feature_overrides (future migration)
+├── workspace_id (FK → workspaces)
+├── feature_key (string — maps to subscription_plans.features keys)
+├── enabled (boolean)
+├── expires_at (timestamp, nullable — null = permanent)
+├── reason (text — required, for audit trail)
+├── granted_by (FK → users, platform admin who created override)
+├── created_at
+└── updated_at
+```
+
+### 29.4 Audit Trail
+
+- Every override creation/modification/deletion is logged in `platform_events`
+- Event type: `platform.entitlement.override_created`, `platform.entitlement.override_revoked`
+- Visible in workspace audit log for transparency
+
+### 29.5 Analytics Dashboard
+
+Platform admin dashboard shows:
+- Total active overrides (grouped by feature key)
+- Override distribution by plan tier (how many Starter workspaces have Business-tier features)
+- Expiring overrides (next 7 days) — alert for follow-up
+- Feature gate hit rate: how often users encounter 402 errors per feature (informs pricing decisions)
+
+---
+
+*End of platform admin system. Version 3.0 — 2026-04-10. Added §29 entitlement override management.*

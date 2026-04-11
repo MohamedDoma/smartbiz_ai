@@ -872,3 +872,438 @@ After this file, create:
 4. `3_api_contracts.md`
 
 These documents must stay aligned with this app flow.
+
+---
+
+## 34. Communication Flow [Core v1]
+
+```
+Trigger: User navigates to Communications → Message Log / Templates
+Precondition: User has communications.messages.send or communications.templates.view permission
+
+1. User navigates to Communications  
+2. System shows: Templates tab / Message Log tab / Analytics tab  
+3. **Send Message flow:**  
+   a. User clicks "Send Message"  
+   b. System shows compose form:  
+      - Channel selector (email / sms / whatsapp / push)  
+      - Recipient: contact picker or manual address  
+      - Template selector (optional) → auto-populates subject + body  
+      - Body editor with {{variable}} interpolation preview  
+   c. User submits  
+   d. Backend validates (BR-COM-001, BR-COM-004):  
+      - Channel provider exists and is active  
+      - Recipient address is valid  
+      - Body is not empty  
+   e. Success → message queued → toast "Message queued"  
+   f. Message appears in Message Log with status: queued → sending → sent/delivered/failed  
+4. **Template CRUD flow:**  
+   a. User opens Templates tab  
+   b. List filtered by channel_type and locale  
+   c. Create/Edit: name, channel, subject, body, variables, locale  
+   d. Save → validation → success  
+5. Retry: Failed messages show retry button if attempts < 3 (BR-COM-003)
+```
+
+---
+
+## 35. Campaign Launch Flow [Expansion Pack]
+
+```
+Trigger: User navigates to Marketing → Campaigns
+Precondition: marketing.campaigns.create permission
+
+1. User clicks "Create Campaign"  
+2. System shows campaign wizard:  
+   Step 1: Name, type (email / sms / multi_channel)  
+   Step 2: Select segment → preview contact count  
+   Step 3: Select or create template → preview  
+   Step 4: Set budget (optional), schedule (optional)  
+   Step 5: Review summary  
+3. User saves as draft  
+4. **Launch flow:**  
+   a. User opens draft campaign → clicks "Launch"  
+   b. System validates (BR-MKT-003):  
+      - Segment has contacts (contact_count > 0)  
+      - Template is active and matches channel  
+      - Status is draft or paused  
+   c. Validation fails → inline error → no launch  
+   d. Validation passes → confirmation dialog → launch  
+   e. Status → active → messages begin queueing  
+5. **Metrics view:**  
+   a. Active/completed campaigns show real-time metrics  
+   b. Sent, delivered, opened, clicked, converted, unsubscribed  
+   c. Auto-refreshes every 60 seconds  
+6. Pause: User can pause active campaign → no new messages queued
+```
+
+---
+
+## 36. Loyalty Redemption Flow (POS) [Core v1]
+
+```
+Trigger: Cashier processing a POS sale with loyalty-enrolled customer
+Precondition: marketing.loyalty.view + sales.pos.operate permissions
+
+1. Cashier rings up items on POS terminal  
+2. Cashier searches customer by phone/email/name  
+3. System shows customer card with loyalty badge:  
+   - Current tier  
+   - Points balance  
+   - Available rewards  
+4. **Earn flow (automatic):**  
+   a. On sale completion, system calculates points earned  
+   b. Points auto-credited to loyalty_accounts (BR-MKT-001)  
+   c. POS receipt shows "Points earned: +X | Balance: Y"  
+5. **Redeem flow (manual):**  
+   a. Cashier taps "Redeem Points"  
+   b. System shows available rewards with point costs  
+   c. Cashier selects reward → system validates balance ≥ cost  
+   d. Insufficient balance → error "Not enough points"  
+   e. Sufficient → discount applied to current sale  
+   f. Points deducted (loyalty_transactions type=burn)  
+   g. Receipt shows "Points redeemed: -X | Discount: $Y"  
+6. Tier check: After each earn, system checks tier threshold (BR-MKT-002)  
+   - Promotion: immediate → congratulations toast  
+   - Demotion: cooldown period → no immediate change
+```
+
+---
+
+## 37. Dispatch & Delivery Flow [Core v1]
+
+```
+Trigger: Order confirmed and ready for delivery
+Precondition: delivery.assignments.create permission (dispatcher role)
+
+1. Dispatcher opens Dispatch Board  
+    - Real-time view, refreshes every 15 seconds  
+    - Columns: Unassigned | Pending | In Transit | Delivered | Failed  
+2. **Assign flow:**  
+   a. Dispatcher picks unassigned order  
+   b. System shows order details + delivery address  
+   c. Dispatcher selects driver from available drivers list  
+      - Filtered by: status=available, branch, zone  
+   d. Dispatcher clicks "Assign"  
+   e. Backend validates (BR-DEL-001):  
+      - Driver status = available  
+      - Order not already assigned  
+   f. Success → assignment created (pending) → driver status → busy  
+   g. Push notification sent to driver  
+3. **Assignment lifecycle (dispatcher view):**  
+   a. Card moves through columns as driver updates status  
+   b. Rejected → returns to Unassigned column for re-dispatch  
+   c. Failed → shows failure reason → option to re-assign  
+4. **COD tracking:**  
+   a. COD orders show expected collection amount  
+   b. On delivery, collected amount displayed  
+   c. Variance flagged if ≠ expected (BR-DEL-003)  
+5. Dispatch Board respects branch scoping for branch_manager role
+```
+
+---
+
+## 38. Driver App Flow [Core v1]
+
+```
+Trigger: Driver opens app after login
+Precondition: User has driver role with delivery.assignments.view (own) permission
+
+1. Driver sees personal dashboard:  
+   - Today's assigned deliveries  
+   - Active delivery (if any)  
+   - Completed count / Failed count  
+   - COD total collected today  
+2. **New assignment notification:**  
+   a. Push notification: "New delivery assigned"  
+   b. Driver opens assignment detail:  
+      - Customer name, address, phone  
+      - Order items summary  
+      - Payment method (prepaid / COD)  
+      - COD amount if applicable  
+   c. Driver taps "Accept" or "Reject"  
+   d. Accept → status = accepted (BR-DEL-002)  
+   e. Reject → status = rejected → reason required → driver back to available  
+3. **Delivery execution:**  
+   a. Driver taps "Pick Up" at restaurant/store → status = picked_up  
+   b. Navigation opens to delivery address  
+   c. [Expansion Pack] GPS location broadcast every 10 seconds  
+   d. Driver arrives → taps "Deliver"  
+4. **Proof of delivery (BR-DEL-004):**  
+   a. For COD: enter amount collected (required)  
+   b. Capture proof: photo upload, signature pad, or PIN entry  
+   c. At least one proof method required for COD  
+   d. Submit → status = delivered → driver back to available  
+5. **Failure flow:**  
+   a. Driver taps "Report Failed"  
+   b. Reason required (text)  
+   c. Status → failed → driver back to available  
+6. Driver status toggle: Available / Offline (manual control)
+```
+
+---
+
+## 39. Country Pack Installation Flow [Core v1 framework]
+
+```
+Trigger: Admin navigates to Compliance → Country Packs
+Precondition: compliance.packs.install permission (admin/owner only)
+
+1. System shows two sections:  
+   - Installed Packs (with version, install date)  
+   - Available Packs (from platform catalog)  
+2. **Install flow:**  
+   a. Admin browses available packs → views pack detail:  
+      - Country, version, included: tax rules, payroll rules, invoice format  
+   b. Admin clicks "Install"  
+   c. System shows configuration override form (optional):  
+      - Override default tax rates  
+      - Override payroll parameters  
+   d. Admin confirms  
+   e. Backend validates (BR-CMP-001):  
+      - Pack not already installed → 409 if duplicate  
+   f. Success → creates workspace_country_packs + seeds tax_rules  
+   g. Toast: "Country pack installed. Tax rules seeded."  
+3. **Post-install:**  
+   a. Tax Rules page now shows country-specific rules  
+   b. Payroll calculations use statutory rules from pack  
+   c. Invoice formats comply with country requirements  
+4. **Configuration:**  
+   a. Admin can override specific rules via Tax Rules page  
+   b. Overrides do not delete pack defaults — they supersede  
+   c. BR-CMP-002: old rules are end-dated, not deleted
+```
+
+---
+
+## 40. AI Content Generation Flow [Expansion Pack]
+
+```
+Trigger: User navigates to Media → AI Content Studio
+Precondition: media.generation.request permission
+
+1. User opens AI Content Studio  
+2. System shows:  
+   - Prompt input (text area)  
+   - Brand kit auto-linked (if configured)  
+   - Model selector (if multiple models available)  
+   - Generation history with statuses  
+3. **Generate flow:**  
+   a. User enters prompt, clicks "Generate"  
+   b. Backend validates (BR-MDA-003):  
+      - Daily AI quota not exhausted  
+      - If exhausted → 429 error → "Quota exceeded. Resets at [time]"  
+   c. Request queued → status: pending → processing  
+   d. User sees spinner / progress indicator  
+   e. Completion:  
+      - Success → generated asset appears as preview  
+      - Failure → error message shown  
+4. **Approval flow (BR-MDA-001):**  
+   a. Generated asset has status = draft  
+   b. User with media.generation.approve permission reviews  
+   c. "Approve" → status = approved → asset moves to library  
+   d. "Reject" → asset archived  
+5. Brand kit context: AI uses workspace brand colors/fonts/tone for generation (BR-MDA-002)
+```
+
+---
+
+## 41. Integration Setup Flow [Core v1]
+
+```
+Trigger: Admin navigates to Integrations → Providers
+Precondition: integrations.connections.manage permission
+
+1. System shows available providers from platform catalog:  
+   - Type badges: Payment, Email, SMS, eCommerce, Accounting, Storage  
+   - Status: Not Connected / Connected / Error  
+2. **Connect flow:**  
+   a. Admin clicks "Connect" on a provider  
+   b. System shows credential form based on provider's config_schema:  
+      - e.g. Stripe: API Key, Webhook Signing Secret  
+      - e.g. Twilio: Account SID, Auth Token  
+   c. Admin fills credentials → "Connect"  
+   d. Backend validates format against config_schema (BR-INT-003)  
+   e. Connection test triggered automatically  
+   f. Pending → test result in 5–15 seconds  
+   g. Success: status = active → green badge  
+   h. Failure: status = error → error message shown  
+3. **Re-test / Disconnect:**  
+   a. Admin can re-test any time  
+   b. Disconnect: sets status = disconnected (BR-INT-004)  
+      - Preserves sync history  
+      - Cannot be undone via UI (must reconnect fresh)  
+4. **Health Dashboard:**  
+   a. Shows all connected integrations  
+   b. Last sync time, error count, status  
+   c. Failing integrations highlighted in red  
+5. Webhook setup: Admin configures outbound webhooks separately (§46.6 API)
+```
+
+---
+
+## 42. Import Flow [Core v1]
+
+```
+Trigger: User navigates to Integrations → Import / Export → Import Tab
+Precondition: integrations.import.manage permission
+
+1. User clicks "Start Import"  
+2. Step 1 — Select entity type:  
+   - Products, Contacts, Chart of Accounts, Inventory Adjustments  
+3. Step 2 — Upload file:  
+   - Supported formats: CSV, XLSX  
+   - Max file size: 10MB  
+   - Upload → status: uploaded  
+4. Step 3 — Column mapping:  
+   a. System auto-detects headers  
+   b. User maps source columns → system fields  
+   c. Required fields highlighted  
+   d. Preview of first 5 rows with mapped values  
+5. Step 4 — Validation (BR-INT-002):  
+   a. Job transitions: uploaded → validating → preview  
+   b. System validates:  
+      - Data types (dates, numbers, required fields)  
+      - Foreign key existence (categories, warehouses)  
+      - Duplicate detection (exact + fuzzy match on name/SKU)  
+   c. Validation results shown:  
+      - Total rows / Valid / Errors  
+      - Error detail: row number, column, message  
+   d. User can fix source file and re-upload, or proceed  
+6. Step 5 — Apply:  
+   a. User clicks "Apply Import"  
+   b. Confirmation dialog: "Import {N} valid rows?"  
+   c. Job → applying (background)  
+   d. Progress indicator (if possible)  
+   e. Completion → success/failed notification  
+7. Import history: list of past imports with status, counts, date
+```
+
+---
+
+*End of expansion domain flows.*
+
+---
+
+## 43. Task Feed Flow [Core v1]
+
+**Navigation**: `/tasks/my` (tasks_group in UI schema)
+**Permission**: Implicit — TaskFeedService filters results by user's existing RBAC permissions per source entity
+**Feature flag**: None — always available for authenticated users
+**Backend**: `TaskFeedService` read model (§33 backend architecture)
+**API**: `GET /api/v1/tasks/my` (§47 API contracts)
+
+```
+Flow:
+1. User clicks "My Tasks" in sidebar navigation
+2. Frontend calls GET /api/v1/tasks/my?status=pending
+3. TaskFeedService queries 6 source tables in parallel:
+   - approval_requests (pending, where user is approver)
+   - delivery_assignments (pending/accepted, where user is assigned driver)
+   - leave_requests (pending, where user is reporting manager)
+   - ai_change_requests (pending, where user is admin/owner)
+   - import_jobs (preview state, where user is the uploader)
+   - media_assets (draft + ai_generated, where user has media.generation.approve)
+4. Results merged and sorted by urgency DESC, created_at DESC
+5. Task feed displayed as card list:
+   - Each card shows: task_type icon, title, created_at, urgency badge
+   - Action button(s) per task type (Approve/Reject, Accept/Deliver, Apply/Cancel)
+6. User clicks action → navigated to source entity's detail page for decision
+7. On completion → task disappears from feed (source entity status changed)
+
+Push notifications:
+- New approval request → push to approver's device
+- New delivery assignment → push to driver's device
+- New leave request → push to manager's device
+- Deep link in notification opens the relevant task detail
+
+Empty state:
+- "All caught up! No pending tasks." with checkmark illustration
+```
+
+---
+
+## 44. Knowledge Document Upload Flow [Expansion Pack]
+
+**Navigation**: `/ai/knowledge` (knowledge_documents_page in AI group)
+**Permission**: `ai.knowledge.upload @ ws` for upload, `ai.knowledge.view @ ws` for list
+**Feature flag**: `enable_knowledge` (sub-feature of AI module, requires Business+ plan)
+**Entitlement**: Plan-gated via EntitlementMiddleware (§31 backend architecture)
+**Backend**: Knowledge documents + pgvector RAG
+**API**: §48 API contracts
+**Event bus**: Dispatches `ai.knowledge.uploaded` event (§29 backend architecture)
+
+```
+Flow:
+1. User navigates to AI → Knowledge Base
+2. If enable_knowledge == false → show "Upgrade Required" modal (§28.4 platform admin)
+   - Modal: feature description + plan comparison + CTA to /admin/subscription
+   - Event logged: entitlement.access.denied (task feed analytics)
+3. Knowledge Base page shows existing documents list:
+   - Columns: title, content_type, status (processing/ready/failed), chunks, uploaded_by, date
+   - Search bar uses SearchService (§28) against knowledge_documents.title
+   - Filter by content_type and status
+4. Upload flow — User clicks "Upload Document":
+   a. Upload dialog: title (required), content type selector (text/PDF/URL)
+   b. If text: text area for direct input
+   c. If PDF: file picker (10MB max, validated server-side — 413 on exceed)
+   d. If URL: URL input (backend fetches and processes content)
+   e. Submit → POST /api/v1/knowledge/documents → 201 with status: processing
+5. Processing (background):
+   a. Queue job chunks the content into ~500-token segments
+   b. Each chunk gets an embedding via AI provider (OpenAI, etc.)
+   c. Embeddings stored in knowledge_chunks.embedding (pgvector)
+   d. On completion: status → ready, dispatches ai.knowledge.uploaded event
+   e. On failure: status → failed, user notified
+6. Document detail view:
+   - Shows chunk list with content previews
+   - Delete action requires ai.knowledge.manage permission
+   - Delete removes document + all chunks (cascading)
+7. RAG integration (transparent to user):
+   - When user chats with AI, system auto-retrieves relevant chunks
+   - Chunks injected into AI context as "Business Knowledge" section
+   - User sees better, business-specific AI responses — no manual action needed
+```
+
+---
+
+## 45. Entitlement Gate Flow [Core v1]
+
+**Navigation**: Any gated page/endpoint
+**Permission**: Resolved by 4-layer entitlement chain (§31 backend architecture, BR-SYS-006)
+**Feature flag**: Per-module and per-sub-feature flags
+**Backend**: `EntitlementMiddleware` + `EntitlementService`
+
+```
+Flow:
+1. User clicks a navigation item for a gated feature (e.g., Marketing → Campaigns)
+2. Frontend checks local feature flag cache:
+   a. If module flag (enable_marketing) == false → hide nav item entirely (user never sees it)
+   b. If sub-feature flag (enable_campaigns) == false → show nav item but Page shows "Upgrade Required"
+3. If page loads → frontend calls API endpoint
+4. Backend EntitlementMiddleware resolves 4 layers:
+   Layer 1 — Plan: subscription_plans.features[feature]
+     → If false → 402 {error_code: "entitlement_required", required_plan: "Business", upgrade_url: "/admin/subscription"}
+   Layer 2 — Workspace override: workspace_feature_overrides[feature]
+     → If override exists, use override value (skip plan check)
+   Layer 3 — Role permission: user's RBAC permission for the action
+     → If missing → 403 {error_code: "permission_error"}
+   Layer 4 — Usage quota: daily/monthly consumption check
+     → If exhausted → 429 {error_code: "quota_exceeded", resets_at: "ISO8601"}
+5. Frontend handles denial responses:
+   - 402 → "Upgrade Required" modal with plan comparison + upgrade CTA
+   - 403 → "Permission Denied" message (contact your admin)
+   - 429 → "Quota Exceeded" message with reset countdown
+6. Grace period handling:
+   - Downgraded workspace within 7-day grace → features still accessible
+   - After grace expires → 402 response + "Export Your Data" helper link
+
+Event tracking:
+- All 402 denials logged as entitlement.access.denied events
+- Platform analytics dashboard shows feature gate hit frequency per plan
+- Data informs pricing decisions and plan tier design
+```
+
+---
+
+*End of app flow specification. Version 3.0 — 2026-04-10. Added §43 Task Feed, §44 Knowledge Upload, §45 Entitlement Gate flows.*

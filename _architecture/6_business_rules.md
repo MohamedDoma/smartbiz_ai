@@ -164,6 +164,17 @@ Every rule follows this structure:
 - Schema: `workspace_subscriptions.renewal_attempts`, `workspace_subscriptions.last_renewal_failure_at`
 - Audit: `renewal_failed` with `workspace_id`, `attempt_number`, `failure_reason`; `renewal_recovered` on successful retry
 
+**BR-WKS-007**: Last Owner Protection
+- Logic: A workspace MUST have at least one member with the `owner` role at all times. The system MUST block all of the following operations if they would result in zero owners:
+  1. Removing the last owner from `membership_roles`
+  2. Changing the last owner's role to a non-owner role
+  3. Suspending or deactivating the last owner's membership
+  4. The last owner leaving the workspace voluntarily
+- Before any of these operations, the system checks: `SELECT COUNT(*) FROM membership_roles mr JOIN workspace_memberships wm ON mr.membership_id = wm.id WHERE wm.workspace_id = :ws AND wm.status = 'active' AND mr.role_id = (SELECT id FROM roles WHERE workspace_id = :ws AND name = 'owner')`. If count = 1 and the target is that owner → reject.
+- Error: `409 conflict_error` — "Cannot remove the last owner. Transfer ownership first (BR-WKS-003)."
+- Schema: `membership_roles`, `workspace_memberships`, `roles`
+- Audit: `last_owner_removal_blocked` with `workspace_id`, `attempted_action`, `target_user_id`
+
 ---
 
 ## 4. Membership & Authentication Rules
@@ -1182,4 +1193,204 @@ The following rules define what employees may do for themselves using `@ own` sc
 
 ---
 
-*End of specification. Version 1.1 — 2026-04-09. Added BR-WKS-005, BR-WKS-006, BR-ORD-007, BR-PAY-009, BR-FIN-013 (final hardening pass).*
+*End of core specification. Version 1.1 — 2026-04-09. Added BR-WKS-005, BR-WKS-006, BR-ORD-007, BR-PAY-009, BR-FIN-013 (final hardening pass).*
+
+---
+
+## 19. Communication Rules [Core v1]
+
+**BR-COM-001**: Message Validity [Core v1]
+- Logic: An outbound message MUST have a valid `channel_type`, a resolved `recipient_address`, and either a `template_id` with interpolated body or an explicit `body`. Messages with missing or invalid recipients MUST be rejected at send time with `422 validation_error`.
+- Schema: `outbound_messages.channel_type`, `outbound_messages.recipient_address`, `outbound_messages.body`
+
+**BR-COM-002**: Automation Trigger Validity [Expansion Pack]
+- Logic: A communication automation trigger_event MUST reference a valid system event name (e.g. `invoice.overdue`, `leave.approved`, `order.confirmed`). Invalid event names MUST be rejected at creation with `422 validation_error`. The template referenced by `template_id` MUST exist and match the automation's `channel_type`.
+- Schema: `communication_automations.trigger_event`, `communication_automations.template_id`
+
+**BR-COM-003**: Message Retry Policy [Core v1]
+- Logic: Failed outbound messages MUST be retried up to 3 times with exponential backoff (30 seconds, 5 minutes, 30 minutes). After 3 failures, the message status changes to `failed` permanently. Each attempt increments `outbound_messages.attempts`.
+- Schema: `outbound_messages.attempts`, `outbound_messages.status`
+
+**BR-COM-004**: Channel Provider Required [Core v1]
+- Logic: An outbound message CANNOT be sent unless the workspace has at least one active `communication_channels` record for the requested `channel_type`. Attempting to send without a configured provider returns `422 validation_error` with message "No active provider configured for channel type '{type}'".
+- Schema: `communication_channels.type`, `communication_channels.is_active`
+
+---
+
+## 20. Marketing Rules [Mixed]
+
+**BR-MKT-001**: Loyalty Points Non-Negative [Core v1]
+- Logic: `loyalty_accounts.points_balance` MUST NOT go below zero. A burn transaction that would reduce the balance below zero MUST be rejected with `422 validation_error` (insufficient points). Adjustment transactions (type = `adjust`) MAY increase or decrease balance but the final value must still be ≥ 0.
+- Schema: `loyalty_accounts.points_balance CHECK (points_balance >= 0)`
+- Permission: `marketing.loyalty.manage @ scope`
+
+**BR-MKT-002**: Loyalty Tier Management [Core v1]
+- Logic: Tier promotion is immediate — when `loyalty_accounts.lifetime_points` crosses a tier threshold, the customer is upgraded and `tier_updated_at` is set. Tier demotion requires a cooldown period (configurable per program, default 90 days) — a customer below the threshold retains their tier for the cooldown duration before automatic demotion.
+- Schema: `loyalty_accounts.current_tier`, `loyalty_accounts.tier_updated_at`, `loyalty_programs.tiers`
+
+**BR-MKT-003**: Campaign Launch Guard [Expansion Pack]
+- Logic: A campaign CANNOT be launched (status → `active`) unless:
+  1. The linked `segment_id` references a segment with `contact_count > 0`
+  2. The linked `template_id` references an active template matching at least one campaign channel
+  3. The campaign status is `draft` or `paused`
+- Violation returns `422 validation_error` (empty segment) or `409 conflict_error` (invalid status transition).
+- Permission: `marketing.campaigns.launch @ scope`
+- Schema: `campaigns.status`, `segments.contact_count`
+
+**BR-MKT-004**: Referral Reward Issuance [Expansion Pack]
+- Logic: A referral reward is issued ONLY after the referee completes a qualifying action (first purchase, account activation, or custom trigger defined in `referral_programs.referee_reward`). Rewards are NOT issued on referral code submission alone. Attribution is tracked via `referrals.referral_code` and `referrals.status` transitions (pending → converted).
+- Schema: `referrals.status`, `referral_programs.referrer_reward`, `referral_programs.referee_reward`
+
+**BR-MKT-005**: Segment Recalculation [Core v1]
+- Logic: Dynamic segments (`is_dynamic = true`) MUST be recalculated asynchronously. Recalculation runs as a background job on a configurable schedule (default: daily) or on manual trigger. Recalculation updates `segment_contacts` membership and `segments.contact_count`. Segment creation/update does NOT block — the initial count is 0 until first recalculation completes.
+- Schema: `segments.is_dynamic`, `segments.recalculated_at`, `segment_contacts`
+
+---
+
+## 21. Delivery Rules [Core v1]
+
+**BR-DEL-001**: Driver Availability Guard [Core v1]
+- Logic: A delivery assignment CANNOT be created unless the target `drivers.status = 'available'`. When an assignment is created, the driver's status automatically transitions to `busy`. When an assignment reaches a terminal state (`delivered`, `failed`, `returned`, `rejected`), the driver's status returns to `available`.
+- Schema: `drivers.status`, `delivery_assignments.driver_id`
+- Error: `409 conflict_error` (driver not available)
+
+**BR-DEL-002**: Delivery Status FSM [Core v1]
+- Logic: Delivery assignment status transitions follow a strict finite state machine:
+
+| From | Allowed To |
+|------|-----------|
+| `pending` | `accepted`, `rejected` |
+| `accepted` | `picked_up`, `failed` |
+| `picked_up` | `in_transit`, `delivered`, `failed` |
+| `in_transit` | `delivered`, `failed` |
+| `delivered` | *(terminal)* |
+| `failed` | `returned`, `pending` (re-assign) |
+| `rejected` | *(terminal — triggers re-assignment)* |
+| `returned` | *(terminal)* |
+
+- Any status transition not in this table MUST be rejected with `409 conflict_error`.
+- Schema: `delivery_assignments.status CHECK (...)`
+
+**BR-DEL-003**: COD Variance Alert [Core v1]
+- Logic: When a COD collection is created with `amount_collected != amount_expected`, the system MUST flag the variance. If absolute variance exceeds the workspace-configurable threshold (default: $5 or 5%, whichever is greater), the system MUST generate a finance alert notification. COD collections with zero `amount_collected` for delivered orders are flagged as critical.
+- Schema: `cod_collections.variance` (computed), `cod_collections.amount_expected`, `cod_collections.amount_collected`
+
+**BR-DEL-004**: Proof of Delivery for COD [Core v1]
+- Logic: For orders with payment method = cash on delivery, a `delivery_proofs` record MUST be created when the assignment status transitions to `delivered`. At minimum, one of: `photo_path`, `signature_path`, or `pin_code` MUST be provided. Delivery without proof for COD orders is rejected with `422 validation_error`.
+- Schema: `delivery_proofs.photo_path`, `delivery_proofs.signature_path`, `delivery_proofs.pin_code`
+
+**BR-DEL-005**: SLA Breach Escalation [Expansion Pack]
+- Logic: When a delivery takes longer than `delivery_zones.sla_minutes` from `assigned_at` to `delivered_at`, a `delivery_sla_breaches` record MUST be created and an escalation notification MUST be sent to the branch manager. SLA tracking is optional — only active when the zone has a non-null `sla_minutes`.
+- Schema: `delivery_zones.sla_minutes`, `delivery_sla_breaches`
+
+---
+
+## 22. Compliance Rules [Core v1 framework]
+
+**BR-CMP-001**: Country Pack Installation [Core v1]
+- Logic: Installing a country pack is workspace-scoped and non-destructive. Installation creates `workspace_country_packs` and seeds default `tax_rules` from the pack's `tax_config`. Re-installing the same pack returns `409 conflict_error`. Uninstalling a pack does NOT delete historical transactions calculated with its rules — it only removes the workspace association and deactivates future rule application.
+- Schema: `workspace_country_packs.UNIQUE(workspace_id, country_pack_id)`, `country_packs.tax_config`
+
+**BR-CMP-002**: Tax Rule Immutability [Core v1]
+- Logic: Tax rules MUST NOT be deleted. To change a tax rate, set `effective_to` on the old rule and create a new rule with the updated rate and a later `effective_from`. This ensures historical invoices retain their original tax calculations. The system MUST always use the tax rule that is effective on the invoice date.
+- Schema: `tax_rules.effective_from`, `tax_rules.effective_to`, CHECK constraint on date ordering
+
+**BR-CMP-003**: Retention Policy Minimum [Expansion Pack]
+- Logic: Data retention policies CANNOT be set below the regulatory minimum for the entity type (determined by the installed country pack). For example, if a country pack specifies financial records = 7 years minimum, the workspace cannot set `retention_policies.retention_years < 7` for entity_type = `invoices`. Violation returns `422 validation_error` with the minimum period.
+- Schema: `retention_policies.retention_years`, `country_packs.constants`
+
+**BR-CMP-004**: Archival Irreversibility [Expansion Pack]
+- Logic: Once an archival job executes, the operation is irreversible and MUST be audit-logged. Archived records are moved to cold storage (application layer) and anonymized if the retention policy action is `anonymize`. The `archival_jobs` log records `entity_type`, `records_archived`, and `archived_at` for compliance reporting.
+- Schema: `archival_jobs`, `retention_policies.action`
+
+---
+
+## 23. Media Rules [Core v1 basic]
+
+**BR-MDA-001**: AI Content Approval [Core v1]
+- Logic: AI-generated content (`media_assets.source = 'ai_generated'`) MUST NOT enter the approved asset library without explicit human approval. AI-generated assets are created with `status = 'draft'`. Only a user with `media.generation.approve` permission can transition an asset to `approved`. This prevents unapproved AI content from being used in customer-facing communications or marketing materials.
+- Schema: `media_assets.source`, `media_assets.status`, `media_assets.approved_by`
+- Permission: `media.generation.approve @ scope`
+
+**BR-MDA-002**: Brand Kit Singleton [Core v1]
+- Logic: Each workspace has at most one brand kit (`brand_kits.UNIQUE(workspace_id)`). Creating a brand kit when one already exists MUST upsert (update the existing record). The brand kit is the source of truth for AI content generation context (colors, fonts, tone).
+- Schema: `brand_kits.UNIQUE(workspace_id)`
+
+**BR-MDA-003**: AI Generation Quota [Expansion Pack]
+- Logic: AI content generation requests consume tokens from the same daily AI quota pool as chat requests (`subscription_plans.max_ai_requests_daily`). If the workspace has exhausted its daily AI quota, generation requests MUST return `429 too_many_requests` with `Retry-After` header indicating next quota reset.
+- Schema: `media_generation_requests.tokens_used`, `subscription_plans.max_ai_requests_daily`
+
+---
+
+## 24. Integration Rules [Core v1]
+
+**BR-INT-001**: Webhook Retry Policy [Core v1]
+- Logic: Failed webhook deliveries MUST be retried with exponential backoff: 30 seconds, 2 minutes, 15 minutes, 1 hour, 6 hours (5 retries max). After 5 failures, the delivery status changes to `failed` permanently. Each attempt increments `webhook_deliveries.attempts`. After 10 consecutive failed deliveries across ANY webhook, the `webhook_subscriptions.failure_count` is checked — if it exceeds 50, the subscription is auto-disabled (`is_active = false`) and the workspace admin is notified.
+- Schema: `webhook_deliveries.attempts`, `webhook_deliveries.status`, `webhook_subscriptions.failure_count`
+
+**BR-INT-002**: Import Validation Before Apply [Core v1]
+- Logic: An import job MUST pass validation before the apply step can execute. The status FSM is: `uploaded → validating → preview → applying → completed | failed`. The `apply` action is only available from `preview` state. Validation checks: column mapping correctness, data type conformance, foreign key existence (e.g. category names must match existing categories or will be created), and duplicate detection (exact + fuzzy match on key fields).
+- Schema: `import_jobs.status CHECK (...)`, `import_jobs.errors`
+
+**BR-INT-003**: Credential Encryption [Core v1]
+- Logic: Integration credentials (`workspace_integrations.credentials`) MUST be encrypted at rest by the application layer before storage. The database column stores encrypted JSONB. Credentials MUST NOT appear in API responses, logs, or error messages. When returning integration details, the credentials field is either omitted or redacted to `{ "configured": true }`.
+- Schema: `workspace_integrations.credentials`
+
+**BR-INT-004**: Disconnect Preserves History [Core v1]
+- Logic: Disconnecting an integration (`workspace_integrations.status → 'disconnected'`) MUST NOT delete historical `sync_logs`, `webhook_deliveries`, or any transactional data created via the integration. The integration record remains with `status = 'disconnected'` for audit trail. Reconnecting creates a new test and resets `error_message` but preserves all history.
+- Schema: `workspace_integrations.status`, `sync_logs`
+
+**BR-INT-005**: Payment Gateway Webhook Verification [Core v1]
+- Logic: Inbound webhooks from payment gateways (Stripe, PayPal, etc.) MUST have their signature verified against the provider's signing secret before processing. Unverified webhooks MUST be logged and rejected with `400 bad_request`. The verification method is provider-specific (e.g. Stripe uses HMAC-SHA256 with `Stripe-Signature` header).
+- Schema: `workspace_integrations.credentials` (contains signing secret)
+
+---
+
+*End of expansion domain rules. Version 1.2 — 2026-04-10. Added §19–§24 expansion domain business rules (Communications, Marketing, Delivery, Compliance, Media, Integration Hub).*
+
+---
+
+## 25. Infrastructure Invariants [Core v1]
+
+**BR-SYS-005**: Domain Event Dispatch Reliability [Core v1]
+- Preconditions: Any state-changing operation that produces a domain event
+- Permission: N/A (system-enforced)
+- Logic: Domain events MUST be dispatched AFTER the originating database transaction commits. Queued event listeners MUST implement retry with 3 attempts and exponential backoff. Listeners MUST handle duplicate events gracefully using `event_id` for deduplication. Failed events land in the `failed_jobs` table with full payload for replay. Dead-letter events older than 72 hours MUST generate a platform alert.
+- Side-effects: `platform_events` INSERT (via PlatformEventLogger listener), `failed_jobs` INSERT on listener failure
+- Exceptions: Synchronous listeners (audit log) execute within the same request — these do not use afterCommit
+- Audit: All event dispatches are observable via `platform_events`
+- Schema: `platform_events`, `failed_jobs`, canonical event envelope (§29 backend architecture)
+
+**BR-SYS-006**: Entitlement Resolution Precedence [Core v1]
+- Preconditions: Any feature-gated API request
+- Permission: Resolved by the entitlement chain itself
+- Logic: Feature access MUST be resolved through a strict 4-layer chain in this order:
+  1. **Plan entitlement** — if `subscription_plans.features[feature] == false` → deny with 402 (upgrade required)
+  2. **Workspace override** — if a `workspace_feature_overrides` record exists for the feature → use override value
+  3. **Role permission** — if user lacks the RBAC permission key → deny with 403 (forbidden)
+  4. **Usage quota** — if feature has a consumption cap and quota exhausted → deny with 429 (quota exceeded)
+
+  Only if all 4 layers pass does the request proceed. The resolution order is non-negotiable — plan always evaluates first, quota always evaluates last.
+- Side-effects: 402/403/429 responses include machine-readable `error_code` and `upgrade_url` where applicable
+- Exceptions: Platform admin API endpoints are exempt from plan entitlement checks (they use platform role authorization only)
+- Audit: Entitlement denials (402) MUST be logged to `platform_events` with event_type `entitlement.access.denied` for product analytics
+- Schema: `subscription_plans.features`, `workspace_feature_overrides` (future migration), `roles.permissions`, `user_permission_overrides`
+
+**BR-SYS-007**: Extension Policy — Closed Core [Core v1 policy]
+- Preconditions: Any system extension or integration
+- Permission: N/A (architectural constraint)
+- Logic: SmartBiz AI follows a closed-core extension model. The following constraints are non-negotiable:
+  1. No PHP code may be loaded dynamically at runtime — all extensions are data-driven or API-driven
+  2. No direct database access for external systems — all data exchange goes through the REST API
+  3. All integration credentials MUST be encrypted at rest before storage (BR-INT-003)
+  4. Webhook payloads MUST follow the canonical event envelope format (§29.2 backend architecture)
+  5. Custom UI plugins and server-side plugins are NOT supported in the platform
+  6. The only extension mechanisms are: integration connectors, webhook subscriptions, and inbound API calls
+- Side-effects: None
+- Exceptions: None — this policy applies universally
+- Audit: N/A (design-time constraint)
+- Schema: `integration_providers`, `workspace_integrations`, `webhook_subscriptions`
+
+---
+
+*End of specification. Version 1.3 — 2026-04-10. Added BR-SYS-005 (event reliability), BR-SYS-006 (entitlement resolution), BR-SYS-007 (extension policy).*

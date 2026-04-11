@@ -1063,6 +1063,84 @@ Backend foundation is considered ready when:
 
 ---
 
+## 25. Rate Limiting Policy
+
+All API endpoints must be protected by rate limiting via Laravel `ThrottleRequests` middleware with Redis backend.
+
+### 25.1 Throttle Tiers
+
+| Scope | Limit | Window | Key |
+|-------|-------|--------|-----|
+| Auth endpoints (`/auth/*`) | 10 requests | per minute | per IP |
+| Password reset (`/auth/forgot-password`) | 3 requests | per hour | per email |
+| General API (authenticated) | 120 requests | per minute | per user × workspace |
+| Heavy operations (reports, exports) | 5 requests | per minute | per user |
+| AI chat (`/ai/*`) | Per plan AI quota | daily | per workspace |
+| Sync endpoint (`/sync`) | 10 requests | per minute | per device token |
+| Payment endpoints (`/payments/*`) | 20 requests | per minute | per workspace |
+| Bulk operations | 2 requests | per minute | per user |
+
+### 25.2 Response Headers
+
+All responses include:
+
+```
+X-RateLimit-Limit: <max_requests>
+X-RateLimit-Remaining: <remaining_requests>
+X-RateLimit-Reset: <unix_timestamp>
+```
+
+Exceeded limit returns `429 Too Many Requests` with `Retry-After` header.
+
+### 25.3 Implementation
+
+* Use Laravel's built-in `throttle` middleware with named rate limiters
+* Store counters in Redis (`cache` connection)
+* AI quota uses `subscription_plans.max_ai_requests_daily` (migration 001) as the limit source
+* Platform admin endpoints exempt from workspace-level limits (separate tier)
+
+---
+
+## 26. File Storage Strategy
+
+### 26.1 Backend
+
+* **Provider**: S3-compatible object storage (AWS S3, DigitalOcean Spaces, MinIO for self-hosted/dev)
+* **Integration**: Laravel Filesystem abstraction (`Storage` facade, `s3` driver)
+* **Configuration**: via `.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_REGION`)
+
+### 26.2 Path Convention
+
+```
+{workspace_id}/{entity_type}/{entity_id}/{uuid}_{original_filename}
+```
+
+Example: `a1b2c3d4/invoices/e5f6g7h8/9i0j_receipt.pdf`
+
+### 26.3 Access Control
+
+* **No direct public access** — all files served via pre-signed URLs
+* **Pre-signed URL expiry**: 15 minutes (configurable per workspace)
+* **Permission check**: user must have view permission on the parent entity to access its attachments
+* **Upload validation**: server-side MIME type verification (do not trust client file extension)
+
+### 26.4 Constraints
+
+| Constraint | Value |
+|-----------|-------|
+| Max file size | 25 MB (configurable per plan via `subscription_plans.features_enabled`) |
+| Allowed MIME types | `application/pdf`, `image/png`, `image/jpeg`, `image/webp`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `text/csv`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document` |
+| Max attachments per entity | 10 (configurable) |
+| Virus scanning | Optional async queue job (recommended for production) |
+
+### 26.5 Schema Reference
+
+* `attachments` table (base schema) stores: `entity_type`, `entity_id`, `file_name`, `file_path`, `file_size`, `mime_type`
+* Files are workspace-scoped via `workspace_id` on the `attachments` table
+* RLS policy enforces tenant isolation on attachment metadata
+
+---
+
 ## 27. Immediate Next Files That Depend on This Document
 
 After this file, create:
@@ -1074,3 +1152,503 @@ After this file, create:
 5. `6_business_rules.md`
 
 These files must stay aligned with this backend architecture.
+
+---
+
+## 28. Search Architecture [Core v1]
+
+### 28.1 Strategy
+
+SmartBiz AI uses a two-phase search strategy:
+
+| Phase | Engine | When |
+|-------|--------|------|
+| v1 (launch) | PostgreSQL full-text search (`tsvector` + GIN indexes) | Core v1 |
+| v2 (scale) | Meilisearch (via Laravel Scout) | Expansion Pack |
+
+### 28.2 SearchService Interface
+
+All search queries MUST go through `App\Services\Search\SearchService`.
+
+```
+SearchService
+├── PostgresSearchDriver (v1 default)
+└── MeilisearchSearchDriver (v2 swap-in)
+```
+
+No controller or service may use raw `LIKE '%term%'` or `ILIKE` queries directly. All text search MUST route through the SearchService abstraction.
+
+### 28.3 Indexed Entities (v1)
+
+| Entity | Search Fields | Index Type | Priority |
+|--------|--------------|------------|----------|
+| `products` | name, sku, description, barcode | GIN tsvector | Critical (POS) |
+| `contacts` | name, email, phone, company_name | GIN tsvector | Critical (CRM) |
+| `media_assets` | name, tags, description | GIN tsvector | High |
+| `orders` | order_number, customer_name | B-tree + partial | High |
+| `invoices` | invoice_number | B-tree | Medium |
+| `employees` | full_name, employee_number, email | GIN tsvector | Medium |
+| `audit_logs` | entity_type, event_type | B-tree composite | Medium |
+| `outbound_messages` | recipient_address, subject | GIN tsvector | Medium |
+
+### 28.4 Meilisearch Migration Path
+
+When search volume exceeds PostgreSQL performance targets (>500ms p95 for product search):
+1. Deploy Meilisearch instance
+2. Register `MeilisearchSearchDriver` in service container
+3. Run initial index sync (queue job per entity type)
+4. Swap driver via environment variable: `SEARCH_DRIVER=meilisearch`
+5. Enable incremental sync via domain event listeners
+
+No application code changes required — only driver swap + index population.
+
+---
+
+## 29. Domain Event Bus [Core v1]
+
+### 29.1 Architecture
+
+SmartBiz AI uses Laravel's native event system with Redis-backed queues as the canonical event bus.
+
+```
+Service Layer → dispatch(DomainEvent) → Laravel Event Dispatcher
+    ├── Sync Listeners (audit log, validation)
+    └── Queued Listeners (notifications, webhooks, automations, sync)
+            └── Redis Queue (Laravel Horizon)
+                 ├── default queue
+                 ├── notifications queue
+                 ├── webhooks queue
+                 └── integrations queue
+```
+
+### 29.2 Canonical Event Envelope
+
+Every domain event MUST conform to this envelope:
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "domain.entity.action",
+  "workspace_id": "uuid",
+  "actor_id": "uuid | null",
+  "entity_type": "string",
+  "entity_id": "uuid",
+  "payload": {},
+  "occurred_at": "ISO8601",
+  "metadata": {
+    "source": "api | system | ai | import",
+    "correlation_id": "uuid",
+    "idempotency_key": "string | null"
+  }
+}
+```
+
+### 29.3 Event Naming Convention
+
+Format: `{domain}.{entity}.{past_tense_verb}`
+
+| Domain | Example Events |
+|--------|---------------|
+| auth | `auth.user.registered`, `auth.user.logged_in`, `auth.password.reset` |
+| workspace | `workspace.workspace.created`, `workspace.membership.approved`, `workspace.membership.removed` |
+| sales | `sales.order.confirmed`, `sales.order.cancelled`, `sales.invoice.issued`, `sales.payment.recorded` |
+| inventory | `inventory.stock.adjusted`, `inventory.transfer.completed`, `inventory.reorder.triggered` |
+| hr | `hr.leave.approved`, `hr.leave.rejected`, `hr.payroll.locked`, `hr.attendance.recorded` |
+| finance | `finance.journal.posted`, `finance.period.locked`, `finance.refund.issued` |
+| delivery | `delivery.assignment.created`, `delivery.assignment.delivered`, `delivery.assignment.failed` |
+| communications | `communications.message.sent`, `communications.message.failed`, `communications.message.delivered` |
+| marketing | `marketing.loyalty.points_earned`, `marketing.loyalty.points_redeemed`, `marketing.campaign.launched` |
+| compliance | `compliance.pack.installed`, `compliance.tax_rule.created` |
+| media | `media.asset.uploaded`, `media.asset.approved`, `media.generation.completed` |
+| integrations | `integrations.sync.completed`, `integrations.sync.failed`, `integrations.webhook.delivered` |
+| ai | `ai.change.requested`, `ai.change.approved`, `ai.feature_request.captured` |
+
+### 29.4 Reliability Rules
+
+1. Events MUST be dispatched AFTER the DB transaction commits (use Laravel's `afterCommit` trait on queued listeners)
+2. Queued listeners MUST implement retry with 3 attempts and exponential backoff
+3. Failed events go to `failed_jobs` table with full payload for replay
+4. Dead-letter events older than 72 hours generate a platform alert
+5. Event dispatch is fire-and-forget from the publisher's perspective — the publisher never waits for listener completion
+6. Idempotency: listeners MUST handle duplicate events gracefully (use `event_id` for deduplication where needed)
+
+### 29.5 Subscriber Registry
+
+| Subscriber | Listens To | Queue | Scope |
+|------------|-----------|-------|-------|
+| AuditLogger | All events in audit categories | sync | Core v1 |
+| PlatformEventLogger | All events → `platform_events` table | default | Core v1 |
+| NotificationDispatcher | Events with notification rules | notifications | Core v1 |
+| WebhookDispatcher | Events matching `webhook_subscriptions.events` | webhooks | Core v1 |
+| CommunicationAutomation | Events matching `communication_automations.trigger_event` | default | Expansion Pack |
+| IntegrationSync | Events matching sync mapping rules | integrations | Core v1 |
+| AIContextCollector | Selected events for advisory enrichment | default | Core v1 |
+| SearchIndexer | CUD events on searchable entities | default | Core v1 |
+
+---
+
+## 30. Analytics & Reporting Data Boundary [Core v1 framework]
+
+### 30.1 Connection Strategy
+
+| Query Type | Connection | Latency Target | Examples |
+|------------|-----------|----------------|----------|
+| Transactional reads | Primary DB | < 50ms | Single order lookup, POS product search |
+| List/filter/search | Primary DB | < 200ms | Order list, contact list, message log |
+| Dashboard KPIs | Read replica + materialized views | < 500ms | Sales today, pending deliveries, quota usage |
+| Operational reports | Read replica | < 5s | Sales summary, inventory report, COD reconciliation |
+| Executive analytics | Read replica | < 30s | Revenue trends, churn analysis, campaign metrics |
+| Data exports | Read replica (async job) | Background | CSV/XLSX export, regulatory exports |
+| AI context queries | Read replica | < 2s | Aggregated summaries for AI advisory |
+
+### 30.2 Laravel Configuration
+
+```php
+// config/database.php
+'pgsql' => [
+    'read' => ['host' => env('DB_READ_HOST', env('DB_HOST'))],
+    'write' => ['host' => env('DB_HOST')],
+    // ... shared config
+],
+```
+
+Report services MUST explicitly use `DB::connection('pgsql')->useReadPdo()` or the `readOnly()` scope.
+
+### 30.3 Materialized Views
+
+| View | Refresh Frequency | Source Tables |
+|------|-------------------|--------------|
+| `mv_daily_sales_summary` | Every 5 minutes | `orders`, `order_items` |
+| `mv_inventory_alerts` | Every 15 minutes | `inventory_levels`, `products` |
+| `mv_delivery_daily_stats` | Every 5 minutes | `delivery_assignments`, `cod_collections` |
+| `mv_loyalty_daily_summary` | Every 30 minutes | `loyalty_transactions` |
+| `mv_workspace_usage_stats` | Hourly | `ai_requests`, `outbound_messages`, `media_assets` |
+
+Materialized view refresh is managed by Laravel's task scheduler (`schedule:run`). Refresh commands run on the read replica connection.
+
+### 30.4 Data Warehouse Readiness
+
+Data warehouse (BigQuery/Redshift) is NOT built in v1. Architecture readiness means:
+- All domain events follow a canonical envelope (§29) that can feed a CDC pipeline
+- All tables have `created_at` / `updated_at` timestamps for incremental extract
+- No business logic lives in materialized views — they are performance caches only
+
+---
+
+## 31. Entitlement Resolution Chain [Core v1]
+
+### 31.1 Four-Layer Model
+
+Entitlements are resolved in strict order:
+
+```
+Layer 1: Plan Entitlements — what the subscription plan grants
+    ↓
+Layer 2: Workspace Overrides — platform admin manual overrides
+    ↓
+Layer 3: Role Permissions — RBAC permission check
+    ↓
+Layer 4: Usage Quotas — rate limits and consumption caps
+```
+
+### 31.2 Resolution Logic
+
+```
+can_access(user, feature):
+  1. plan = workspace.active_subscription.plan
+  2. IF plan.features[feature] == false → 402 (upgrade required)
+  3. IF workspace_feature_overrides[feature] exists → use override
+  4. IF user lacks RBAC permission for feature → 403 (forbidden)
+  5. IF feature has usage quota AND quota exhausted → 429 (quota exceeded)
+  6. → ALLOW
+```
+
+### 31.3 Entitlement Types
+
+| Type | Source | Denial Code | Example |
+|------|--------|-------------|---------|
+| Plan entitlement | `subscription_plans.features` | 402 | "Campaigns module requires Business plan" |
+| Workspace override | `workspace_feature_overrides` table (future migration) | N/A (override) | "Campaigns enabled for workspace despite Starter plan" |
+| Role permission | `roles.permissions` + `user_permission_overrides` | 403 | "You don't have marketing.campaigns.create" |
+| Usage quota | `subscription_plans.max_*` + daily counters | 429 | "Daily AI quota exhausted — resets at 00:00 UTC" |
+
+### 31.4 Grace Period Rule
+
+When a workspace downgrades:
+- Gated features remain accessible for **7 days** (configurable)
+- After grace period, features are locked but data is NOT deleted
+- Grace period is tracked via `workspace_subscriptions.grace_ends_at` (existing field)
+
+### 31.5 Trial Rule
+
+- Trial workspaces receive **Business-tier** entitlements for trial duration
+- On trial expiry without payment → downgrade to Free-tier entitlements with 7-day grace
+- Trial status tracked via `workspace_subscriptions.status = 'trialing'`
+
+### 31.6 Implementation
+
+Entitlement resolution is implemented as a single Laravel middleware: `EntitlementMiddleware`.
+
+```
+Route::middleware(['auth', 'workspace', 'entitlement:marketing.campaigns'])
+    ->get('/api/v1/marketing/campaigns', ...);
+```
+
+The middleware calls `EntitlementService::check($user, $featureKey)` which resolves all 4 layers.
+
+---
+
+## 32. Extension Policy [Core v1 policy]
+
+### 32.1 Closed-Core Architecture
+
+SmartBiz AI follows a **closed-core** extension model. No PHP code may be loaded dynamically at runtime.
+
+### 32.2 Extension Types
+
+| Extension Type | Allowed | Mechanism | Who Builds |
+|----------------|---------|-----------|------------|
+| Core modules | ✓ | Direct codebase (Laravel modules) | SmartBiz AI team only |
+| Expansion Packs | ✓ | Feature-flagged modules in same codebase | SmartBiz AI team only |
+| Integration connectors | ✓ | `integration_providers` + `workspace_integrations` | SmartBiz AI team + approved partners |
+| Webhook consumers | ✓ | `webhook_subscriptions` (outbound events) | Any workspace admin |
+| Inbound API integrations | ✓ | Standard REST API with API keys | Any authorized developer |
+| Custom UI plugins | ✗ | Not supported | — |
+| Server-side plugins | ✗ | Not supported | — |
+| Direct DB access | ✗ (forbidden) | — | — |
+
+### 32.3 Marketplace Readiness
+
+Architecture supports future marketplace without core changes:
+- `integration_providers` already has `config_schema` for dynamic credential forms
+- Future additions: `provider_type = 'marketplace'`, `published_by`, `marketplace_listings` table
+- Future: OAuth2 app authorization for third-party scoped data access
+
+### 32.4 Non-Negotiable Rules
+
+1. No runtime code injection — all extensions are data-driven or API-driven
+2. No direct database access for external systems — API only
+3. All integration credentials encrypted at rest (BR-INT-003)
+4. Webhook payloads follow the canonical event envelope (§29.2)
+5. Third-party connectors run in the SmartBiz AI process — there is no plugin sandbox in v1
+
+---
+
+## 33. Task Feed Service [Core v1]
+
+### 33.1 Purpose
+
+A unified "My Tasks" feed that aggregates actionable items from all modules into one view.
+
+### 33.2 Architecture
+
+The task feed is a **read model** — it queries existing source tables, not a separate task entity.
+
+```
+TaskFeedService
+├── queries approval_requests (pending, for current user)
+├── queries delivery_assignments (pending/accepted, for current driver)
+├── queries leave_requests (pending, for current manager)
+├── queries ai_change_requests (pending, for current admin/owner)
+├── queries import_jobs (preview state, for current user)
+├── queries media_assets (draft + ai_generated, for approvers)
+└── merges + sorts by urgency → created_at DESC
+```
+
+### 33.3 Source Entities
+
+| Source Entity | Task Type | Actor | Action |
+|---------------|-----------|-------|--------|
+| `approval_requests` (pending) | `approval` | Approver | Approve/Reject |
+| `delivery_assignments` (pending/accepted) | `delivery` | Driver | Accept/Deliver |
+| `leave_requests` (pending) | `leave_review` | Manager | Approve/Reject |
+| `ai_change_requests` (pending) | `ai_change` | Admin/Owner | Approve/Reject |
+| `import_jobs` (preview) | `import_review` | Importer | Apply/Cancel |
+| `media_assets` (draft, ai_generated) | `media_approval` | Approver | Approve/Reject |
+
+### 33.4 API
+
+```
+GET /api/v1/tasks/my
+  → query: ?type=approval,delivery&status=pending&page=1&page_size=25
+  → response: paginated list of task items
+  → each item: { task_type, entity_type, entity_id, title, created_at, urgency, action_url }
+  → permission: implicit (each source query filters by user's permissions)
+```
+
+### 33.5 Performance
+
+- Each source query is independent and runs in parallel (async gather)
+- Results are merged and sorted in-memory
+- If performance degrades (> 500ms), add `mv_task_feed` materialized view per user
+
+---
+
+*End of infrastructure architecture.*
+
+---
+
+## 34. Advanced Rate Limiting Strategy [Core v1]
+
+> Complements §25 (Rate Limiting Policy) with burst/sustained modeling, per-scope tiers, and abuse detection.
+
+### 34.1 Burst vs Sustained Windows
+
+Each rate limit has two enforcement windows:
+
+| Scope | Burst Window | Burst Limit | Sustained Window | Sustained Limit |
+|-------|-------------|-------------|-----------------|-----------------|
+| Per-user (general API) | 5 seconds | 20 requests | 1 minute | 120 requests |
+| Per-workspace (aggregate) | 5 seconds | 100 requests | 1 minute | 500 requests |
+| Per-endpoint (auth) | 10 seconds | 5 requests | 1 hour | 30 requests |
+| AI chat (per-workspace) | N/A | N/A | 24 hours | Plan-based quota |
+| Webhooks (outbound delivery) | 1 second | 10 deliveries | 1 minute | 100 deliveries |
+
+**Logic**: A request is allowed only if BOTH burst AND sustained windows have remaining capacity. Burst prevents sudden spikes. Sustained prevents gradual abuse.
+
+### 34.2 Redis Sliding Window Implementation
+
+```
+Algorithm: Redis sliding window log (ZSET)
+Key pattern: ratelimit:{scope}:{identifier}:{window}
+  - scope: user, workspace, endpoint, ai
+  - identifier: user_id, workspace_id, IP, etc.
+  - window: burst, sustained
+
+Operations:
+1. ZADD key <timestamp> <request_id>
+2. ZREMRANGEBYSCORE key 0 <window_start>
+3. ZCARD key → current count
+4. IF count >= limit → reject with 429
+```
+
+**Why sliding window (not fixed window)**: Fixed windows allow double the limit at window boundaries. Sliding window provides smooth, accurate throttling.
+
+### 34.3 Per-Plan Rate Limit Tiers
+
+| Plan | General API/min | AI Requests/day | Webhook Deliveries/min | Export Jobs/hour |
+|------|----------------|-----------------|----------------------|-----------------|
+| Free | 60 | 20 | 10 | 2 |
+| Starter | 120 | 100 | 50 | 5 |
+| Business | 300 | 500 | 200 | 20 |
+| Enterprise | 600 | Unlimited | 500 | Unlimited |
+
+Rate limit tiers are derived from `subscription_plans.features` JSONB. The `EntitlementService` (§31) resolves the active plan, and the throttle middleware reads limits from the plan.
+
+### 34.4 Abuse Detection
+
+Beyond per-request throttling, the system monitors for abuse patterns:
+
+| Pattern | Detection | Response |
+|---------|-----------|----------|
+| Sustained 429 responses (>50 in 10 min) | Redis counter on 429 events | Temporary IP block (15 min), platform alert |
+| Credential stuffing (>20 failed logins) | Redis counter per email/IP | CAPTCHA requirement, account lock after 5 more |
+| Scraping (sequential resource enumeration) | Request pattern analysis (async job) | 403 + platform alert |
+| Webhook flood (receiver returning errors) | Circuit breaker on delivery failures | Pause webhook subscription, notify admin |
+
+### 34.5 Response on Limit Exceeded
+
+```
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+Retry-After: 12
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1712714400
+
+{
+  "error_code": "rate_limit",
+  "message": "Too many requests. Please retry after 12 seconds.",
+  "retry_after_seconds": 12
+}
+```
+
+For AI quota exhaustion (daily limit), the response uses `quota_exceeded` error code with `resets_at` timestamp (§6 API contracts, §31.3 entitlement types).
+
+---
+
+## 35. Backup & Disaster Recovery Strategy [Core v1]
+
+### 35.1 Backup Frequency
+
+| Component | Method | Frequency | Retention |
+|-----------|--------|-----------|-----------|
+| PostgreSQL (primary) | Continuous WAL archival (point-in-time recovery) | Continuous | 7 days of WAL segments |
+| PostgreSQL (full snapshot) | `pg_basebackup` to object storage | Daily at 02:00 UTC | 30 days |
+| PostgreSQL (logical dump) | `pg_dump` per-database | Weekly (Sunday 03:00 UTC) | 90 days |
+| Redis | RDB snapshot + AOF | Hourly RDB, continuous AOF | 24 hours (ephemeral cache — loss is acceptable) |
+| Object storage (S3/Spaces) | Provider-managed replication | Continuous (provider SLA) | Indefinite |
+| Application config / secrets | Encrypted backup to separate vault | On every change (CI/CD triggered) | 365 days |
+
+### 35.2 Retention Policy
+
+| Data Class | Minimum Retention | Rationale |
+|------------|-------------------|-----------|
+| Full database backup | 30 days | Covers monthly billing cycles and audit windows |
+| WAL segments (PITR) | 7 days | Allows point-in-time recovery within a week |
+| Logical dumps | 90 days | Quarterly compliance review support |
+| Audit logs (in-database) | Per compliance pack (min 7 years) | Regulatory requirement (BR-CMP-003) |
+| Media assets (object storage) | Indefinite (until workspace deletion) | Customer data retention |
+
+### 35.3 Restore SLA
+
+| Scenario | Target RTO | Target RPO | Procedure |
+|----------|-----------|-----------|-----------|
+| Single table corruption | < 1 hour | < 5 minutes (PITR) | Restore table from PITR to staging → verify → swap |
+| Full database loss (single region) | < 4 hours | < 5 minutes (PITR) | Provision new instance → restore from WAL → validate → DNS switch |
+| Regional outage | < 8 hours | < 1 hour | Promote read replica in secondary region → update DNS |
+| Accidental data deletion (user error) | < 2 hours | < 5 minutes (PITR) | PITR restore of affected tables to point before deletion |
+| Complete infrastructure failure | < 12 hours | < 1 hour | Full rebuild from latest full backup + WAL replay |
+
+> **RTO** = Recovery Time Objective (maximum downtime). **RPO** = Recovery Point Objective (maximum data loss).
+
+### 35.4 Failover Approach
+
+```
+Primary (Region A)
+    ├── PostgreSQL primary (writes + reads)
+    ├── Redis primary (queues + cache)
+    └── Laravel app servers (active)
+         ↓ streaming replication
+Standby (Region B)
+    ├── PostgreSQL read replica (hot standby)
+    ├── Redis replica (read-only)
+    └── Laravel app servers (warm standby — deployed but not receiving traffic)
+```
+
+**Failover trigger conditions**:
+1. Primary database unreachable for > 60 seconds (health check failure)
+2. Primary region network outage confirmed by cloud provider status
+3. Manual failover initiated by platform operator
+
+**Failover procedure**:
+1. Promote PostgreSQL read replica to primary (`pg_ctl promote`)
+2. Update application `DB_HOST` to point to promoted instance (via DNS/load balancer)
+3. Restart Redis with empty cache (cache miss is acceptable — will repopulate)
+4. Route traffic to Region B app servers (DNS failover or load balancer weight shift)
+5. Verify application health checks pass
+6. Notify platform team + broadcast status update
+
+**Failback**: After Region A recovery, establish new replication from B → A, then planned switchover during maintenance window.
+
+### 35.5 Multi-Region Readiness
+
+Multi-region active-active is NOT built in v1. Architecture readiness means:
+
+| Capability | v1 Status | Future-Ready |
+|------------|-----------|-------------|
+| Read replica in secondary region | ✅ Configured | Serves as failover target |
+| Object storage replication | ✅ Provider-managed (S3 cross-region) | Automatic |
+| Application statelessness | ✅ No server-side sessions (JWT + Redis) | Can run in any region |
+| Database write isolation | Single primary | Future: geo-routing via `workspace.region` field |
+| Queue isolation | Single Redis | Future: per-region Redis with cross-region event sync |
+
+### 35.6 Backup Validation
+
+- **Weekly**: Automated restore test to ephemeral environment — verify row counts, run smoke tests
+- **Monthly**: Full disaster recovery drill — simulate primary failure, measure actual RTO/RPO
+- **Quarterly**: Backup integrity audit — verify encryption, retention compliance, access controls
+
+---
+
+*End of backend architecture. Version 3.1 — 2026-04-10. Added §34 advanced rate limiting, §35 backup & disaster recovery.*

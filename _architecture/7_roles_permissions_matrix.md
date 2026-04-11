@@ -386,7 +386,105 @@ reports.executive.view
 reports.executive.export
 ```
 
-**Total workspace permission keys: 217**
+### 4.13 Communications Module (9 keys) [Core v1]
+
+```
+communications.templates.view
+communications.templates.create
+communications.templates.update
+communications.templates.delete
+communications.messages.view
+communications.messages.send
+communications.automations.view
+communications.automations.manage
+communications.logs.export
+```
+
+### 4.14 Marketing Module (14 keys) [Mixed]
+
+```
+marketing.campaigns.view              [Expansion Pack]
+marketing.campaigns.create            [Expansion Pack]
+marketing.campaigns.update            [Expansion Pack]
+marketing.campaigns.delete            [Expansion Pack]
+marketing.campaigns.launch            [Expansion Pack]
+marketing.segments.view               [Core v1]
+marketing.segments.manage             [Core v1]
+marketing.loyalty.view                [Core v1]
+marketing.loyalty.manage              [Core v1]
+marketing.referrals.view              [Expansion Pack]
+marketing.referrals.manage            [Expansion Pack]
+marketing.nurturing.view              [Expansion Pack]
+marketing.nurturing.manage            [Expansion Pack]
+marketing.analytics.view              [Expansion Pack]
+```
+
+### 4.15 Delivery Module (12 keys) [Core v1]
+
+```
+delivery.drivers.view
+delivery.drivers.manage
+delivery.assignments.view
+delivery.assignments.create
+delivery.assignments.update
+delivery.tracking.view
+delivery.proof.view
+delivery.proof.capture
+delivery.cod.view
+delivery.cod.reconcile
+delivery.zones.manage
+delivery.sla.view
+```
+
+### 4.16 Compliance Module (8 keys) [Core v1 framework]
+
+```
+compliance.packs.view
+compliance.packs.install
+compliance.tax_rules.view
+compliance.tax_rules.manage
+compliance.retention.view
+compliance.retention.manage
+compliance.exports.view
+compliance.exports.generate
+```
+
+### 4.17 Media Module (7 keys) [Core v1 basic]
+
+```
+media.assets.view
+media.assets.upload
+media.assets.delete
+media.generation.request
+media.generation.approve
+media.brand_kit.view
+media.brand_kit.manage
+```
+
+### 4.18 Integration Module (10 keys) [Core v1]
+
+```
+integrations.providers.view
+integrations.connections.manage
+integrations.webhooks.view
+integrations.webhooks.manage
+integrations.import.manage
+integrations.export.manage
+integrations.sync.view
+integrations.sync.trigger
+integrations.health.view
+integrations.credentials.manage
+```
+
+### 4.19 AI Knowledge Module (3 keys) [Expansion Pack]
+
+```
+ai.knowledge.view
+ai.knowledge.upload
+ai.knowledge.manage
+```
+
+**Total workspace permission keys: 280** (217 original + 60 expansion + 3 knowledge)
 
 ---
 
@@ -455,7 +553,16 @@ platform.system.jobs
 platform.system.config
 ```
 
-**Total platform permission keys: 33**
+### 5.7 Expansion Domain Management (4 keys)
+
+```
+platform.integrations.catalog.manage
+platform.country_packs.manage
+platform.country_packs.publish
+platform.media.quotas.manage
+```
+
+**Total platform permission keys: 37** (33 original + 4 expansion)
 
 ---
 
@@ -534,6 +641,8 @@ platform.system.config
 | 15 | `employee` | Employee | 20 | false | true |
 | 16 | `investor` | Investor / Executive | 15 | false | true |
 | 17 | `viewer` | Viewer | 10 | false | true |
+| 18 | `dispatcher` | Dispatcher | 45 | false | true |
+| 19 | `driver` | Driver | 30 | false | true |
 
 ### 7.2 Role Assignment Rules
 
@@ -574,6 +683,8 @@ platform.system.config
 | EMP | employee |
 | INV | investor |
 | VW | viewer |
+| DSP | dispatcher |
+| DRV | driver |
 
 ---
 
@@ -844,7 +955,97 @@ platform.system.config
 | reports.financial.view | ws | ws | ws | branch | - | - | ws | - | - | - | - | - | - | - | - | ws | - |
 | reports.financial.export | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | ws | - |
 | reports.executive.view | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | ws | - |
-| reports.executive.export | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | ws | - |
+| reports.executive.export | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | ws | - | - | - |
+
+### 8.13 Communications Module [Core v1]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| communications.templates.view | ws | ws | ws | ws | ws | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - |
+| communications.templates.create | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| communications.templates.update | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| communications.templates.delete | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| communications.messages.view | ws | ws | ws | branch | dept | ws | ws | ws | own | - | - | - | - | - | - | - | - | - | - |
+| communications.messages.send | ws | ws | ws | branch | - | ws | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| communications.automations.view | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| communications.automations.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| communications.logs.export | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+
+### 8.14 Marketing Module [Mixed]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| marketing.campaigns.view | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.campaigns.create | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.campaigns.update | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.campaigns.delete | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.campaigns.launch | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.segments.view | ws | ws | ws | branch | - | - | - | ws | ws | - | - | - | - | - | - | - | - | - | - |
+| marketing.segments.manage | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.loyalty.view | ws | ws | ws | branch | - | - | - | ws | ws | - | - | - | - | ws | - | - | - | - | - |
+| marketing.loyalty.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.referrals.view | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.referrals.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.nurturing.view | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.nurturing.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| marketing.analytics.view | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | ws | - | - | - |
+
+### 8.15 Delivery Module [Core v1]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| delivery.drivers.view | ws | ws | ws | branch | - | - | - | - | - | - | ws | - | - | - | - | - | - | ws | own |
+| delivery.drivers.manage | ws | ws | ws | branch | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| delivery.assignments.view | ws | ws | ws | branch | - | - | - | ws | - | - | ws | - | - | - | - | - | - | ws | own |
+| delivery.assignments.create | ws | ws | ws | branch | - | - | - | ws | - | - | ws | - | - | - | - | - | - | ws | - |
+| delivery.assignments.update | ws | ws | ws | branch | - | - | - | - | - | - | - | - | - | - | - | - | - | ws | own |
+| delivery.tracking.view | ws | ws | ws | branch | - | - | - | ws | - | - | ws | - | - | - | - | - | - | ws | own |
+| delivery.proof.view | ws | ws | ws | branch | - | - | - | ws | - | - | ws | - | - | - | - | - | - | ws | own |
+| delivery.proof.capture | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | own |
+| delivery.cod.view | ws | ws | ws | branch | - | - | ws | - | - | - | ws | - | - | - | - | - | - | ws | own |
+| delivery.cod.reconcile | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - | - |
+| delivery.zones.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| delivery.sla.view | ws | ws | ws | branch | - | - | - | ws | - | - | ws | - | - | - | - | - | - | ws | - |
+
+### 8.16 Compliance Module [Core v1 framework]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| compliance.packs.view | ws | ws | ws | - | - | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - |
+| compliance.packs.install | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| compliance.tax_rules.view | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | ws | - | - | - |
+| compliance.tax_rules.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| compliance.retention.view | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - | - |
+| compliance.retention.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| compliance.exports.view | ws | ws | ws | - | - | ws | ws | - | - | - | - | - | - | - | - | ws | - | - | - |
+| compliance.exports.generate | ws | ws | ws | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - | - |
+
+### 8.17 Media Module [Core v1 basic]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| media.assets.view | ws | ws | ws | ws | ws | ws | ws | ws | ws | - | - | - | - | - | - | - | - | - | - |
+| media.assets.upload | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| media.assets.delete | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| media.generation.request | ws | ws | ws | - | - | - | - | ws | - | - | - | - | - | - | - | - | - | - | - |
+| media.generation.approve | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| media.brand_kit.view | ws | ws | ws | ws | ws | ws | ws | ws | ws | - | - | - | - | - | - | - | - | - | - |
+| media.brand_kit.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+
+### 8.18 Integration Module [Core v1]
+
+| Permission | OWN | COW | ADM | BRM | DH | HRM | ACC | SM | SR | PO | WHM | WHS | PRM | CSH | EMP | INV | VW | DSP | DRV |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| integrations.providers.view | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.connections.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.webhooks.view | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.webhooks.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.import.manage | ws | ws | ws | - | - | - | ws | - | - | ws | ws | - | - | - | - | - | - | - | - |
+| integrations.export.manage | ws | ws | ws | - | - | ws | ws | - | - | - | - | - | - | - | - | ws | - | - | - |
+| integrations.sync.view | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.sync.trigger | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.health.view | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| integrations.credentials.manage | ws | ws | ws | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
 
 ---
 
