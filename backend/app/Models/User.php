@@ -2,31 +2,75 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+/**
+ * SmartBiz AI User model.
+ *
+ * Maps to the live `users` table which uses the membership model (migration 006+).
+ * Auth is via email + password_hash. Workspace access is via workspace_memberships.
+ *
+ * @property string $id
+ * @property string $full_name
+ * @property string $email
+ * @property string $phone_number
+ * @property string $password_hash
+ * @property bool $is_active
+ * @property string|null $preferred_locale
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasUuids;
+
+    protected $table = 'users';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Override Laravel's default password column name.
+     * The live DB uses `password_hash`, not `password`.
      */
+    public function getAuthPassword(): string
+    {
+        return $this->password_hash;
+    }
+
+    protected $fillable = [
+        'full_name',
+        'email',
+        'phone_number',
+        'password_hash',
+        'is_active',
+        'preferred_locale',
+    ];
+
+    protected $hidden = [
+        'password_hash',
+    ];
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'is_active' => 'boolean',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
+    }
+
+    // ── Relationships ──────────────────────────────────────────
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(WorkspaceMembership::class, 'user_id');
+    }
+
+    public function activeMemberships(): HasMany
+    {
+        return $this->memberships()->where('status', 'active');
     }
 }
