@@ -95,6 +95,7 @@ class FoundationSeeder extends Seeder
                 'notifications.list', 'notifications.update',
                 'audit.list', 'audit.show',
                 'reports.view',
+                'discovery.manage',
             ]),
             'description'     => 'Full administrative access',
             'hierarchy_level' => 1,

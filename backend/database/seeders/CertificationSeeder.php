@@ -170,6 +170,7 @@ class CertificationSeeder extends Seeder
             'notifications.list','notifications.update',
             'audit.list','audit.show',
             'reports.view',
+            'discovery.manage',
         ];
 
         $readOnly = array_filter($allPerms, fn ($p) =>
@@ -298,7 +299,7 @@ class CertificationSeeder extends Seeder
             $r['is_deletable'] = false;
             $r['created_at']   = now();
             $r['updated_at']   = now();
-            DB::table('roles')->insertOrIgnore($r);
+            DB::table('roles')->upsert($r, ['id'], ['permissions', 'updated_at']);
         }
     }
 

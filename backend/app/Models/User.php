@@ -19,6 +19,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $phone_number
  * @property string $password_hash
  * @property bool $is_active
+ * @property bool $is_super_admin
  * @property string|null $preferred_locale
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
@@ -46,17 +47,20 @@ class User extends Authenticatable
         'phone_number',
         'password_hash',
         'is_active',
+        'is_super_admin',
         'preferred_locale',
     ];
 
     protected $hidden = [
         'password_hash',
+        'is_super_admin',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'is_super_admin' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

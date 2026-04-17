@@ -5,6 +5,11 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BomController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DiscoveryController;
+use App\Http\Controllers\Api\ProvisioningController;
+use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\WebhookController;
+use App\Http\Middleware\SuperAdminMiddleware;
 use App\Http\Controllers\Api\InventoryMovementController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\JournalEntryController;
@@ -206,5 +211,74 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/account-balances',  [ReportingController::class, 'accountBalances'])->middleware(CheckPermission::class . ':reports.view')->name('reports.accounts');
             Route::get('/receivable-payable',[ReportingController::class, 'receivablePayable'])->middleware(CheckPermission::class . ':reports.view')->name('reports.receivable');
         });
+
+        // ── AI Discovery Sessions ──────────────────────────────────
+        Route::prefix('discovery/sessions')->middleware(CheckPermission::class . ':discovery.manage')->group(function () {
+            Route::get('/',                          [DiscoveryController::class, 'index'])->name('discovery.index');
+            Route::get('/{id}',                      [DiscoveryController::class, 'show'])->name('discovery.show');
+            Route::post('/',                         [DiscoveryController::class, 'start'])->name('discovery.start');
+            Route::post('/{id}/answer',              [DiscoveryController::class, 'answer'])->name('discovery.answer');
+            Route::post('/{id}/classify',            [DiscoveryController::class, 'classify'])->name('discovery.classify');
+            Route::post('/{id}/generate-blueprint',  [DiscoveryController::class, 'generateBlueprint'])->name('discovery.generate');
+            Route::get('/{id}/blueprint',            [DiscoveryController::class, 'showBlueprint'])->name('discovery.blueprint');
+        });
+
+        // ── ERP Provisioning ───────────────────────────────────────
+        Route::prefix('provisioning')->middleware(CheckPermission::class . ':discovery.manage')->group(function () {
+            Route::post('/preview',       [ProvisioningController::class, 'preview'])->name('provisioning.preview');
+            Route::post('/apply',         [ProvisioningController::class, 'apply'])->name('provisioning.apply');
+            Route::post('/rollback',      [ProvisioningController::class, 'rollback'])->name('provisioning.rollback');
+            Route::get('/config',         [ProvisioningController::class, 'config'])->name('provisioning.config');
+            Route::put('/modules',        [ProvisioningController::class, 'updateModules'])->name('provisioning.modules');
+            Route::put('/roles/{role}',   [ProvisioningController::class, 'updateRole'])->name('provisioning.roles');
+        });
+
+        // ── Manual Payment Submission ──────────────────────────────
+        Route::post('/billing/manual-payment', [SuperAdminController::class, 'submitManualPayment'])
+            ->name('billing.manual-payment');
     });
 });
+
+// ══════════════════════════════════════════════════════════════
+// Super-Admin Routes (platform-level, no workspace context)
+// ══════════════════════════════════════════════════════════════
+Route::prefix('admin')->middleware(['auth:sanctum', SuperAdminMiddleware::class])->group(function () {
+    // Dashboard
+    Route::get('/dashboard',                           [SuperAdminController::class, 'dashboard'])->name('admin.dashboard');
+
+    // Workspaces
+    Route::get('/workspaces',                          [SuperAdminController::class, 'listWorkspaces'])->name('admin.workspaces.index');
+    Route::get('/workspaces/{id}',                     [SuperAdminController::class, 'showWorkspace'])->name('admin.workspaces.show');
+    Route::put('/workspaces/{id}/subscription',        [SuperAdminController::class, 'updateSubscription'])->name('admin.workspaces.subscription');
+    Route::put('/workspaces/{id}/trial',               [SuperAdminController::class, 'updateTrial'])->name('admin.workspaces.trial');
+    Route::put('/workspaces/{id}/status',              [SuperAdminController::class, 'updateWorkspaceStatus'])->name('admin.workspaces.status');
+    Route::put('/workspaces/{id}/features',            [SuperAdminController::class, 'updateFeatures'])->name('admin.workspaces.features');
+    Route::post('/workspaces/{id}/credits',            [SuperAdminController::class, 'adjustCredits'])->name('admin.workspaces.credits');
+
+    // Plans
+    Route::get('/plans',                               [SuperAdminController::class, 'listPlans'])->name('admin.plans.index');
+    Route::post('/plans',                              [SuperAdminController::class, 'createPlan'])->name('admin.plans.create');
+    Route::put('/plans/{id}',                          [SuperAdminController::class, 'updatePlan'])->name('admin.plans.update');
+    Route::post('/plans/{id}/prices',                  [SuperAdminController::class, 'addPricing'])->name('admin.plans.pricing');
+
+    // Settings
+    Route::get('/settings',                            [SuperAdminController::class, 'getSettings'])->name('admin.settings.index');
+    Route::put('/settings',                            [SuperAdminController::class, 'updateSettings'])->name('admin.settings.update');
+
+    // Monitoring
+    Route::get('/high-usage',                          [SuperAdminController::class, 'highUsage'])->name('admin.high-usage');
+
+    // Billing management
+    Route::post('/workspaces/{id}/setup-billing',      [SuperAdminController::class, 'setupBilling'])->name('admin.workspaces.setup-billing');
+    Route::get('/workspaces/{id}/payments',             [SuperAdminController::class, 'paymentHistory'])->name('admin.workspaces.payments');
+
+    // Manual payments
+    Route::get('/manual-payments',                     [SuperAdminController::class, 'listManualPayments'])->name('admin.manual-payments.index');
+    Route::post('/manual-payments/{id}/confirm',       [SuperAdminController::class, 'confirmManualPayment'])->name('admin.manual-payments.confirm');
+    Route::post('/manual-payments/{id}/reject',        [SuperAdminController::class, 'rejectManualPayment'])->name('admin.manual-payments.reject');
+});
+
+// ══════════════════════════════════════════════════════════════
+// Webhooks (no authentication — signature-verified)
+// ══════════════════════════════════════════════════════════════
+Route::post('/webhooks/stripe', [WebhookController::class, 'handleStripe'])->name('webhooks.stripe');

@@ -20,8 +20,17 @@ class NotificationsTest extends SmartBizTestCase
     /** F07 — Mark single notification as read */
     public function test_mark_single_notification_read(): void
     {
-        $notifId = 'c3100000-0000-0000-0000-000000000001'; // seeded for admin user
-        $response = $this->wsPost("/api/notifications/{$notifId}/read");
+        // Create a notification for this workspace/user
+        $notif = \App\Models\Notification::create([
+            'workspace_id' => \Database\Seeders\FoundationSeeder::WORKSPACE_ID,
+            'user_id'      => \Database\Seeders\FoundationSeeder::USER_ID,
+            'title'        => 'Test notification',
+            'message'      => 'This is a test notification',
+            'type'         => 'info',
+            'is_read'      => false,
+        ]);
+
+        $response = $this->wsPost("/api/notifications/{$notif->id}/read");
         $response->assertOk()
             ->assertJsonPath('data.is_read', true);
     }
