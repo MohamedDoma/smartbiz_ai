@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AiChatController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BomController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\DiscoveryController;
 use App\Http\Controllers\Api\ProvisioningController;
 use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Middleware\CheckAiCredits;
 use App\Http\Middleware\SuperAdminMiddleware;
 use App\Http\Controllers\Api\InventoryMovementController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -42,7 +44,12 @@ use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────────────────────
 
+// Health check (unauthenticated — for load balancers & monitoring)
+Route::get('/health', \App\Http\Controllers\Api\HealthController::class)
+    ->name('health');
+
 Route::post('/auth/login', [AuthController::class, 'login'])
+    ->middleware('throttle:auth')
     ->name('auth.login');
 
 // ── Authenticated (no workspace required) ───────────────────────
@@ -236,13 +243,31 @@ Route::middleware('auth:sanctum')->group(function () {
         // ── Manual Payment Submission ──────────────────────────────
         Route::post('/billing/manual-payment', [SuperAdminController::class, 'submitManualPayment'])
             ->name('billing.manual-payment');
+
+        // ── AI Chat ──────────────────────────────────────────────────
+        Route::prefix('ai')->middleware('throttle:ai')->group(function () {
+            Route::post('/chat',           [AiChatController::class, 'chat'])->middleware(CheckAiCredits::class . ':ai_chat')->name('ai.chat');
+            Route::get('/history',         [AiChatController::class, 'history'])->name('ai.history');
+            Route::post('/confirm-action', [AiChatController::class, 'confirmAction'])->name('ai.confirm');
+            Route::post('/reject-action',  [AiChatController::class, 'rejectAction'])->name('ai.reject');
+            Route::get('/insights',                [AiChatController::class, 'insights'])->name('ai.insights');
+            Route::post('/insights/generate',      [AiChatController::class, 'generateInsights'])->name('ai.insights.generate');
+            Route::post('/insights/{id}/dismiss',  [AiChatController::class, 'dismissInsight'])->name('ai.insights.dismiss');
+
+            // AI Advisor
+            Route::get('/advisor/recommendations',   [\App\Http\Controllers\Api\AiAdvisorController::class, 'index'])->name('ai.advisor.recommendations');
+            Route::post('/advisor/run-analysis',     [\App\Http\Controllers\Api\AiAdvisorController::class, 'runAnalysis'])->name('ai.advisor.run');
+            Route::post('/advisor/{id}/accept',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'accept'])->name('ai.advisor.accept');
+            Route::post('/advisor/{id}/reject',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'reject'])->name('ai.advisor.reject');
+            Route::post('/advisor/{id}/apply',       [\App\Http\Controllers\Api\AiAdvisorController::class, 'apply'])->name('ai.advisor.apply');
+        });
     });
 });
 
 // ══════════════════════════════════════════════════════════════
 // Super-Admin Routes (platform-level, no workspace context)
 // ══════════════════════════════════════════════════════════════
-Route::prefix('admin')->middleware(['auth:sanctum', SuperAdminMiddleware::class])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'throttle:admin', SuperAdminMiddleware::class])->group(function () {
     // Dashboard
     Route::get('/dashboard',                           [SuperAdminController::class, 'dashboard'])->name('admin.dashboard');
 

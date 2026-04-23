@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CorrelationIdMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,8 +12,19 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withProviders([
+        \App\Providers\RateLimitServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+
+        // Correlation ID on every request
+        $middleware->prepend(CorrelationIdMiddleware::class);
+
+        // Enforce HTTPS in production
+        if (app()->environment('production')) {
+            $middleware->prepend(\Illuminate\Http\Middleware\TrustProxies::class);
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Unique constraint violations (duplicate SKU, invoice_number, etc.)
@@ -63,6 +75,24 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Rate limit exceeded
+        $exceptions->renderable(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e) {
+            return response()->json([
+                'message' => 'Too many requests. Please slow down.',
+                'error'   => 'rate_limited',
+                'retry_after' => $e->getHeaders()['Retry-After'] ?? 60,
+            ], 429);
+        });
+
+        // Validation errors
+        $exceptions->renderable(function (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'error'   => 'validation_error',
+                'errors'  => $e->errors(),
+            ], 422);
+        });
+
         // Custom workspace/permission exceptions
         $exceptions->renderable(function (\App\Exceptions\WorkspaceRequiredException $e) {
             return response()->json(['message' => $e->getMessage(), 'error' => 'workspace_required'], 400);
@@ -83,4 +113,26 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->renderable(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'Resource not found.', 'error' => 'not_found'], 404);
         });
+
+        // Authentication
+        $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e) {
+            return response()->json(['message' => 'Unauthenticated.', 'error' => 'unauthenticated'], 401);
+        });
+
+        // Generic fallback for production
+        if (! config('app.debug')) {
+            $exceptions->renderable(function (\Throwable $e) {
+                if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+                    return response()->json([
+                        'message' => $e->getMessage() ?: 'An error occurred.',
+                        'error'   => 'http_error',
+                    ], $e->getStatusCode());
+                }
+
+                return response()->json([
+                    'message' => 'An internal error occurred.',
+                    'error'   => 'internal_error',
+                ], 500);
+            });
+        }
     })->create();

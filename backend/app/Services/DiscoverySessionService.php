@@ -5,14 +5,82 @@ namespace App\Services;
 use App\Models\DiscoveryBlueprint;
 use App\Models\DiscoveryMessage;
 use App\Models\DiscoverySession;
+use App\Services\Ai\LlmService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DiscoverySessionService
 {
     public function __construct(
         private readonly BlueprintGeneratorService $blueprintGenerator,
+        private readonly ?LlmService              $llm = null,
     ) {}
+
+    /**
+     * LLM-enhanced classification: uses LLM to classify business type.
+     * Falls back to rule-based if LLM is unavailable.
+     */
+    public function classifyWithLlm(DiscoverySession $session): array
+    {
+        if (! $this->llm) {
+            return $this->blueprintGenerator->classifyBusiness($session->business_description, $this->gatherContext($session));
+        }
+
+        try {
+            $context = $this->gatherContext($session);
+            $contextStr = implode("\n", array_map(fn($c) => "- {$c['content']}", $context));
+
+            $response = $this->llm->chat([
+                ['role' => 'system', 'content' => 'You are a business classification expert. Classify the business type from the description. Return ONLY a JSON object with keys: business_type (string), confidence (int 0-100), reasoning (string). Valid types: retail, restaurant, services, manufacturing, wholesale, healthcare, education, technology, logistics, hospitality, construction, agriculture, real_estate, consulting, general.'],
+                ['role' => 'user', 'content' => "Business description: {$session->business_description}\n\nAdditional context:\n{$contextStr}"],
+            ], ['temperature' => 0.1, 'max_tokens' => 200]);
+
+            $parsed = json_decode($response->content, true);
+            if ($parsed && isset($parsed['business_type'])) {
+                return [
+                    'business_type' => $parsed['business_type'],
+                    'confidence'    => $parsed['confidence'] ?? 80,
+                    'method'        => 'llm_classification',
+                    'version'       => '1.0.0',
+                    'provider'      => $response->provider,
+                    'model'         => $response->model,
+                    'reasoning'     => $parsed['reasoning'] ?? null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('LLM classification failed, falling back to rule-based', ['error' => $e->getMessage()]);
+        }
+
+        return $this->blueprintGenerator->classifyBusiness($session->business_description, $this->gatherContext($session));
+    }
+
+    /**
+     * LLM-enhanced follow-up question generation.
+     */
+    public function generateFollowUpsWithLlm(string $description, array $context = []): array
+    {
+        if (! $this->llm) {
+            return $this->blueprintGenerator->generateFollowUpQuestions($description, $context);
+        }
+
+        try {
+            $contextStr = implode("\n", array_map(fn($c) => "- {$c['content']}", $context));
+            $response = $this->llm->chat([
+                ['role' => 'system', 'content' => 'You are a business discovery expert. Generate follow-up questions to better understand this business. Return a JSON array of objects with keys: question (string), purpose (string). Max 5 questions. Focus on: business scale, key processes, team structure, technology needs, and compliance requirements.'],
+                ['role' => 'user', 'content' => "Business: {$description}\n\nAlready gathered:\n{$contextStr}"],
+            ], ['temperature' => 0.5, 'max_tokens' => 500]);
+
+            $parsed = json_decode($response->content, true);
+            if (is_array($parsed) && count($parsed) > 0) {
+                return $parsed;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('LLM follow-up generation failed, falling back to rule-based', ['error' => $e->getMessage()]);
+        }
+
+        return $this->blueprintGenerator->generateFollowUpQuestions($description, $context);
+    }
 
     /**
      * List all discovery sessions for a workspace.

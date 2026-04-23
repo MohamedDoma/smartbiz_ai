@@ -19,6 +19,12 @@ class AppServiceProvider extends ServiceProvider
 
         // PermissionResolver is stateless — singleton for performance.
         $this->app->singleton(PermissionResolver::class);
+
+        // AI: LLM provider resolved from env (AI_PROVIDER=openai|anthropic|fake)
+        $this->app->singleton(
+            \App\Services\Ai\LlmProviderInterface::class,
+            fn () => \App\Services\Ai\LlmService::resolveProvider(),
+        );
     }
 
     /**
@@ -26,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register event subscribers
+        \Illuminate\Support\Facades\Event::subscribe(\App\Listeners\EmailEventSubscriber::class);
     }
 }

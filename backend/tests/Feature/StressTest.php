@@ -17,9 +17,22 @@ class StressTest extends SmartBizTestCase
     // Part A — Load / Throughput (in-process rapid fire)
     // ═══════════════════════════════════════════════════════════════
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Clear rate limiters so throughput tests aren't throttled
+        app(\Illuminate\Cache\RateLimiter::class)->clear(request()->ip());
+    }
+
     /** L01 — Login throughput: 20 rapid logins */
     public function test_l01_login_throughput(): void
     {
+        // Temporarily increase auth rate limit for throughput testing
+        \Illuminate\Support\Facades\RateLimiter::for('auth', function () {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(100)->by('stress-test');
+        });
+
         $start = microtime(true);
         $ok = 0;
 
