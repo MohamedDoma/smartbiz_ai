@@ -179,13 +179,31 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.primarySurface,
-        labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(
+        surfaceTintColor: Colors.transparent,
+        elevation: 1,
+        height: 64,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: AppColors.primary, size: 22);
+          }
+          return const IconThemeData(color: AppColors.neutral500, size: 22);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(
+              fontFamily: GoogleFonts.inter().fontFamily,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            );
+          }
+          return TextStyle(
             fontFamily: GoogleFonts.inter().fontFamily,
             fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+            fontWeight: FontWeight.w400,
+            color: AppColors.neutral500,
+          );
+        }),
       ),
 
       // Snackbar

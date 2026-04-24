@@ -1,4 +1,4 @@
-/// Reusable shell state cards.
+// SmartBiz AI — Reusable shell state widgets.
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -44,14 +44,14 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 56, color: AppColors.neutral300),
             const SizedBox(height: AppSpacing.base),
-            Text(title, style: AppTypography.headingSmall.copyWith(color: AppColors.textSecondary)),
+            Text(title, style: AppTypography.headingSmall.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
             if (subtitle != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(subtitle!, style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary), textAlign: TextAlign.center),
@@ -77,7 +77,7 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -117,7 +117,7 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -149,7 +149,7 @@ class MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: AppSpacing.cardPadding,
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -157,12 +157,12 @@ class MetricCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(icon, size: 20, color: AppColors.primary),
+                  child: Icon(icon, size: 18, color: AppColors.primary),
                 ),
                 const Spacer(),
                 if (delta != null)
@@ -172,10 +172,10 @@ class MetricCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            Text(value, style: AppTypography.displayMedium),
-            const SizedBox(height: AppSpacing.xs),
-            Text(label, style: AppTypography.bodySmall),
+            const SizedBox(height: AppSpacing.sm),
+            Text(value, style: AppTypography.headingLarge),
+            const SizedBox(height: 2),
+            Text(label, style: AppTypography.bodySmall, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

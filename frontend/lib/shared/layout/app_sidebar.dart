@@ -1,23 +1,49 @@
-/// SmartBiz AI — Left sidebar for desktop/tablet.
+// SmartBiz AI — Left sidebar with localization + role filtering.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/navigation/nav_model.dart';
 import '../../core/navigation/shell_state.dart';
+import '../../core/state/app_state.dart';
 import '../../core/responsive.dart';
 
 class AppSidebar extends StatelessWidget {
   final void Function(int index) onItemTap;
+  final bool forceExpanded;
 
-  const AppSidebar({super.key, required this.onItemTap});
+  const AppSidebar({
+    super.key,
+    required this.onItemTap,
+    this.forceExpanded = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final shell = context.watch<ShellState>();
-    final expanded = shell.sidebarExpanded && Responsive.isDesktop(context);
-    final width = expanded ? Responsive.sidebarWidth : Responsive.sidebarCollapsed;
+    final appState = context.watch<AppState>();
+    final isInDrawer = forceExpanded;
+    final expanded = isInDrawer || (shell.sidebarExpanded && Responsive.isDesktop(context));
+    final width = isInDrawer ? double.infinity : (expanded ? Responsive.sidebarWidth : Responsive.sidebarCollapsed);
+
+    final content = Column(
+      children: [
+        _buildHeader(context, expanded),
+        const Divider(height: 1, color: AppColors.divider),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            children: _buildNavItems(context, shell, appState, expanded),
+          ),
+        ),
+        if (!isInDrawer && Responsive.isDesktop(context))
+          _buildCollapseToggle(context, expanded),
+      ],
+    );
+
+    if (isInDrawer) return content;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -26,29 +52,11 @@ class AppSidebar extends StatelessWidget {
         color: AppColors.surface,
         border: Border(right: BorderSide(color: AppColors.divider)),
       ),
-      child: Column(
-        children: [
-          // Logo / Brand
-          _buildHeader(expanded),
-          const Divider(height: 1, color: AppColors.divider),
-
-          // Navigation
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              children: _buildNavItems(context, shell, expanded),
-            ),
-          ),
-
-          // Collapse toggle (desktop only)
-          if (Responsive.isDesktop(context))
-            _buildCollapseToggle(context, expanded),
-        ],
-      ),
+      child: content,
     );
   }
 
-  Widget _buildHeader(bool expanded) {
+  Widget _buildHeader(BuildContext context, bool expanded) {
     return SizedBox(
       height: 64,
       child: Padding(
@@ -77,8 +85,12 @@ class AppSidebar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('SmartBiz', style: AppTypography.headingSmall),
-                    Text('AI', style: AppTypography.caption.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600, letterSpacing: 1)),
+                    Text(tr(context, 'app_name'), style: AppTypography.headingSmall, overflow: TextOverflow.ellipsis),
+                    Text(
+                      context.read<AppState>().currentRole.label(context.read<AppState>().uiLanguage),
+                      style: AppTypography.caption.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -89,52 +101,53 @@ class AppSidebar extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildNavItems(BuildContext context, ShellState shell, bool expanded) {
+  List<Widget> _buildNavItems(BuildContext context, ShellState shell, AppState appState, bool expanded) {
     final items = <Widget>[];
     int flatIndex = 0;
 
     for (final section in appNavigation) {
-      // Section header
+      // Collect visible items in this section
+      final visibleItems = section.items.where((item) => appState.currentRole.canSee(item.id)).toList();
+      if (visibleItems.isEmpty) continue;
+
       if (expanded) {
         items.add(Padding(
           padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xs),
-          child: Text(section.title.toUpperCase(), style: AppTypography.labelSmall),
+          child: Text(tr(context, section.titleKey).toUpperCase(), style: AppTypography.labelSmall),
         ));
       } else {
         items.add(const SizedBox(height: AppSpacing.md));
       }
 
-      for (final item in section.items) {
+      for (final item in visibleItems) {
         final index = flatIndex;
-        final selected = shell.selectedIndex == index;
-
         items.add(_NavTile(
-          item: item,
-          selected: selected,
+          label: tr(context, item.labelKey),
+          icon: item.icon,
+          selected: shell.selectedIndex == index,
           expanded: expanded,
           onTap: () => onItemTap(index),
         ));
-
         flatIndex++;
       }
     }
 
     // Super admin section
-    if (shell.isSuperAdmin) {
+    if (appState.isSuperAdmin) {
       if (expanded) {
         items.add(const Divider(indent: 16, endIndent: 16));
         items.add(Padding(
           padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xs),
-          child: Text(superAdminNav.title.toUpperCase(), style: AppTypography.labelSmall.copyWith(color: AppColors.warning)),
+          child: Text(tr(context, superAdminNav.titleKey).toUpperCase(), style: AppTypography.labelSmall.copyWith(color: AppColors.warning)),
         ));
       }
       for (final item in superAdminNav.items) {
-        final index = flatIndex;
         items.add(_NavTile(
-          item: item,
-          selected: shell.selectedIndex == index,
+          label: tr(context, item.labelKey),
+          icon: item.icon,
+          selected: shell.selectedIndex == flatIndex,
           expanded: expanded,
-          onTap: () => onItemTap(index),
+          onTap: () => onItemTap(flatIndex),
         ));
         flatIndex++;
       }
@@ -163,13 +176,15 @@ class AppSidebar extends StatelessWidget {
 }
 
 class _NavTile extends StatelessWidget {
-  final NavItem item;
+  final String label;
+  final IconData icon;
   final bool selected;
   final bool expanded;
   final VoidCallback onTap;
 
   const _NavTile({
-    required this.item,
+    required this.label,
+    required this.icon,
     required this.selected,
     required this.expanded,
     required this.onTap,
@@ -177,17 +192,24 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = selected ? AppColors.primarySurface : Colors.transparent;
+    final iconColor = selected ? AppColors.primary : AppColors.neutral500;
+    final textColor = selected ? AppColors.primary : AppColors.neutral700;
+    final fontWeight = selected ? FontWeight.w600 : FontWeight.w500;
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: expanded ? AppSpacing.sm : AppSpacing.xs,
         vertical: 1,
       ),
       child: Material(
-        color: selected ? AppColors.primarySurface : Colors.transparent,
+        color: bgColor,
         borderRadius: BorderRadius.circular(AppSpacing.sm),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppSpacing.sm),
+          splashColor: AppColors.primary.withValues(alpha: 0.08),
+          highlightColor: AppColors.primary.withValues(alpha: 0.05),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: expanded ? AppSpacing.md : 0,
@@ -196,23 +218,17 @@ class _NavTile extends StatelessWidget {
             child: expanded
                 ? Row(
                     children: [
-                      Icon(item.icon, size: 20, color: selected ? AppColors.primary : AppColors.neutral500),
+                      Icon(icon, size: 20, color: iconColor),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: Text(
-                          item.label,
-                          style: AppTypography.labelLarge.copyWith(
-                            color: selected ? AppColors.primary : AppColors.neutral700,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                          ),
-                        ),
+                        child: Text(label, style: AppTypography.labelLarge.copyWith(color: textColor, fontWeight: fontWeight), overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   )
                 : Center(
                     child: Tooltip(
-                      message: item.label,
-                      child: Icon(item.icon, size: 22, color: selected ? AppColors.primary : AppColors.neutral500),
+                      message: label,
+                      child: Icon(icon, size: 22, color: iconColor),
                     ),
                   ),
           ),

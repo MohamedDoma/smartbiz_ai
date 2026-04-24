@@ -25,6 +25,14 @@ class AppTypography {
     height: 1.25,
   );
 
+  static TextStyle displaySmall = TextStyle(
+    fontFamily: _fontFamily,
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    height: 1.25,
+  );
+
   // ── Heading ──────────────────────────────────────────────
   static TextStyle headingLarge = TextStyle(
     fontFamily: _fontFamily,

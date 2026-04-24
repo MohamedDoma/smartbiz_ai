@@ -1,55 +1,53 @@
-/// Navigation model — role-aware ERP navigation items.
+// SmartBiz AI — Navigation model with localization keys.
 import 'package:flutter/material.dart';
 
 class NavItem {
   final String id;
-  final String label;
+  final String labelKey; // Localization key
   final IconData icon;
   final String route;
-  final List<String> requiredRoles; // empty = all roles
   final bool superAdminOnly;
 
   const NavItem({
     required this.id,
-    required this.label,
+    required this.labelKey,
     required this.icon,
     required this.route,
-    this.requiredRoles = const [],
     this.superAdminOnly = false,
   });
 }
 
 class NavSection {
-  final String title;
+  final String titleKey; // Localization key
   final List<NavItem> items;
 
-  const NavSection({required this.title, required this.items});
+  const NavSection({required this.titleKey, required this.items});
 }
 
 /// All navigation sections for the ERP shell.
 const List<NavSection> appNavigation = [
-  NavSection(title: 'Core', items: [
-    NavItem(id: 'dashboard',  label: 'Dashboard',  icon: Icons.dashboard_outlined,           route: '/dashboard'),
-    NavItem(id: 'ai_chat',    label: 'AI Chat',    icon: Icons.auto_awesome_outlined,        route: '/ai-chat'),
-    NavItem(id: 'advisor',    label: 'Advisor',    icon: Icons.lightbulb_outlined,           route: '/advisor'),
+  NavSection(titleKey: 'nav_section_core', items: [
+    NavItem(id: 'dashboard',  labelKey: 'nav_dashboard',  icon: Icons.dashboard_outlined,           route: '/dashboard'),
+    NavItem(id: 'ai_chat',    labelKey: 'nav_ai_chat',    icon: Icons.auto_awesome_outlined,        route: '/ai-chat'),
+    NavItem(id: 'advisor',    labelKey: 'nav_advisor',    icon: Icons.lightbulb_outlined,           route: '/advisor'),
   ]),
-  NavSection(title: 'Business', items: [
-    NavItem(id: 'sales',      label: 'Sales',      icon: Icons.point_of_sale_outlined,       route: '/sales'),
-    NavItem(id: 'products',   label: 'Products',   icon: Icons.inventory_2_outlined,         route: '/products'),
-    NavItem(id: 'inventory',  label: 'Inventory',  icon: Icons.warehouse_outlined,           route: '/inventory'),
-    NavItem(id: 'customers',  label: 'Customers',  icon: Icons.people_outline,               route: '/customers'),
+  NavSection(titleKey: 'nav_section_business', items: [
+    NavItem(id: 'invoices',   labelKey: 'nav_sales',      icon: Icons.point_of_sale_outlined,       route: '/invoices'),
+    NavItem(id: 'products',   labelKey: 'nav_products',   icon: Icons.inventory_2_outlined,         route: '/products'),
+    NavItem(id: 'inventory',  labelKey: 'nav_inventory',  icon: Icons.warehouse_outlined,           route: '/inventory'),
+    NavItem(id: 'customers',  labelKey: 'nav_customers',  icon: Icons.people_outline,               route: '/customers'),
   ]),
-  NavSection(title: 'Finance', items: [
-    NavItem(id: 'accounting', label: 'Accounting', icon: Icons.account_balance_outlined,     route: '/accounting'),
-    NavItem(id: 'reports',    label: 'Reports',    icon: Icons.bar_chart_outlined,           route: '/reports'),
+  NavSection(titleKey: 'nav_section_finance', items: [
+    NavItem(id: 'accounting', labelKey: 'nav_accounting', icon: Icons.account_balance_outlined,     route: '/accounting'),
+    NavItem(id: 'reports',    labelKey: 'nav_reports',    icon: Icons.bar_chart_outlined,           route: '/reports'),
   ]),
-  NavSection(title: 'Organization', items: [
-    NavItem(id: 'employees',  label: 'Employees',  icon: Icons.badge_outlined,               route: '/employees'),
-    NavItem(id: 'settings',   label: 'Settings',   icon: Icons.settings_outlined,            route: '/settings'),
+  NavSection(titleKey: 'nav_section_organization', items: [
+    NavItem(id: 'employees',  labelKey: 'nav_employees',  icon: Icons.badge_outlined,               route: '/employees'),
+    NavItem(id: 'settings',   labelKey: 'nav_settings',   icon: Icons.settings_outlined,            route: '/settings'),
   ]),
 ];
 
-/// Super admin navigation (only visible to super admin).
-const NavSection superAdminNav = NavSection(title: 'Admin', items: [
-  NavItem(id: 'admin', label: 'Super Admin', icon: Icons.admin_panel_settings_outlined, route: '/admin', superAdminOnly: true),
+/// Super admin navigation (only visible to super admin role).
+const NavSection superAdminNav = NavSection(titleKey: 'nav_section_admin', items: [
+  NavItem(id: 'admin', labelKey: 'nav_admin', icon: Icons.admin_panel_settings_outlined, route: '/admin', superAdminOnly: true),
 ]);

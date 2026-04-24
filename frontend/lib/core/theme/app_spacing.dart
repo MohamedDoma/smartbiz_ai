@@ -42,7 +42,7 @@ class AppShadows {
 
   static List<BoxShadow> get sm => [
     BoxShadow(
-      color: const Color(0xFF000000).withOpacity(0.05),
+      color: const Color(0xFF000000).withValues(alpha: 0.05),
       blurRadius: 4,
       offset: const Offset(0, 1),
     ),
@@ -50,7 +50,7 @@ class AppShadows {
 
   static List<BoxShadow> get md => [
     BoxShadow(
-      color: const Color(0xFF000000).withOpacity(0.08),
+      color: const Color(0xFF000000).withValues(alpha: 0.08),
       blurRadius: 8,
       offset: const Offset(0, 2),
     ),
@@ -58,7 +58,7 @@ class AppShadows {
 
   static List<BoxShadow> get lg => [
     BoxShadow(
-      color: const Color(0xFF000000).withOpacity(0.1),
+      color: const Color(0xFF000000).withValues(alpha: 0.1),
       blurRadius: 16,
       offset: const Offset(0, 4),
     ),
@@ -66,7 +66,7 @@ class AppShadows {
 
   static List<BoxShadow> get xl => [
     BoxShadow(
-      color: const Color(0xFF000000).withOpacity(0.12),
+      color: const Color(0xFF000000).withValues(alpha: 0.12),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
