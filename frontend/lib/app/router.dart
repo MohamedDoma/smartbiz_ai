@@ -16,6 +16,20 @@ import '../features/products/screens/product_detail_screen.dart';
 import '../features/finance/screens/finance_overview_screen.dart';
 import '../features/finance/screens/expenses_screen.dart';
 import '../features/finance/screens/reports_screen.dart';
+import '../features/employees/screens/employees_list_screen.dart';
+import '../features/employees/screens/invite_employee_screen.dart';
+import '../features/employees/screens/employee_detail_screen.dart';
+import '../features/employees/screens/roles_overview_screen.dart';
+import '../features/customers/screens/customers_list_screen.dart';
+import '../features/customers/screens/create_customer_screen.dart';
+import '../features/customers/screens/customer_detail_screen.dart';
+import '../features/inventory/screens/inventory_overview_screen.dart';
+import '../features/inventory/screens/movements_screen.dart';
+import '../features/inventory/screens/adjustments_screen.dart';
+import '../features/settings/screens/workspace_settings_screen.dart';
+import '../features/settings/screens/branding_screen.dart';
+import '../features/settings/screens/billing_screen.dart';
+import '../features/settings/screens/ai_usage_screen.dart';
 import '../features/onboarding/onboarding_page.dart';
 import '../features/placeholder/placeholder_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -129,19 +143,26 @@ GoRouter buildAppRouter(AppState appState) {
             path: '/inventory',
             pageBuilder: (context, state) {
               _syncIndex(context, 5);
-              return const NoTransitionPage(
-                child: PlaceholderScreen(titleKey: 'nav_inventory', icon: Icons.warehouse_outlined),
-              );
+              return const NoTransitionPage(child: InventoryOverviewScreen());
             },
+            routes: [
+              GoRoute(path: 'movements', pageBuilder: (context, state) => const NoTransitionPage(child: MovementsScreen())),
+              GoRoute(path: 'adjustments', pageBuilder: (context, state) => const NoTransitionPage(child: AdjustmentsScreen())),
+            ],
           ),
           GoRoute(
             path: '/customers',
             pageBuilder: (context, state) {
               _syncIndex(context, 6);
-              return const NoTransitionPage(
-                child: PlaceholderScreen(titleKey: 'nav_customers', icon: Icons.people_outline),
-              );
+              return const NoTransitionPage(child: CustomersListScreen());
             },
+            routes: [
+              GoRoute(path: 'create', pageBuilder: (context, state) => const NoTransitionPage(child: CreateCustomerScreen())),
+              GoRoute(path: ':id', pageBuilder: (context, state) {
+                final id = state.pathParameters['id']!;
+                return NoTransitionPage(child: CustomerDetailScreen(customerId: id));
+              }),
+            ],
           ),
           GoRoute(
             path: '/accounting',
@@ -167,10 +188,25 @@ GoRouter buildAppRouter(AppState appState) {
             path: '/employees',
             pageBuilder: (context, state) {
               _syncIndex(context, 9);
-              return const NoTransitionPage(
-                child: PlaceholderScreen(titleKey: 'nav_employees', icon: Icons.badge_outlined),
-              );
+              return const NoTransitionPage(child: EmployeesListScreen());
             },
+            routes: [
+              GoRoute(
+                path: 'invite',
+                pageBuilder: (context, state) => const NoTransitionPage(child: InviteEmployeeScreen()),
+              ),
+              GoRoute(
+                path: 'roles',
+                pageBuilder: (context, state) => const NoTransitionPage(child: RolesOverviewScreen()),
+              ),
+              GoRoute(
+                path: ':id',
+                pageBuilder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return NoTransitionPage(child: EmployeeDetailScreen(employeeId: id));
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/settings',
@@ -178,6 +214,12 @@ GoRouter buildAppRouter(AppState appState) {
               _syncIndex(context, 10);
               return const NoTransitionPage(child: SettingsScreen());
             },
+            routes: [
+              GoRoute(path: 'workspace', pageBuilder: (context, state) => const NoTransitionPage(child: WorkspaceSettingsScreen())),
+              GoRoute(path: 'branding', pageBuilder: (context, state) => const NoTransitionPage(child: BrandingScreen())),
+              GoRoute(path: 'billing', pageBuilder: (context, state) => const NoTransitionPage(child: BillingScreen())),
+              GoRoute(path: 'ai', pageBuilder: (context, state) => const NoTransitionPage(child: AiUsageScreen())),
+            ],
           ),
           GoRoute(
             path: '/admin',

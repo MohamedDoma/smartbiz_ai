@@ -8,7 +8,7 @@ import '../l10n/app_localizations.dart';
 /// Roles that affect navigation and dashboard behavior.
 enum AppRole {
   owner(id: 'owner', labelKey: 'role_owner', navFilter: null),
-  cashier(id: 'cashier', labelKey: 'role_cashier', navFilter: ['dashboard', 'ai_chat', 'sales', 'customers', 'settings']),
+  cashier(id: 'cashier', labelKey: 'role_cashier', navFilter: ['dashboard', 'ai_chat', 'invoices', 'customers', 'settings']),
   warehouse(id: 'warehouse', labelKey: 'role_warehouse', navFilter: ['dashboard', 'ai_chat', 'products', 'inventory', 'settings']),
   accountant(id: 'accountant', labelKey: 'role_accountant', navFilter: ['dashboard', 'ai_chat', 'accounting', 'reports', 'customers', 'settings']),
   employee(id: 'employee', labelKey: 'role_employee', navFilter: ['dashboard', 'ai_chat', 'settings']),

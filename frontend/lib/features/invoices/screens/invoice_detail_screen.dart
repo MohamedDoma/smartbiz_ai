@@ -153,7 +153,7 @@ class InvoiceDetailScreen extends StatelessWidget {
           ),
         ),
       OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'ux_print_coming')), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))),
         icon: const Icon(Icons.print, size: 16),
         label: Text(tr(context, 'inv_print')),
         style: OutlinedButton.styleFrom(
