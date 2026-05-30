@@ -1,4 +1,4 @@
-// SmartBiz AI — Invite employee screen.
+// SmartBiz AI — Invite employee screen (Phase 16.2).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
 import '../employees_state.dart';
+import '../org_state.dart';
+import '../roles_state.dart';
 import '../models/employee_models.dart';
 
 class InviteEmployeeScreen extends StatefulWidget {
@@ -20,27 +22,38 @@ class _InviteEmployeeScreenState extends State<InviteEmployeeScreen> {
   final _nameC = TextEditingController();
   final _emailC = TextEditingController();
   final _phoneC = TextEditingController();
-  final _deptC = TextEditingController();
   AppRole _role = AppRole.employee;
   AiAccess _aiAccess = AiAccess.limited;
   String _lang = 'en';
+  String? _deptId;
+  String? _managerId;
+  String _primaryRoleId = 'sys_employee';
+  final List<String> _extraRoleIds = [];
 
   @override
-  void dispose() { _nameC.dispose(); _emailC.dispose(); _phoneC.dispose(); _deptC.dispose(); super.dispose(); }
+  void dispose() { _nameC.dispose(); _emailC.dispose(); _phoneC.dispose(); super.dispose(); }
 
   void _send() {
     if (_nameC.text.trim().isEmpty || _emailC.text.trim().isEmpty) return;
+    final orgState = context.read<OrgState>();
+    final dept = _deptId != null ? orgState.getDept(_deptId!)?.name : null;
     context.read<EmployeesState>().inviteEmployee(
       name: _nameC.text.trim(), email: _emailC.text.trim(),
       phone: _phoneC.text.trim().isNotEmpty ? _phoneC.text.trim() : null,
-      role: _role, department: _deptC.text.trim().isNotEmpty ? _deptC.text.trim() : null,
+      role: _role, department: dept,
       aiAccess: _aiAccess, langPref: _lang,
     );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(tr(context, 'asgn_invite_sent')),
+      backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
     context.go('/employees');
   }
 
   @override
   Widget build(BuildContext context) {
+    final orgState = context.watch<OrgState>();
     final isMobile = Responsive.isMobile(context);
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
@@ -60,11 +73,61 @@ class _InviteEmployeeScreenState extends State<InviteEmployeeScreen> {
             _Field(controller: _emailC, label: tr(context, 'emp_email'), context: context),
             const SizedBox(height: AppSpacing.md),
             _Field(controller: _phoneC, label: tr(context, 'emp_phone'), context: context),
-            const SizedBox(height: AppSpacing.md),
-            _Field(controller: _deptC, label: tr(context, 'emp_department'), context: context),
             const SizedBox(height: AppSpacing.xl),
 
-            // Role
+            // ── Department ──────────────────────────────
+            if (orgState.deptsEnabled) ...[
+              Text(tr(context, 'org_department'), style: AppTypography.labelLarge),
+              const SizedBox(height: AppSpacing.sm),
+              _Dropdown<String?>(
+                value: _deptId,
+                items: [DropdownMenuItem<String?>(value: null, child: Text(tr(context, 'asgn_none'))),
+                  ...orgState.departments.map((d) => DropdownMenuItem<String?>(value: d.id, child: Text(d.name)))],
+                onChanged: (v) => setState(() => _deptId = v),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // ── Manager ─────────────────────────────────
+            Text(tr(context, 'asgn_manager'), style: AppTypography.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            _Dropdown<String?>(
+              value: _managerId,
+              items: [DropdownMenuItem<String?>(value: null, child: Text(tr(context, 'asgn_none'))),
+                ...orgState.allEmployeeIds.map((id) => DropdownMenuItem<String?>(value: id, child: Text(orgState.empName(id))))],
+              onChanged: (v) => setState(() => _managerId = v),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Primary Role ────────────────────────────
+            Text(tr(context, 'asgn_primary_role'), style: AppTypography.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            _Dropdown<String>(
+              value: _primaryRoleId,
+              items: RoleTemplates.allSelectableRoles().where((r) => r.id != 'sys_owner').map((r) =>
+                DropdownMenuItem(value: r.id, child: Text(r.name))).toList(),
+              onChanged: (v) => setState(() => _primaryRoleId = v ?? _primaryRoleId),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Extra Roles ─────────────────────────────
+            Text(tr(context, 'asgn_extra_roles'), style: AppTypography.labelLarge),
+            Text(tr(context, 'asgn_extra_hint'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(spacing: 6, runSpacing: 6, children: RoleTemplates.allSelectableRoles()
+                .where((r) => r.id != 'sys_owner' && r.id != _primaryRoleId)
+                .map((r) {
+              final isExtra = _extraRoleIds.contains(r.id);
+              return FilterChip(label: Text(r.name), selected: isExtra,
+                onSelected: (_) => setState(() { if (isExtra) { _extraRoleIds.remove(r.id); } else { _extraRoleIds.add(r.id); } }),
+                selectedColor: AppColors.accent.withValues(alpha: 0.12), checkmarkColor: AppColors.accent,
+                side: BorderSide(color: isExtra ? AppColors.accent : AppColors.neutral300),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isExtra ? AppColors.accent : AppColors.textSecondary));
+            }).toList()),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── System Role (maps to Employee model) ────
             Text(tr(context, 'emp_role'), style: AppTypography.labelLarge),
             const SizedBox(height: AppSpacing.sm),
             _Dropdown<AppRole>(

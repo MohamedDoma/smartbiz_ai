@@ -16,6 +16,8 @@ import 'features/employees/employees_state.dart';
 import 'features/settings/settings_state.dart';
 import 'features/customers/customers_state.dart';
 import 'features/inventory/inventory_state.dart';
+import 'features/employees/roles_state.dart';
+import 'features/employees/org_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +43,8 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsState()),
         ChangeNotifierProvider(create: (_) => CustomersState()),
         ChangeNotifierProvider(create: (_) => InventoryState()),
+        ChangeNotifierProvider(create: (_) => RolesState()),
+        ChangeNotifierProvider(create: (_) => OrgState()),
       ],
       child: Consumer<AppState>(
         builder: (context, appState, _) {

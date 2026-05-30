@@ -20,6 +20,13 @@ import '../features/employees/screens/employees_list_screen.dart';
 import '../features/employees/screens/invite_employee_screen.dart';
 import '../features/employees/screens/employee_detail_screen.dart';
 import '../features/employees/screens/roles_overview_screen.dart';
+import '../features/employees/screens/create_role_screen.dart';
+import '../features/employees/screens/role_detail_screen.dart';
+import '../features/employees/screens/org_overview_screen.dart';
+import '../features/employees/screens/departments_screen.dart';
+import '../features/employees/screens/teams_screen.dart';
+import '../features/employees/screens/org_chart_screen.dart';
+import '../features/employees/screens/employee_assignment_screen.dart';
 import '../features/customers/screens/customers_list_screen.dart';
 import '../features/customers/screens/create_customer_screen.dart';
 import '../features/customers/screens/customer_detail_screen.dart';
@@ -198,6 +205,29 @@ GoRouter buildAppRouter(AppState appState) {
               GoRoute(
                 path: 'roles',
                 pageBuilder: (context, state) => const NoTransitionPage(child: RolesOverviewScreen()),
+                routes: [
+                  GoRoute(path: 'create', pageBuilder: (context, state) => const NoTransitionPage(child: CreateRoleScreen())),
+                  GoRoute(path: ':id', pageBuilder: (context, state) {
+                    final id = state.pathParameters['id']!;
+                    return NoTransitionPage(child: RoleDetailScreen(roleId: id));
+                  }),
+                ],
+              ),
+              GoRoute(
+                path: 'organization',
+                pageBuilder: (context, state) => const NoTransitionPage(child: OrgOverviewScreen()),
+              ),
+              GoRoute(
+                path: 'departments',
+                pageBuilder: (context, state) => const NoTransitionPage(child: DepartmentsScreen()),
+              ),
+              GoRoute(
+                path: 'teams',
+                pageBuilder: (context, state) => const NoTransitionPage(child: TeamsScreen()),
+              ),
+              GoRoute(
+                path: 'chart',
+                pageBuilder: (context, state) => const NoTransitionPage(child: OrgChartScreen()),
               ),
               GoRoute(
                 path: ':id',
@@ -205,6 +235,15 @@ GoRouter buildAppRouter(AppState appState) {
                   final id = state.pathParameters['id']!;
                   return NoTransitionPage(child: EmployeeDetailScreen(employeeId: id));
                 },
+                routes: [
+                  GoRoute(
+                    path: 'assignment',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      return NoTransitionPage(child: EmployeeAssignmentScreen(employeeId: id));
+                    },
+                  ),
+                ],
               ),
             ],
           ),

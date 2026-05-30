@@ -1,4 +1,4 @@
-// SmartBiz AI — Employee detail screen.
+// SmartBiz AI — Employee detail screen (Phase 16.2).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
 import '../employees_state.dart';
+import '../org_state.dart';
+import '../roles_state.dart';
 import '../models/employee_models.dart';
 import '../widgets/employee_widgets.dart';
 
@@ -17,14 +19,16 @@ class EmployeeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<EmployeesState>();
-    final emp = state.getById(employeeId);
+    final empState = context.watch<EmployeesState>();
+    final orgState = context.watch<OrgState>();
+    final emp = empState.getById(employeeId);
     final isMobile = Responsive.isMobile(context);
 
     if (emp == null) {
       return Center(child: Text(tr(context, 'emp_not_found'), style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)));
     }
 
+    final a = orgState.getAssignment(employeeId);
     final roleDef = RoleDefinitions.forRole(emp.role);
 
     return SingleChildScrollView(
@@ -59,6 +63,42 @@ class EmployeeDetailScreen extends StatelessWidget {
             ]),
             const SizedBox(height: AppSpacing.xl),
 
+            // Organization assignment card
+            Text(tr(context, 'asgn_title'), style: AppTypography.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            _Card(children: [
+              if (a != null) ...[
+                if (a.departmentId != null)
+                  _InfoRow(label: tr(context, 'org_department'), value: orgState.getDept(a.departmentId!)?.name ?? '—'),
+                if (a.teamIds.isNotEmpty)
+                  _InfoRow(label: tr(context, 'org_teams'), value: a.teamIds.map((id) => orgState.getTeam(id)?.name ?? id).join(', ')),
+                if (a.managerId != null)
+                  _InfoRow(label: tr(context, 'asgn_manager'), value: orgState.empName(a.managerId!)),
+                _InfoRow(label: tr(context, 'asgn_primary_role'), value: orgState.roleLabel(a.primaryRoleId)),
+                if (a.hasExtraRoles) ...[
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Text(tr(context, 'asgn_extra_roles'), style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                    const Spacer(),
+                    Wrap(spacing: 4, children: a.extraRoleIds.map((id) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
+                      child: Text(orgState.roleLabel(id), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.accent)),
+                    )).toList()),
+                  ]),
+                ],
+              ] else
+                Text(tr(context, 'asgn_not_assigned'), style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                onPressed: () => context.go('/employees/$employeeId/assignment'),
+                icon: const Icon(Icons.edit, size: 14),
+                label: Text(tr(context, 'asgn_edit')),
+                style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              )),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
             // Permissions summary
             Text(tr(context, 'emp_permissions'), style: AppTypography.labelLarge),
             const SizedBox(height: AppSpacing.sm),
@@ -80,13 +120,13 @@ class EmployeeDetailScreen extends StatelessWidget {
               Text(tr(context, 'emp_actions'), style: AppTypography.labelLarge),
               const SizedBox(height: AppSpacing.md),
               if (emp.status == EmpStatus.active)
-                _ActionTile(icon: Icons.block, label: tr(context, 'emp_suspend'), color: AppColors.error, onTap: () => state.suspend(emp.id)),
+                _ActionTile(icon: Icons.block, label: tr(context, 'emp_suspend'), color: AppColors.error, onTap: () => empState.suspend(emp.id)),
               if (emp.status == EmpStatus.suspended)
-                _ActionTile(icon: Icons.check_circle, label: tr(context, 'emp_reactivate'), color: AppColors.success, onTap: () => state.reactivate(emp.id)),
+                _ActionTile(icon: Icons.check_circle, label: tr(context, 'emp_reactivate'), color: AppColors.success, onTap: () => empState.reactivate(emp.id)),
               if (emp.status == EmpStatus.invited)
                 _ActionTile(icon: Icons.send, label: tr(context, 'emp_resend'), color: AppColors.info, onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'ux_invite_resent')), backgroundColor: AppColors.info, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))))),
-              _ActionTile(icon: Icons.swap_horiz, label: tr(context, 'emp_change_role'), color: AppColors.primary, onTap: () => _showRoleDialog(context, state, emp)),
-              _ActionTile(icon: Icons.auto_awesome, label: tr(context, 'emp_change_ai'), color: AppColors.accent, onTap: () => _showAiDialog(context, state, emp)),
+              _ActionTile(icon: Icons.swap_horiz, label: tr(context, 'emp_change_role'), color: AppColors.primary, onTap: () => _showRoleDialog(context, empState, emp)),
+              _ActionTile(icon: Icons.auto_awesome, label: tr(context, 'emp_change_ai'), color: AppColors.accent, onTap: () => _showAiDialog(context, empState, emp)),
             ]),
             const SizedBox(height: AppSpacing.xxl),
           ]),
@@ -130,8 +170,7 @@ class _Card extends StatelessWidget {
   const _Card({required this.children});
   @override
   Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.base),
+    width: double.infinity, padding: const EdgeInsets.all(AppSpacing.base),
     decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.divider)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
   );
@@ -141,8 +180,7 @@ class _InfoRow extends StatelessWidget {
   final String label; final String? value; final Widget? trailing;
   const _InfoRow({required this.label, this.value, this.trailing});
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 5),
     child: Row(children: [
       Expanded(child: Text(label, style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary))),
       if (value != null) Text(value!, style: AppTypography.labelMedium),
@@ -166,15 +204,12 @@ class _ActionTile extends StatelessWidget {
   final IconData icon; final String label; final Color color; final VoidCallback onTap;
   const _ActionTile({required this.icon, required this.label, required this.color, required this.onTap});
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: AppSpacing.sm),
     child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      child: Container(padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(color: color.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withValues(alpha: 0.15))),
         child: Row(children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(icon, size: 18, color: color), const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(label, style: AppTypography.labelMedium.copyWith(color: color))),
           Icon(Icons.chevron_right, size: 18, color: color),
         ]),

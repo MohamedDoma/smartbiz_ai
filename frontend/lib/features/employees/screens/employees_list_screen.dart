@@ -46,6 +46,13 @@ class EmployeesListScreen extends StatelessWidget {
                     style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                   ),
                   const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/employees/organization'),
+                    icon: const Icon(Icons.account_tree_outlined, size: 16),
+                    label: Text(tr(context, 'org_title')),
+                    style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   FilledButton.icon(
                     onPressed: () => context.go('/employees/invite'),
                     icon: const Icon(Icons.person_add, size: 18),
