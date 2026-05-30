@@ -19,6 +19,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +41,7 @@ jobs:
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: frontend/build/web
 
   deploy:
     environment:
