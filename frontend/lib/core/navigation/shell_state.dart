@@ -1,4 +1,4 @@
-/// SmartBiz AI — Shell state (navigation, drawer, sidebar).
+// SmartBiz AI — Shell state (navigation, drawer, sidebar).
 import 'package:flutter/material.dart';
 
 class ShellState extends ChangeNotifier {

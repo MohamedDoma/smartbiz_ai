@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../core/state/app_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -53,13 +52,33 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       padding: const EdgeInsets.all(AppSpacing.base),
       child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 600),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ── Header ──────────────────────────────────────
           Row(children: [
-            IconButton(onPressed: () => context.go('/customers'), icon: const Icon(Icons.arrow_back)),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text(tr(context, 'cust_add'), style: AppTypography.headingLarge)),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.neutral100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                onPressed: () => context.go('/customers'),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                tooltip: tr(context, 'inv_cancel'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tr(context, 'cust_add'), style: AppTypography.headingSmall),
+                Text(tr(context, 'cust_add_subtitle'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+              ],
+            )),
           ]),
           const SizedBox(height: AppSpacing.xl),
 
+          // ── Contact Details ─────────────────────────────
+          _SectionHeader(label: tr(context, 'cust_contact')),
+          const SizedBox(height: AppSpacing.md),
           _Field(c: _nameC, label: tr(context, 'cust_name'), required: true),
           const SizedBox(height: AppSpacing.md),
           _Field(c: _companyC, label: tr(context, 'cust_company')),
@@ -69,6 +88,13 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           _Field(c: _emailC, label: tr(context, 'cust_email'), keyboard: TextInputType.emailAddress),
           const SizedBox(height: AppSpacing.md),
           _Field(c: _addressC, label: tr(context, 'cust_address')),
+          const SizedBox(height: AppSpacing.lg),
+
+          const Divider(color: AppColors.divider),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Additional Info ─────────────────────────────
+          _SectionHeader(label: tr(context, 'cust_additional_info')),
           const SizedBox(height: AppSpacing.md),
           _Field(c: _notesC, label: tr(context, 'cust_notes'), maxLines: 3),
           const SizedBox(height: AppSpacing.lg),
@@ -91,13 +117,29 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           ]),
           const SizedBox(height: AppSpacing.xl),
 
-          // Actions
+          const Divider(color: AppColors.divider),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Actions ─────────────────────────────────────
           Row(children: [
-            Expanded(child: OutlinedButton(onPressed: () => context.go('/customers'), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: Text(tr(context, 'inv_cancel')))),
+            Expanded(child: OutlinedButton(
+              onPressed: () => context.go('/customers'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(tr(context, 'inv_cancel')),
+            )),
             const SizedBox(width: AppSpacing.md),
             Expanded(flex: 2, child: FilledButton.icon(
-              onPressed: _save, icon: const Icon(Icons.save, size: 18), label: Text(tr(context, 'cust_save')),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              onPressed: _save,
+              icon: const Icon(Icons.save, size: 18),
+              label: Text(tr(context, 'cust_save')),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
             )),
           ]),
           const SizedBox(height: AppSpacing.xxl),
@@ -114,5 +156,21 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) => TextField(
     controller: c, keyboardType: keyboard, maxLines: maxLines,
     decoration: InputDecoration(labelText: required ? '$label *' : label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+  );
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 3, height: 16,
+        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+      ),
+      const SizedBox(width: AppSpacing.sm),
+      Text(label, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
+    ],
   );
 }

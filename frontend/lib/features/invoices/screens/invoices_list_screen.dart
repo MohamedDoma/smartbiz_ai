@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
+import '../../../core/pages/widgets/generic_page_state.dart';
 import '../invoices_state.dart';
 import '../models/invoice_models.dart';
 import '../widgets/invoice_widgets.dart';
@@ -26,10 +27,18 @@ class InvoicesListScreen extends StatelessWidget {
           // Header + search + filters
           Container(
             padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surface,
-              border: Border(bottom: BorderSide(color: AppColors.divider)),
+              border: const Border(bottom: BorderSide(color: AppColors.divider)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
+            child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -84,27 +93,27 @@ class InvoicesListScreen extends StatelessWidget {
                 ),
               ],
             ),
+            )),
           ),
 
           // Invoice list
           Expanded(
             child: invoices.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.receipt_long, size: 48, color: AppColors.neutral300),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(tr(context, 'inv_empty'), style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                      ],
-                    ),
+                ? GenericPageState.empty(
+                    title: tr(context, 'inv_empty'),
+                    message: tr(context, 'inv_empty_hint'),
+                    icon: Icons.receipt_long,
+                    actionLabel: tr(context, 'inv_create'),
+                    onAction: () => context.go('/invoices/create'),
                   )
-                : ListView.separated(
-                    padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                    itemCount: invoices.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) => _InvoiceRow(invoice: invoices[index]),
-                  ),
+                : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+                    child: ListView.separated(
+                      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+                      itemCount: invoices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) => _InvoiceRow(invoice: invoices[index]),
+                    ),
+                  )),
           ),
         ],
       );
@@ -170,6 +179,16 @@ class _InvoiceRow extends StatelessWidget {
                   Text(invoice.number, style: AppTypography.labelLarge),
                   const SizedBox(height: 2),
                   Text(invoice.customer.name, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                  if (invoice.dueDate != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '${tr(context, 'inv_due')}: ${invoice.dueDate!.day}/${invoice.dueDate!.month}/${invoice.dueDate!.year}',
+                        style: AppTypography.caption.copyWith(
+                          color: invoice.status == InvoiceStatus.overdue ? AppColors.error : AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

@@ -9,7 +9,6 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
 import '../employees_state.dart';
 import '../org_state.dart';
-import '../roles_state.dart';
 import '../models/employee_models.dart';
 import '../widgets/employee_widgets.dart';
 
@@ -147,8 +146,12 @@ class EmployeeDetailScreen extends StatelessWidget {
       title: Text(tr(context, 'emp_change_role')),
       content: Column(mainAxisSize: MainAxisSize.min, children: AppRole.values.where((r) => r != AppRole.owner).map((r) {
         final key = switch (r) { AppRole.owner => 'role_owner', AppRole.cashier => 'role_cashier', AppRole.warehouse => 'role_warehouse', AppRole.accountant => 'role_accountant', AppRole.employee => 'role_employee' };
-        return RadioListTile<AppRole>(value: r, groupValue: emp.role, title: Text(tr(context, key)),
-          onChanged: (v) { if (v != null) { state.changeRole(emp.id, v); Navigator.pop(ctx); } });
+        final selected = r == emp.role;
+        return ListTile(
+          leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? AppColors.primary : AppColors.neutral400, size: 20),
+          title: Text(tr(context, key)),
+          onTap: () { state.changeRole(emp.id, r); Navigator.pop(ctx); },
+        );
       }).toList()),
     ));
   }
@@ -158,8 +161,12 @@ class EmployeeDetailScreen extends StatelessWidget {
       title: Text(tr(context, 'emp_change_ai')),
       content: Column(mainAxisSize: MainAxisSize.min, children: AiAccess.values.map((a) {
         final key = switch (a) { AiAccess.full => 'ai_full', AiAccess.limited => 'ai_limited', AiAccess.none => 'ai_none' };
-        return RadioListTile<AiAccess>(value: a, groupValue: emp.aiAccess, title: Text(tr(context, key)),
-          onChanged: (v) { if (v != null) { state.changeAiAccess(emp.id, v); Navigator.pop(ctx); } });
+        final selected = a == emp.aiAccess;
+        return ListTile(
+          leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked, color: selected ? AppColors.primary : AppColors.neutral400, size: 20),
+          title: Text(tr(context, key)),
+          onTap: () { state.changeAiAccess(emp.id, a); Navigator.pop(ctx); },
+        );
       }).toList()),
     ));
   }

@@ -25,13 +25,13 @@ class RoleDetailScreen extends StatelessWidget {
     }
 
     final isSystem = role.type == RoleType.system;
-    final accent = switch (role.dashboardType) {
-      DashboardType.owner => AppColors.primary,
-      DashboardType.cashier => AppColors.success,
-      DashboardType.warehouse => AppColors.warning,
-      DashboardType.accountant => AppColors.info,
-      DashboardType.employee => AppColors.neutral500,
-      DashboardType.custom => AppColors.accent,
+    final accent = switch (role.dashboardTemplate.colorName) {
+      'primary' => AppColors.primary,
+      'success' => AppColors.success,
+      'warning' => AppColors.warning,
+      'info' => AppColors.info,
+      'accent' => AppColors.accent,
+      _ => AppColors.neutral500,
     };
 
     return SingleChildScrollView(
@@ -72,20 +72,18 @@ class RoleDetailScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
           ],
 
-          // Permission matrix
+          // Permission matrix — ExpansionTile for performance
           Text(tr(context, 'cr_permissions'), style: AppTypography.headingSmall),
           const SizedBox(height: AppSpacing.sm),
           Text('${role.totalPermissions} ${tr(context, 'cr_perms_active')} · ${role.enabledModuleCount} ${tr(context, 'cr_modules')}', style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: AppSpacing.md),
           ...AppModule.values.map((m) {
             final perms = role.permissions[m]!;
-            return Padding(padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _DetailModuleCard(
-                module: m, perms: perms, isSystem: isSystem,
-                onToggle: isSystem ? null : (a) { state.togglePermission(roleId, m, a); },
-                onSelectAll: isSystem ? null : () { state.selectAllModule(roleId, m); },
-                onClear: isSystem ? null : () { state.clearModule(roleId, m); },
-              ),
+            return _DetailModuleExpansion(
+              module: m, perms: perms, isSystem: isSystem,
+              onToggle: isSystem ? null : (a) { state.togglePermission(roleId, m, a); },
+              onSelectAll: isSystem ? null : () { state.selectAllModule(roleId, m); },
+              onClear: isSystem ? null : () { state.clearModule(roleId, m); },
             );
           }),
           const SizedBox(height: AppSpacing.xl),
@@ -149,7 +147,7 @@ class _InfoCard extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _Row(label: tr(context, 'cr_dashboard_type'), child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-        child: Text(tr(context, dashTypeKey(role.dashboardType)), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: accent)))),
+        child: Text(tr(context, role.dashboardTemplate.labelKey), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: accent)))),
       _Row(label: tr(context, 'cr_ai_access'), child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
         child: Text(tr(context, roleAiKey(role.aiAccess)), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)))),
@@ -173,14 +171,14 @@ class _Row extends StatelessWidget {
   );
 }
 
-class _DetailModuleCard extends StatelessWidget {
+class _DetailModuleExpansion extends StatelessWidget {
   final AppModule module;
   final ModulePermissions perms;
   final bool isSystem;
   final void Function(PermAction)? onToggle;
   final VoidCallback? onSelectAll;
   final VoidCallback? onClear;
-  const _DetailModuleCard({required this.module, required this.perms, required this.isSystem, this.onToggle, this.onSelectAll, this.onClear});
+  const _DetailModuleExpansion({required this.module, required this.perms, required this.isSystem, this.onToggle, this.onSelectAll, this.onClear});
 
   IconData get _icon => switch (module.iconName) {
     'dashboard_outlined' => Icons.dashboard_outlined,
@@ -202,41 +200,54 @@ class _DetailModuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasAny = perms.hasAny;
+    final enabledCount = perms.enabled.length;
+    final totalCount = module.applicableActions.length;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: hasAny ? AppColors.primarySurface.withValues(alpha: 0.3) : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: hasAny ? AppColors.primary.withValues(alpha: 0.2) : AppColors.divider),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(_icon, size: 18, color: hasAny ? AppColors.primary : AppColors.neutral500),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(tr(context, module.labelKey), style: AppTypography.labelLarge.copyWith(color: hasAny ? AppColors.primary : AppColors.textPrimary))),
-          if (!isSystem) ...[
-            if (perms.hasAll)
-              InkWell(onTap: onClear, child: Text(tr(context, 'cr_clear'), style: AppTypography.caption.copyWith(color: AppColors.error)))
-            else
-              InkWell(onTap: onSelectAll, child: Text(tr(context, 'cr_all'), style: AppTypography.caption.copyWith(color: AppColors.primary))),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          leading: Icon(_icon, size: 18, color: hasAny ? AppColors.primary : AppColors.neutral500),
+          title: Row(children: [
+            Expanded(child: Text(tr(context, module.labelKey), style: AppTypography.labelLarge.copyWith(color: hasAny ? AppColors.primary : AppColors.textPrimary))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: (hasAny ? AppColors.primary : AppColors.neutral500).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+              child: Text('$enabledCount/$totalCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: hasAny ? AppColors.primary : AppColors.neutral500)),
+            ),
+          ]),
+          children: [
+            if (!isSystem)
+              Align(alignment: AlignmentDirectional.centerEnd, child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: perms.hasAll
+                    ? InkWell(onTap: onClear, child: Text(tr(context, 'cr_clear'), style: AppTypography.caption.copyWith(color: AppColors.error)))
+                    : InkWell(onTap: onSelectAll, child: Text(tr(context, 'cr_all'), style: AppTypography.caption.copyWith(color: AppColors.primary))),
+              )),
+            Wrap(spacing: 6, runSpacing: 6, children: module.applicableActions.map((a) {
+              final on = perms.enabled.contains(a);
+              return FilterChip(
+                label: Text(tr(context, permActionKey(a))),
+                selected: on,
+                onSelected: isSystem ? null : (_) => onToggle?.call(a),
+                selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                checkmarkColor: AppColors.primary,
+                disabledColor: on ? AppColors.primary.withValues(alpha: 0.06) : null,
+                side: BorderSide(color: on ? AppColors.primary : AppColors.neutral300),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: on ? AppColors.primary : AppColors.textSecondary),
+              );
+            }).toList()),
           ],
-        ]),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(spacing: 6, runSpacing: 6, children: module.applicableActions.map((a) {
-          final on = perms.enabled.contains(a);
-          return FilterChip(
-            label: Text(tr(context, permActionKey(a))),
-            selected: on,
-            onSelected: isSystem ? null : (_) => onToggle?.call(a),
-            selectedColor: AppColors.primary.withValues(alpha: 0.12),
-            checkmarkColor: AppColors.primary,
-            disabledColor: on ? AppColors.primary.withValues(alpha: 0.06) : null,
-            side: BorderSide(color: on ? AppColors.primary : AppColors.neutral300),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: on ? AppColors.primary : AppColors.textSecondary),
-          );
-        }).toList()),
-      ]),
+        ),
+      ),
     );
   }
 }

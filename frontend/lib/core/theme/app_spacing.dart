@@ -1,4 +1,4 @@
-/// SmartBiz AI — Spacing, radius, shadows.
+// SmartBiz AI — Spacing, radius, shadows.
 import 'package:flutter/material.dart';
 
 class AppSpacing {

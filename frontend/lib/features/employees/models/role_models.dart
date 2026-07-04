@@ -1,7 +1,5 @@
 // SmartBiz AI — Custom Roles + Permission models.
-
-/// Dashboard type for a role.
-enum DashboardType { owner, cashier, warehouse, accountant, employee, custom }
+import '../../dashboard/models/dashboard_config_models.dart';
 
 /// Role type.
 enum RoleType { system, custom }
@@ -26,7 +24,9 @@ enum AppModule {
   employees('mod_employees', 'badge'),
   roles('mod_roles', 'shield'),
   settings('mod_settings', 'settings'),
-  billing('mod_billing', 'credit_card');
+  billing('mod_billing', 'credit_card'),
+  payments('mod_payments', 'payments'),
+  pos('mod_pos', 'point_of_sale');
 
   final String labelKey;
   final String iconName;
@@ -47,6 +47,8 @@ enum AppModule {
     AppModule.roles => [PermAction.view, PermAction.create, PermAction.edit, PermAction.delete, PermAction.manage],
     AppModule.settings => [PermAction.view, PermAction.edit, PermAction.manage],
     AppModule.billing => [PermAction.view, PermAction.manage],
+    AppModule.payments => [PermAction.view, PermAction.create, PermAction.manage],
+    AppModule.pos => [PermAction.view, PermAction.create, PermAction.manage],
   };
 }
 
@@ -77,24 +79,40 @@ class CustomRole {
   String name;
   String description;
   final RoleType type;
-  DashboardType dashboardType;
+  DashboardTemplate dashboardTemplate;
   RoleAiAccess aiAccess;
   final Map<AppModule, ModulePermissions> permissions;
   int assignedCount;
   final String? createdBy;
   DateTime lastUpdated;
 
+  // ── Dashboard configuration (backend-ready) ──
+  String? landingRoute;
+  Set<String>? enabledWidgetIds;
+  Set<String>? disabledWidgetIds;
+  Set<String>? enabledActionIds;
+  Set<String>? disabledActionIds;
+  DashboardSource configSource;
+  int layoutVersion;
+
   CustomRole({
     required this.id,
     required this.name,
     required this.description,
     required this.type,
-    required this.dashboardType,
+    required this.dashboardTemplate,
     required this.aiAccess,
     required this.permissions,
     this.assignedCount = 0,
     this.createdBy,
     DateTime? lastUpdated,
+    this.landingRoute,
+    this.enabledWidgetIds,
+    this.disabledWidgetIds,
+    this.enabledActionIds,
+    this.disabledActionIds,
+    this.configSource = DashboardSource.systemDefault,
+    this.layoutVersion = 1,
   }) : lastUpdated = lastUpdated ?? DateTime.now();
 
   int get enabledModuleCount => permissions.values.where((p) => p.hasAny).length;
@@ -106,7 +124,7 @@ class CustomRole {
       name: name ?? this.name,
       description: description,
       type: type ?? this.type,
-      dashboardType: dashboardType,
+      dashboardTemplate: dashboardTemplate,
       aiAccess: aiAccess,
       permissions: {
         for (final e in permissions.entries)
@@ -114,6 +132,13 @@ class CustomRole {
       },
       assignedCount: 0,
       createdBy: createdBy,
+      landingRoute: landingRoute,
+      enabledWidgetIds: enabledWidgetIds != null ? Set.from(enabledWidgetIds!) : null,
+      disabledWidgetIds: disabledWidgetIds != null ? Set.from(disabledWidgetIds!) : null,
+      enabledActionIds: enabledActionIds != null ? Set.from(enabledActionIds!) : null,
+      disabledActionIds: disabledActionIds != null ? Set.from(disabledActionIds!) : null,
+      configSource: configSource,
+      layoutVersion: layoutVersion,
     );
   }
 }
@@ -129,15 +154,8 @@ String permActionKey(PermAction a) => switch (a) {
   PermAction.manage => 'perm_manage',
 };
 
-/// Localization key for DashboardType.
-String dashTypeKey(DashboardType d) => switch (d) {
-  DashboardType.owner => 'cr_dash_owner',
-  DashboardType.cashier => 'cr_dash_cashier',
-  DashboardType.warehouse => 'cr_dash_warehouse',
-  DashboardType.accountant => 'cr_dash_accountant',
-  DashboardType.employee => 'cr_dash_employee',
-  DashboardType.custom => 'cr_dash_custom',
-};
+/// Localization key for DashboardTemplate.
+String dashTemplateKey(DashboardTemplate t) => t.labelKey;
 
 /// Localization key for RoleAiAccess.
 String roleAiKey(RoleAiAccess a) => switch (a) {

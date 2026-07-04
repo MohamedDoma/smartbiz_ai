@@ -7,6 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
+import '../../dashboard/models/dashboard_config_models.dart';
+import '../../dashboard/data/default_dashboard_templates.dart';
+import '../../dashboard/engine/dashboard_resolver.dart';
+import '../../dashboard/widgets/dashboard_preview.dart';
 import '../models/role_models.dart';
 import '../roles_state.dart';
 
@@ -19,10 +23,12 @@ class CreateRoleScreen extends StatefulWidget {
 class _CreateRoleScreenState extends State<CreateRoleScreen> {
   final _nameC = TextEditingController();
   final _descC = TextEditingController();
-  DashboardType _dashType = DashboardType.employee;
+  DashboardTemplate _dashTemplate = DashboardTemplate.basicEmployee;
   RoleAiAccess _aiAccess = RoleAiAccess.limited;
   late Map<AppModule, ModulePermissions> _permissions;
   int _step = 0; // 0 = template, 1 = details + permissions
+  bool _advancedDashboard = false;
+  String _landingRoute = '/dashboard';
 
   @override
   void initState() {
@@ -37,7 +43,7 @@ class _CreateRoleScreenState extends State<CreateRoleScreen> {
     setState(() {
       _nameC.text = '';
       _descC.text = template.description;
-      _dashType = template.dashboardType;
+      _dashTemplate = template.dashboardTemplate;
       _aiAccess = template.aiAccess;
       _permissions = {for (final e in template.permissions.entries) e.key: e.value.copyWith()};
       _step = 1;
@@ -48,7 +54,7 @@ class _CreateRoleScreenState extends State<CreateRoleScreen> {
     setState(() {
       _nameC.text = '';
       _descC.text = '';
-      _dashType = DashboardType.employee;
+      _dashTemplate = DashboardTemplate.basicEmployee;
       _aiAccess = RoleAiAccess.limited;
       _permissions = {for (final m in AppModule.values) m: ModulePermissions(module: m)};
       _permissions[AppModule.dashboard]!.enabled.add(PermAction.view);
@@ -64,10 +70,28 @@ class _CreateRoleScreenState extends State<CreateRoleScreen> {
     }
     context.read<RolesState>().addRole(CustomRole(
       id: '', name: _nameC.text.trim(), description: _descC.text.trim(), type: RoleType.custom,
-      dashboardType: _dashType, aiAccess: _aiAccess, permissions: _permissions,
+      dashboardTemplate: _dashTemplate, aiAccess: _aiAccess, permissions: _permissions,
     ));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'cr_created')), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
     context.go('/employees/roles');
+  }
+
+  Set<String> _computePreviewPerms() {
+    final perms = <String>{};
+    for (final entry in _permissions.entries) {
+      final modKey = entry.key.name;
+      for (final action in entry.value.enabled) {
+        perms.add('$modKey.${action.name}');
+      }
+    }
+    return perms;
+  }
+
+  Set<String> _computePreviewModules() {
+    return {
+      for (final entry in _permissions.entries)
+        if (entry.value.hasAny) entry.key.name,
+    };
   }
 
   @override
@@ -103,14 +127,16 @@ class _CreateRoleScreenState extends State<CreateRoleScreen> {
     TextField(controller: _descC, maxLines: 2, decoration: InputDecoration(hintText: tr(context, 'cr_desc_hint'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12))),
     const SizedBox(height: AppSpacing.xl),
 
-    // Dashboard type
+    // Dashboard template
     Text(tr(context, 'cr_dashboard_type'), style: AppTypography.labelLarge),
     const SizedBox(height: AppSpacing.sm),
-    Wrap(spacing: 8, runSpacing: 8, children: DashboardType.values.map((d) => ChoiceChip(
-      label: Text(tr(context, dashTypeKey(d))), selected: _dashType == d,
-      onSelected: (_) => setState(() => _dashType = d),
+    Wrap(spacing: 8, runSpacing: 8, children: DashboardTemplate.values.map((t) => ChoiceChip(
+      label: Text(tr(context, t.labelKey)), selected: _dashTemplate == t,
+      onSelected: (_) => setState(() => _dashTemplate = t),
       selectedColor: AppColors.primarySurface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     )).toList()),
+    const SizedBox(height: AppSpacing.xs),
+    Text(tr(context, _dashTemplate.descriptionKey), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
     const SizedBox(height: AppSpacing.xl),
 
     // AI access
@@ -126,12 +152,98 @@ class _CreateRoleScreenState extends State<CreateRoleScreen> {
     }).toList()),
     const SizedBox(height: AppSpacing.xl),
 
+    // ── Dashboard Configuration Section ──────────────
+    Text(tr(context, 'dc_section_title'), style: AppTypography.headingSmall),
+    Text(tr(context, 'dc_section_hint'), style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+    const SizedBox(height: AppSpacing.md),
+
+    // Live preview
+    Builder(builder: (context) {
+      final effectivePerms = _computePreviewPerms();
+      final enabledMods = _computePreviewModules();
+      final preview = const DashboardResolver().resolve(
+        primaryRoleId: 'preview_role',
+        effectivePermissions: effectivePerms,
+        enabledModules: enabledMods,
+        templateOverride: _dashTemplate,
+      );
+      final totalCount = DefaultDashboardTemplates.forTemplate(_dashTemplate).widgets.length;
+      return DashboardPreview(configuration: preview, totalWidgetCount: totalCount);
+    }),
+    const SizedBox(height: AppSpacing.md),
+
+    // Landing route
+    Row(children: [
+      Text(tr(context, 'dc_landing_route'), style: AppTypography.labelMedium),
+      const Spacer(),
+      DropdownButton<String>(
+        value: _landingRoute,
+        underline: const SizedBox(),
+        borderRadius: BorderRadius.circular(10),
+        items: ['/dashboard', '/ai-chat', '/invoices', '/products', '/inventory', '/customers', '/accounting', '/reports', '/employees', '/settings']
+          .map((r) => DropdownMenuItem(value: r, child: Text(r, style: AppTypography.caption))).toList(),
+        onChanged: (v) => setState(() => _landingRoute = v ?? '/dashboard'),
+      ),
+    ]),
+    const SizedBox(height: AppSpacing.md),
+
+    // Reset to defaults
+    Align(alignment: AlignmentDirectional.centerEnd, child: TextButton.icon(
+      onPressed: () => setState(() => _dashTemplate = _dashTemplate),
+      icon: const Icon(Icons.restart_alt, size: 14),
+      label: Text(tr(context, 'dc_reset_defaults')),
+      style: TextButton.styleFrom(foregroundColor: AppColors.neutral500),
+    )),
+    const SizedBox(height: AppSpacing.sm),
+
+    // AI configure placeholder
+    Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.15)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.auto_awesome, size: 18, color: AppColors.accent),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(child: Text(tr(context, 'dc_ai_placeholder'), style: AppTypography.bodySmall.copyWith(color: AppColors.accent))),
+      ]),
+    ),
+    const SizedBox(height: AppSpacing.md),
+
+    // Advanced toggle
+    InkWell(
+      onTap: () => setState(() => _advancedDashboard = !_advancedDashboard),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(children: [
+          Icon(_advancedDashboard ? Icons.expand_less : Icons.expand_more, size: 18, color: AppColors.primary),
+          const SizedBox(width: AppSpacing.xs),
+          Text(tr(context, 'dc_advanced_options'), style: AppTypography.labelMedium.copyWith(color: AppColors.primary)),
+        ]),
+      ),
+    ),
+    if (_advancedDashboard) ...[
+      Text(tr(context, 'dc_advanced_hint'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+      const SizedBox(height: AppSpacing.sm),
+      Text(tr(context, 'dc_widget_vis'), style: AppTypography.labelSmall),
+      const SizedBox(height: AppSpacing.xs),
+      Text(tr(context, 'dc_widget_vis_hint'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+      const SizedBox(height: AppSpacing.sm),
+      Text(tr(context, 'dc_action_vis'), style: AppTypography.labelSmall),
+      const SizedBox(height: AppSpacing.xs),
+      Text(tr(context, 'dc_action_vis_hint'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+    ],
+    const SizedBox(height: AppSpacing.xl),
+
     // Permission matrix
     Text(tr(context, 'cr_permissions'), style: AppTypography.headingSmall),
     Text(tr(context, 'cr_perm_hint'), style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
     const SizedBox(height: AppSpacing.md),
-    ...AppModule.values.map((m) => Padding(padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: _ModulePermCard(module: m, perms: _permissions[m]!, onChanged: () => setState(() {})))),
+    ...AppModule.values.map((m) => _ModulePermExpansion(module: m, perms: _permissions[m]!, onChanged: () => setState(() {}))),
     const SizedBox(height: AppSpacing.lg),
 
     // Save
@@ -212,11 +324,11 @@ class _TemplateTile extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 //  Module permission card (shared by Create + Detail)
 // ═══════════════════════════════════════════════════════════
-class _ModulePermCard extends StatelessWidget {
+class _ModulePermExpansion extends StatelessWidget {
   final AppModule module;
   final ModulePermissions perms;
   final VoidCallback onChanged;
-  const _ModulePermCard({required this.module, required this.perms, required this.onChanged});
+  const _ModulePermExpansion({required this.module, required this.perms, required this.onChanged});
 
   IconData get _icon => switch (module.iconName) {
     'dashboard_outlined' => Icons.dashboard_outlined,
@@ -238,39 +350,53 @@ class _ModulePermCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasAny = perms.hasAny;
+    final enabledCount = perms.enabled.length;
+    final totalCount = module.applicableActions.length;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: hasAny ? AppColors.primarySurface.withValues(alpha: 0.3) : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: hasAny ? AppColors.primary.withValues(alpha: 0.2) : AppColors.divider),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(_icon, size: 18, color: hasAny ? AppColors.primary : AppColors.neutral500),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(tr(context, module.labelKey), style: AppTypography.labelLarge.copyWith(color: hasAny ? AppColors.primary : AppColors.textPrimary))),
-          // Select all / clear
-          if (perms.hasAll)
-            InkWell(onTap: () { perms.clearAll(); onChanged(); }, child: Text(tr(context, 'cr_clear'), style: AppTypography.caption.copyWith(color: AppColors.error)))
-          else
-            InkWell(onTap: () { perms.selectAll(); onChanged(); }, child: Text(tr(context, 'cr_all'), style: AppTypography.caption.copyWith(color: AppColors.primary))),
-        ]),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(spacing: 6, runSpacing: 6, children: module.applicableActions.map((a) {
-          final on = perms.enabled.contains(a);
-          return FilterChip(
-            label: Text(tr(context, permActionKey(a))),
-            selected: on,
-            onSelected: (_) { perms.toggle(a); onChanged(); },
-            selectedColor: AppColors.primary.withValues(alpha: 0.12),
-            checkmarkColor: AppColors.primary,
-            side: BorderSide(color: on ? AppColors.primary : AppColors.neutral300),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: on ? AppColors.primary : AppColors.textSecondary),
-          );
-        }).toList()),
-      ]),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+          leading: Icon(_icon, size: 18, color: hasAny ? AppColors.primary : AppColors.neutral500),
+          title: Row(children: [
+            Expanded(child: Text(tr(context, module.labelKey), style: AppTypography.labelLarge.copyWith(color: hasAny ? AppColors.primary : AppColors.textPrimary))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: (hasAny ? AppColors.primary : AppColors.neutral500).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+              child: Text('$enabledCount/$totalCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: hasAny ? AppColors.primary : AppColors.neutral500)),
+            ),
+          ]),
+          children: [
+            Align(alignment: AlignmentDirectional.centerEnd, child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: perms.hasAll
+                  ? InkWell(onTap: () { perms.clearAll(); onChanged(); }, child: Text(tr(context, 'cr_clear'), style: AppTypography.caption.copyWith(color: AppColors.error)))
+                  : InkWell(onTap: () { perms.selectAll(); onChanged(); }, child: Text(tr(context, 'cr_all'), style: AppTypography.caption.copyWith(color: AppColors.primary))),
+            )),
+            Wrap(spacing: 6, runSpacing: 6, children: module.applicableActions.map((a) {
+              final on = perms.enabled.contains(a);
+              return FilterChip(
+                label: Text(tr(context, permActionKey(a))),
+                selected: on,
+                onSelected: (_) { perms.toggle(a); onChanged(); },
+                selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                checkmarkColor: AppColors.primary,
+                side: BorderSide(color: on ? AppColors.primary : AppColors.neutral300),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: on ? AppColors.primary : AppColors.textSecondary),
+              );
+            }).toList()),
+          ],
+        ),
+      ),
     );
   }
 }
+

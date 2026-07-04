@@ -128,31 +128,41 @@ class EmployeeAssignmentScreen extends StatelessWidget {
             ...AppModule.values.where((m) => effective[m]?.isNotEmpty ?? false).map((m) {
               final perms = effective[m]!;
               final hasDangerous = perms.any((p) => p == PermAction.delete || p == PermAction.manage);
-              return Padding(padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: hasDangerous ? AppColors.error.withValues(alpha: 0.03) : AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: hasDangerous ? AppColors.error.withValues(alpha: 0.2) : AppColors.divider),
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: hasDangerous ? AppColors.error.withValues(alpha: 0.03) : AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: hasDangerous ? AppColors.error.withValues(alpha: 0.2) : AppColors.divider),
+                ),
+                child: Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                    title: Row(children: [
                       Text(tr(context, m.labelKey), style: AppTypography.labelMedium),
                       if (hasDangerous) ...[
                         const SizedBox(width: 6),
                         Icon(Icons.warning_amber, size: 14, color: AppColors.warning),
                       ],
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: (hasDangerous ? AppColors.error : AppColors.primary).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+                        child: Text('${perms.length}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: hasDangerous ? AppColors.error : AppColors.primary)),
+                      ),
                     ]),
-                    const SizedBox(height: 4),
-                    Wrap(spacing: 4, runSpacing: 4, children: perms.map((p) {
-                      final isDangerous = p == PermAction.delete || p == PermAction.manage;
-                      final color = isDangerous ? AppColors.error : AppColors.primary;
-                      return Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
-                        child: Text(tr(context, permActionKey(p)), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)));
-                    }).toList()),
-                  ]),
+                    children: [
+                      Wrap(spacing: 4, runSpacing: 4, children: perms.map((p) {
+                        final isDangerous = p == PermAction.delete || p == PermAction.manage;
+                        final color = isDangerous ? AppColors.error : AppColors.primary;
+                        return Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(6)),
+                          child: Text(tr(context, permActionKey(p)), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)));
+                      }).toList()),
+                    ],
+                  ),
                 ),
               );
             }),

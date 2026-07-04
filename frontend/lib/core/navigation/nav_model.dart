@@ -33,6 +33,8 @@ const List<NavSection> appNavigation = [
   ]),
   NavSection(titleKey: 'nav_section_business', items: [
     NavItem(id: 'invoices',   labelKey: 'nav_sales',      icon: Icons.point_of_sale_outlined,       route: '/invoices'),
+    NavItem(id: 'payments',   labelKey: 'nav_payments',   icon: Icons.payments_outlined,            route: '/payments'),
+    NavItem(id: 'pos',        labelKey: 'nav_pos',        icon: Icons.point_of_sale_outlined,       route: '/pos'),
     NavItem(id: 'products',   labelKey: 'nav_products',   icon: Icons.inventory_2_outlined,         route: '/products'),
     NavItem(id: 'inventory',  labelKey: 'nav_inventory',  icon: Icons.warehouse_outlined,           route: '/inventory'),
     NavItem(id: 'customers',  labelKey: 'nav_customers',  icon: Icons.people_outline,               route: '/customers'),

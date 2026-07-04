@@ -1,4 +1,5 @@
 // SmartBiz AI — Settings state (workspace, branding, billing).
+// Performance: lazy subscription init.
 import 'package:flutter/material.dart';
 import 'models/settings_models.dart';
 
@@ -6,7 +7,9 @@ class SettingsState extends ChangeNotifier {
   final WorkspaceConfig workspace = WorkspaceConfig();
   final BrandingSettings branding = BrandingSettings();
 
-  SubscriptionInfo _subscription = SubscriptionInfo(
+  SubscriptionInfo? _subscription;
+
+  SubscriptionInfo get subscription => _subscription ??= SubscriptionInfo(
     plan: PlanType.growth,
     cycle: BillingCycle.monthly,
     isTrial: true,
@@ -16,8 +19,6 @@ class SettingsState extends ChangeNotifier {
     aiCreditsTotal: 5000,
     aiCreditsUsed: 3420,
   );
-
-  SubscriptionInfo get subscription => _subscription;
 
   // ── Workspace ───────────────────────────────────────────
   void updateCompanyName(String v) { workspace.companyName = v; notifyListeners(); }
@@ -32,11 +33,12 @@ class SettingsState extends ChangeNotifier {
 
   // ── Billing ─────────────────────────────────────────────
   void setCycle(BillingCycle c) {
+    final s = subscription;
     _subscription = SubscriptionInfo(
-      plan: _subscription.plan, cycle: c, isTrial: _subscription.isTrial,
-      renewalDate: _subscription.renewalDate, employeeLimit: _subscription.employeeLimit,
-      activeEmployees: _subscription.activeEmployees, aiCreditsTotal: _subscription.aiCreditsTotal,
-      aiCreditsUsed: _subscription.aiCreditsUsed,
+      plan: s.plan, cycle: c, isTrial: s.isTrial,
+      renewalDate: s.renewalDate, employeeLimit: s.employeeLimit,
+      activeEmployees: s.activeEmployees, aiCreditsTotal: s.aiCreditsTotal,
+      aiCreditsUsed: s.aiCreditsUsed,
     );
     notifyListeners();
   }

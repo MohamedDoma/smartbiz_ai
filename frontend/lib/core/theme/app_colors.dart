@@ -1,7 +1,7 @@
-/// SmartBiz AI — Color palette.
-///
-/// Modern SaaS design: deep blues, clean accents, AI-forward feel.
-/// Structured for easy per-workspace theming later.
+// SmartBiz AI — Color palette.
+//
+// Modern SaaS design: deep blues, clean accents, AI-forward feel.
+// Structured for easy per-workspace theming later.
 import 'package:flutter/material.dart';
 
 class AppColors {

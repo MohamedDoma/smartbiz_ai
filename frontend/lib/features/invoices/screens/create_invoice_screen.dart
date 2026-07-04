@@ -49,22 +49,35 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // ── Header ──────────────────────────────────
               Row(
                 children: [
-                  IconButton(
-                    onPressed: () => context.go('/invoices'),
-                    icon: const Icon(Icons.arrow_back),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () => context.go('/invoices'),
+                      icon: const Icon(Icons.arrow_back, size: 18),
+                      tooltip: tr(context, 'inv_cancel'),
+                    ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text(tr(context, 'inv_create_title'), style: AppTypography.headingLarge)),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tr(context, 'inv_create_title'), style: AppTypography.headingSmall),
+                      Text(tr(context, 'inv_create_subtitle'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  )),
                 ],
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              // Customer selector
-              Text(tr(context, 'inv_customer'), style: AppTypography.labelLarge),
-              const SizedBox(height: AppSpacing.sm),
+              // ── Customer ────────────────────────────────
+              _SectionHeader(label: tr(context, 'inv_customer')),
+              const SizedBox(height: AppSpacing.md),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 decoration: BoxDecoration(
@@ -81,12 +94,15 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
 
-              // Items
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Line Items ──────────────────────────────
               Row(
                 children: [
-                  Expanded(child: Text(tr(context, 'inv_items'), style: AppTypography.labelLarge)),
+                  Expanded(child: _SectionHeader(label: tr(context, 'inv_items'))),
                   TextButton.icon(
                     onPressed: _addItem,
                     icon: const Icon(Icons.add, size: 16),
@@ -103,11 +119,13 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 onChanged: () => setState(() {}),
               )),
 
-              const SizedBox(height: AppSpacing.xl),
-              const Divider(),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
 
-              // Totals
+              // ── Totals ──────────────────────────────────
+              _SectionHeader(label: tr(context, 'inv_totals')),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -132,9 +150,11 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                 ],
               ),
 
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xl),
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
 
-              // Actions
+              // ── Actions ─────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -170,6 +190,22 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       ),
     );
   }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 3, height: 16,
+        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+      ),
+      const SizedBox(width: AppSpacing.sm),
+      Text(label, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
+    ],
+  );
 }
 
 class _ItemRow extends StatelessWidget {

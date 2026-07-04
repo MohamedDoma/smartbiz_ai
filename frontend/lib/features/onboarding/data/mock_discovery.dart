@@ -1,6 +1,5 @@
 // SmartBiz AI — Mock discovery data for demo/development.
 // Language-aware: uses localization keys resolved at runtime.
-import '../../../core/l10n/app_localizations.dart';
 import '../models/onboarding_models.dart';
 
 class MockResponse {

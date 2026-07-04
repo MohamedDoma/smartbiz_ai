@@ -17,38 +17,47 @@ class AdvisorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AdvisorState>();
     final isMobile = Responsive.isMobile(context);
+    final items = state.filtered;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      return SingleChildScrollView(
-        padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Header(),
-                const SizedBox(height: AppSpacing.lg),
-                _SummaryBar(total: state.totalActive, high: state.highImpactCount),
-                const SizedBox(height: AppSpacing.lg),
-                _StatusTabs(current: state.filterStatus, onChanged: state.setStatusFilter),
-                const SizedBox(height: AppSpacing.md),
-                _FilterRow(state: state),
-                const SizedBox(height: AppSpacing.lg),
-                if (state.filtered.isEmpty)
-                  _EmptyState(status: state.filterStatus)
-                else
-                  ...state.filtered.map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: _RecommendationCard(rec: r, state: state),
-                  )),
-                const SizedBox(height: AppSpacing.xxl),
-              ],
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _Header(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _SummaryBar(total: state.totalActive, high: state.highImpactCount),
+                  const SizedBox(height: AppSpacing.lg),
+                  _StatusTabs(current: state.filterStatus, onChanged: state.setStatusFilter),
+                  const SizedBox(height: AppSpacing.md),
+                  _FilterRow(state: state),
+                  const SizedBox(height: AppSpacing.lg),
+                ]),
+              ),
             ),
-          ),
+            if (items.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(status: state.filterStatus),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? AppSpacing.md : AppSpacing.base),
+                sliver: SliverList.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) => _RecommendationCard(rec: items[index], state: state),
+                ),
+              ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+          ],
         ),
-      );
-    });
+      ),
+    );
   }
 }
 

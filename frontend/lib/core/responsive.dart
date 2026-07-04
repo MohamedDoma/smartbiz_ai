@@ -1,4 +1,4 @@
-/// Responsive breakpoints.
+// Responsive breakpoints.
 import 'package:flutter/widgets.dart';
 
 class Responsive {

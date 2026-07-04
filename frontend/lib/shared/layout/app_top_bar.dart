@@ -25,7 +25,8 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
-    final appState = context.watch<AppState>();
+    // Only rebuild when language changes, not on every AppState update
+    final currentLang = context.select<AppState, AppLanguage>((s) => s.uiLanguage);
 
     return Container(
       height: 56,
@@ -59,10 +60,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
 
           // Language toggle
           _LangToggle(
-            currentLang: appState.uiLanguage,
+            currentLang: currentLang,
             onTap: () {
-              final newLang = appState.uiLanguage == AppLanguage.en ? AppLanguage.ar : AppLanguage.en;
-              appState.setUiLanguage(newLang);
+              final newLang = currentLang == AppLanguage.en ? AppLanguage.ar : AppLanguage.en;
+              context.read<AppState>().setUiLanguage(newLang);
             },
           ),
 
@@ -100,22 +101,25 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
               radius: 16,
               backgroundColor: AppColors.primarySurface,
               child: Text(
-                appState.currentUser.fullName.isNotEmpty ? appState.currentUser.fullName[0] : 'U',
+                context.read<AppState>().currentUser.fullName.isNotEmpty ? context.read<AppState>().currentUser.fullName[0] : 'U',
                 style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
-            itemBuilder: (context) => [
-              PopupMenuItem(enabled: false, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(appState.currentUser.fullName, style: AppTypography.labelLarge),
-                Text(appState.currentUser.email, style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(6)),
-                  child: Text(appState.currentRole.id.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary))),
-              ])),
-              const PopupMenuDivider(),
-              PopupMenuItem(value: 'settings', child: Row(children: [const Icon(Icons.settings_outlined, size: 18, color: AppColors.neutral600), const SizedBox(width: 8), Text(tr(context, 'nav_settings'))])),
-              PopupMenuItem(value: 'logout', child: Row(children: [const Icon(Icons.logout, size: 18, color: AppColors.error), const SizedBox(width: 8), Text(tr(context, 'ux_logout'), style: const TextStyle(color: AppColors.error))])),
-            ],
+            itemBuilder: (ctx) {
+              final as0 = ctx.read<AppState>();
+              return [
+                PopupMenuItem(enabled: false, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(as0.currentUser.fullName, style: AppTypography.labelLarge),
+                  Text(as0.currentUser.email, style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(6)),
+                    child: Text(as0.currentRole.id.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary))),
+                ])),
+                const PopupMenuDivider(),
+                PopupMenuItem(value: 'settings', child: Row(children: [const Icon(Icons.settings_outlined, size: 18, color: AppColors.neutral600), const SizedBox(width: 8), Text(tr(ctx, 'nav_settings'))])),
+                PopupMenuItem(value: 'logout', child: Row(children: [const Icon(Icons.logout, size: 18, color: AppColors.error), const SizedBox(width: 8), Text(tr(ctx, 'ux_logout'), style: const TextStyle(color: AppColors.error))])),
+              ];
+            },
             onSelected: (v) {
               if (v == 'settings') context.go('/settings');
               if (v == 'logout') ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'ux_logout_coming')), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));

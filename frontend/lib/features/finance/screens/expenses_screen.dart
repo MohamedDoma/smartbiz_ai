@@ -108,7 +108,7 @@ class ExpensesScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<ExpenseCategory>(
-                value: cat,
+                initialValue: cat,
                 decoration: InputDecoration(labelText: tr(context, 'fin_exp_category'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true),
                 items: ExpenseCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(tr(context, _catKey(c))))).toList(),
                 onChanged: (v) => setState(() => cat = v ?? cat),

@@ -86,7 +86,7 @@ class TeamsScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       title: Text(tr(context, 'org_add_team')),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        DropdownButtonFormField<String>(value: selectedDept,
+        DropdownButtonFormField<String>(initialValue: selectedDept,
           decoration: InputDecoration(labelText: tr(context, 'org_department'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), isDense: true),
           items: state.departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
           onChanged: (v) => setD(() => selectedDept = v)),

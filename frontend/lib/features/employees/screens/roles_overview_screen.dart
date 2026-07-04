@@ -88,13 +88,13 @@ class _RoleCard extends StatelessWidget {
   final CustomRole role;
   const _RoleCard({required this.role});
 
-  Color get _accent => switch (role.dashboardType) {
-    DashboardType.owner => AppColors.primary,
-    DashboardType.cashier => AppColors.success,
-    DashboardType.warehouse => AppColors.warning,
-    DashboardType.accountant => AppColors.info,
-    DashboardType.employee => AppColors.neutral500,
-    DashboardType.custom => AppColors.accent,
+  Color get _accent => switch (role.dashboardTemplate.colorName) {
+    'primary' => AppColors.primary,
+    'success' => AppColors.success,
+    'warning' => AppColors.warning,
+    'info' => AppColors.info,
+    'accent' => AppColors.accent,
+    _ => AppColors.neutral500,
   };
 
   @override
@@ -126,7 +126,7 @@ class _RoleCard extends StatelessWidget {
           const Divider(height: AppSpacing.lg),
           // Stats row
           Wrap(spacing: AppSpacing.lg, runSpacing: AppSpacing.sm, children: [
-            _StatChip(icon: Icons.dashboard_outlined, label: tr(context, dashTypeKey(role.dashboardType)), color: _accent),
+            _StatChip(icon: Icons.dashboard_outlined, label: tr(context, role.dashboardTemplate.labelKey), color: _accent),
             _StatChip(icon: Icons.auto_awesome, label: tr(context, roleAiKey(role.aiAccess)), color: AppColors.accent),
             _StatChip(icon: Icons.extension, label: '${role.enabledModuleCount} ${tr(context, 'cr_modules')}', color: AppColors.primary),
             _StatChip(icon: Icons.people_outline, label: '${role.assignedCount} ${tr(context, 'cr_assigned')}', color: AppColors.info),

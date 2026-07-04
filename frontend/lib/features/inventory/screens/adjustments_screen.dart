@@ -7,7 +7,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../inventory_state.dart';
-import '../models/inventory_models.dart';
 
 class AdjustmentsScreen extends StatefulWidget {
   const AdjustmentsScreen({super.key});
@@ -74,7 +73,7 @@ class _AdjustmentsScreenState extends State<AdjustmentsScreen> {
           Text(tr(context, 'stk_adj_product'), style: AppTypography.labelLarge),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<String>(
-            value: _selectedProductId,
+            initialValue: _selectedProductId,
             decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
             hint: Text(tr(context, 'stk_adj_select')),
             items: allItems.map((i) => DropdownMenuItem(value: i.productId, child: Text('${i.productName} (${i.stockQty})'))).toList(),

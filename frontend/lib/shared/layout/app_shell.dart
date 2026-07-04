@@ -1,4 +1,6 @@
 // SmartBiz AI — Main responsive app shell with role filtering + localization.
+// Supports dynamic blueprint navigation via BlueprintNavigationController
+// with safe fallback to the legacy hardcoded navigation model.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import '../../core/navigation/shell_state.dart';
 import '../../core/state/app_state.dart';
 import '../../core/responsive.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/modules/blueprint_navigation_controller.dart';
 import 'app_sidebar.dart';
 import 'app_top_bar.dart';
 
@@ -23,16 +26,36 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  /// Get filtered+flattened nav items based on current role.
-  List<NavItem> _flatItems(AppState appState) {
-    final items = <NavItem>[];
-    for (final section in appNavigation) {
-      for (final item in section.items) {
-        if (appState.currentRole.canSee(item.id)) {
-          items.add(item);
+  // ═══════════════════════════════════════════════════════════
+  //  Flat navigation item list
+  // ═══════════════════════════════════════════════════════════
+
+  /// Returns the flat list of nav items used for index-based navigation.
+  ///
+  /// Uses dynamic items from BlueprintNavigationController when available;
+  /// falls back to the legacy role-filtered appNavigation otherwise.
+  /// Super admin items are appended at the end in both modes.
+  List<NavItem> _flatItems(BuildContext context) {
+    final navCtrl = context.read<BlueprintNavigationController>();
+    final appState = context.read<AppState>();
+
+    List<NavItem> items;
+    if (!navCtrl.useFallbackNavigation) {
+      // Dynamic mode: use blueprint-resolved items.
+      items = List.of(navCtrl.navItems);
+    } else {
+      // Legacy fallback: flatten appNavigation with role filtering.
+      items = <NavItem>[];
+      for (final section in appNavigation) {
+        for (final item in section.items) {
+          if (appState.currentRole.canSee(item.id)) {
+            items.add(item);
+          }
         }
       }
     }
+
+    // Super admin items are always appended at the tail.
     if (appState.isSuperAdmin) {
       items.addAll(superAdminNav.items);
     }
@@ -41,8 +64,7 @@ class _AppShellState extends State<AppShell> {
 
   String _currentTitle(BuildContext context) {
     final shell = context.watch<ShellState>();
-    final appState = context.read<AppState>();
-    final items = _flatItems(appState);
+    final items = _flatItems(context);
     if (shell.selectedIndex < items.length) {
       return tr(context, items[shell.selectedIndex].labelKey);
     }
@@ -50,8 +72,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _navigateByIndex(int index) {
-    final appState = context.read<AppState>();
-    final items = _flatItems(appState);
+    final items = _flatItems(context);
     if (index >= items.length) return;
 
     context.read<ShellState>().selectIndex(index);
@@ -65,6 +86,11 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
+    // Narrow rebuild triggers: only when nav items or role change.
+    context.select<BlueprintNavigationController, bool>((c) => c.useFallbackNavigation);
+    context.select<BlueprintNavigationController, int>((c) => c.navItems.length);
+    context.select<AppState, String>((s) => s.currentRole.id);
+    context.select<AppState, bool>((s) => s.isSuperAdmin);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -106,14 +132,13 @@ class _AppShellState extends State<AppShell> {
 
   Widget _buildBottomNav(BuildContext context) {
     final shell = context.watch<ShellState>();
-    final appState = context.watch<AppState>();
-    final allItems = _flatItems(appState);
+    final items = _flatItems(context);
 
-    // Bottom nav: first 4 items that the role can see
-    final bottomItems = allItems.take(4).toList();
+    // Bottom nav: first 4 items
+    final bottomItems = items.take(4).toList();
     int bottomIndex = -1;
     for (int i = 0; i < bottomItems.length; i++) {
-      final flatIdx = allItems.indexOf(bottomItems[i]);
+      final flatIdx = items.indexOf(bottomItems[i]);
       if (flatIdx == shell.selectedIndex) {
         bottomIndex = i;
         break;
@@ -128,7 +153,7 @@ class _AppShellState extends State<AppShell> {
       height: 64,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       onDestinationSelected: (i) {
-        final flatIdx = allItems.indexOf(bottomItems[i]);
+        final flatIdx = items.indexOf(bottomItems[i]);
         _navigateByIndex(flatIdx);
       },
       destinations: bottomItems.map((item) => NavigationDestination(

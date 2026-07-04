@@ -1,0 +1,343 @@
+// SmartBiz AI — ERP Module Registry (Phase 17).
+// Single source of truth for all module definitions.
+import '../../features/dashboard/models/dashboard_config_models.dart';
+import 'erp_module_models.dart';
+
+ErpModuleDefinition _m(ErpModuleId id, String apiId, String icon,
+    ModuleCategory cat, ModuleMaturity mat, ModuleVisibility vis, int order,
+    {List<String> routes = const [], List<String> navIds = const [],
+    Set<String> perms = const {}, Set<ErpModuleId> deps = const {},
+    Set<ErpModuleId> optDeps = const {}, Set<DashboardTemplate> dashTpls = const {},
+    Set<String> wIds = const {}, Set<String> qaIds = const {},
+    bool basic = true, bool advanced = true}) =>
+  ErpModuleDefinition(
+    id: id, apiId: apiId, labelKey: 'emod_${id.name}',
+    descriptionKey: 'emod_${id.name}_desc', iconId: icon,
+    category: cat, maturity: mat, visibility: vis, defaultOrder: order,
+    routePaths: routes, navigationItemIds: navIds, permissionKeys: perms,
+    dependencies: deps, optionalDependencies: optDeps,
+    compatibleDashboardTemplates: dashTpls, supportedWidgetIds: wIds,
+    supportedQuickActionIds: qaIds, supportsBasicMode: basic,
+    supportsAdvancedMode: advanced);
+
+class ErpModuleRegistry {
+  ErpModuleRegistry._();
+
+  static final Map<ErpModuleId, ErpModuleDefinition> _map = {
+    for (final d in _all) d.id: d
+  };
+
+  static ErpModuleDefinition get(ErpModuleId id) => _map[id]!;
+  static ErpModuleDefinition? tryGet(ErpModuleId id) => _map[id];
+  static List<ErpModuleDefinition> get all => List.unmodifiable(_all);
+
+  static List<ErpModuleDefinition> byCategory(ModuleCategory c) =>
+      _all.where((m) => m.category == c).toList();
+  static List<ErpModuleDefinition> implementedModules() =>
+      _all.where((m) => m.maturity == ModuleMaturity.implemented).toList();
+  static List<ErpModuleDefinition> partialModules() =>
+      _all.where((m) => m.maturity == ModuleMaturity.partial).toList();
+  static List<ErpModuleDefinition> basicModeModules() =>
+      _all.where((m) => m.supportsBasicMode).toList();
+  static List<ErpModuleDefinition> advancedModeModules() =>
+      _all.where((m) => m.supportsAdvancedMode).toList();
+  static List<ErpModuleDefinition> byMaturity(ModuleMaturity m) =>
+      _all.where((d) => d.maturity == m).toList();
+
+  // ═══════════════════════════════════════════════════════════
+  //  All module definitions — ordered by defaultOrder
+  // ═══════════════════════════════════════════════════════════
+  static final List<ErpModuleDefinition> _all = [
+    // ── Core ─────────────────────────────────────────────
+    _m(ErpModuleId.dashboard, 'dashboard', 'dashboard_outlined',
+        ModuleCategory.core, ModuleMaturity.implemented, ModuleVisibility.both, 10,
+        routes: ['/dashboard'], navIds: ['dashboard'],
+        perms: {'dashboard.view'},
+        dashTpls: DashboardTemplate.values.toSet(),
+        wIds: {'w_revenue', 'w_ai_insight', 'w_recent_activity', 'w_alerts'},
+        qaIds: {'qa_ai_chat'}),
+
+    _m(ErpModuleId.aiChat, 'ai_chat', 'auto_awesome',
+        ModuleCategory.core, ModuleMaturity.implemented, ModuleVisibility.both, 20,
+        routes: ['/ai-chat'], navIds: ['ai_chat'],
+        perms: {'aiChat.view'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.basicEmployee, DashboardTemplate.operations},
+        wIds: {'w_ai_insight'}, qaIds: {'qa_ai_chat'}),
+
+    _m(ErpModuleId.aiAdvisor, 'ai_advisor', 'lightbulb',
+        ModuleCategory.core, ModuleMaturity.implemented, ModuleVisibility.both, 30,
+        routes: ['/advisor'], navIds: ['advisor'],
+        perms: {'aiAdvisor.view'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.finance, DashboardTemplate.operations},
+        wIds: {'w_recommendations'}),
+
+    _m(ErpModuleId.notifications, 'notifications', 'notifications',
+        ModuleCategory.core, ModuleMaturity.planned, ModuleVisibility.both, 40,
+        perms: {'notifications.view', 'notifications.manage'}),
+
+    // ── Sales & CRM ──────────────────────────────────────
+    _m(ErpModuleId.customers, 'customers', 'people',
+        ModuleCategory.crm, ModuleMaturity.implemented, ModuleVisibility.both, 100,
+        routes: ['/customers', '/customers/create', '/customers/:id'],
+        navIds: ['customers'],
+        perms: {'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.export'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.sales, DashboardTemplate.support, DashboardTemplate.service},
+        wIds: {'w_customer_summary'}, qaIds: {'qa_new_customer'}),
+
+    _m(ErpModuleId.leads, 'leads', 'leaderboard',
+        ModuleCategory.crm, ModuleMaturity.planned, ModuleVisibility.both, 105,
+        perms: {'leads.view', 'leads.create', 'leads.edit', 'leads.delete', 'leads.convert'},
+        optDeps: {ErpModuleId.customers}),
+
+    _m(ErpModuleId.opportunities, 'opportunities', 'trending_up',
+        ModuleCategory.crm, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 106,
+        perms: {'opportunities.view', 'opportunities.create', 'opportunities.edit', 'opportunities.manage'},
+        optDeps: {ErpModuleId.leads, ErpModuleId.customers}),
+
+    _m(ErpModuleId.quotations, 'quotations', 'request_quote',
+        ModuleCategory.sales, ModuleMaturity.planned, ModuleVisibility.both, 108,
+        perms: {'quotations.view', 'quotations.create', 'quotations.edit', 'quotations.approve'},
+        optDeps: {ErpModuleId.customers, ErpModuleId.products}),
+
+    _m(ErpModuleId.invoices, 'invoices', 'receipt_long',
+        ModuleCategory.sales, ModuleMaturity.implemented, ModuleVisibility.both, 110,
+        routes: ['/invoices', '/invoices/create', '/invoices/:id'],
+        navIds: ['invoices'],
+        perms: {'invoices.view', 'invoices.create', 'invoices.edit', 'invoices.delete', 'invoices.export', 'invoices.approve', 'invoices.manage'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.sales, DashboardTemplate.finance},
+        wIds: {'w_invoice_summary', 'w_revenue'}, qaIds: {'qa_new_invoice'}),
+
+    _m(ErpModuleId.payments, 'payments', 'payments',
+        ModuleCategory.sales, ModuleMaturity.implemented, ModuleVisibility.both, 115,
+        routes: ['/payments'], navIds: ['payments'],
+        perms: {'payments.view', 'payments.create', 'payments.manage'},
+        optDeps: {ErpModuleId.invoices}),
+
+    _m(ErpModuleId.pos, 'pos', 'point_of_sale',
+        ModuleCategory.sales, ModuleMaturity.implemented, ModuleVisibility.both, 120,
+        routes: ['/pos'], navIds: ['pos'],
+        perms: {'pos.view', 'pos.operate', 'pos.manage', 'pos.refund'},
+        deps: {ErpModuleId.products, ErpModuleId.payments},
+        dashTpls: {DashboardTemplate.sales}),
+
+    _m(ErpModuleId.recurringBilling, 'recurring_billing', 'autorenew',
+        ModuleCategory.sales, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 125,
+        perms: {'recurringBilling.view', 'recurringBilling.create', 'recurringBilling.manage'},
+        deps: {ErpModuleId.invoices}, basic: false),
+
+    // ── Products & Operations ────────────────────────────
+    _m(ErpModuleId.products, 'products', 'inventory_2',
+        ModuleCategory.inventory, ModuleMaturity.implemented, ModuleVisibility.both, 200,
+        routes: ['/products', '/products/create', '/products/:id'],
+        navIds: ['products'],
+        perms: {'products.view', 'products.create', 'products.edit', 'products.delete'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.sales, DashboardTemplate.inventory, DashboardTemplate.operations},
+        wIds: {'w_product_count'}),
+
+    _m(ErpModuleId.inventory, 'inventory', 'warehouse',
+        ModuleCategory.inventory, ModuleMaturity.implemented, ModuleVisibility.both, 210,
+        routes: ['/inventory', '/inventory/movements', '/inventory/adjustments'],
+        navIds: ['inventory'],
+        perms: {'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.manage'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.inventory, DashboardTemplate.operations},
+        wIds: {'w_inventory_summary', 'w_low_stock'}, qaIds: {'qa_adjust_stock'}),
+
+    _m(ErpModuleId.warehouses, 'warehouses', 'domain',
+        ModuleCategory.inventory, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 215,
+        perms: {'warehouses.view', 'warehouses.create', 'warehouses.edit', 'warehouses.manage'},
+        deps: {ErpModuleId.inventory}, basic: false),
+
+    _m(ErpModuleId.warehouseTransfers, 'warehouse_transfers', 'swap_horiz',
+        ModuleCategory.inventory, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 216,
+        perms: {'warehouseTransfers.view', 'warehouseTransfers.create', 'warehouseTransfers.approve'},
+        deps: {ErpModuleId.inventory, ErpModuleId.warehouses}, basic: false),
+
+    _m(ErpModuleId.suppliers, 'suppliers', 'local_shipping',
+        ModuleCategory.inventory, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 220,
+        perms: {'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete'},
+        basic: false),
+
+    _m(ErpModuleId.procurement, 'procurement', 'shopping_cart',
+        ModuleCategory.inventory, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 225,
+        perms: {'procurement.view', 'procurement.create', 'procurement.approve', 'procurement.manage'},
+        deps: {ErpModuleId.suppliers}, basic: false),
+
+    _m(ErpModuleId.purchaseOrders, 'purchase_orders', 'assignment',
+        ModuleCategory.inventory, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 226,
+        perms: {'purchaseOrders.view', 'purchaseOrders.create', 'purchaseOrders.approve'},
+        deps: {ErpModuleId.suppliers}, optDeps: {ErpModuleId.procurement}, basic: false),
+
+    // ── Finance ──────────────────────────────────────────
+    _m(ErpModuleId.accounting, 'accounting', 'account_balance',
+        ModuleCategory.finance, ModuleMaturity.implemented, ModuleVisibility.advancedOnly, 300,
+        routes: ['/accounting', '/accounting/expenses'],
+        navIds: ['accounting'],
+        perms: {'accounting.view', 'accounting.create', 'accounting.edit', 'accounting.export', 'accounting.approve'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.finance},
+        wIds: {'w_finance_summary', 'w_cashflow'}, basic: false),
+
+    _m(ErpModuleId.expenses, 'expenses', 'money_off',
+        ModuleCategory.finance, ModuleMaturity.partial, ModuleVisibility.both, 310,
+        routes: ['/accounting/expenses'],
+        perms: {'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.approve'},
+        dashTpls: {DashboardTemplate.finance}),
+
+    _m(ErpModuleId.reports, 'reports', 'bar_chart',
+        ModuleCategory.finance, ModuleMaturity.implemented, ModuleVisibility.both, 320,
+        routes: ['/reports'], navIds: ['reports'],
+        perms: {'reports.view', 'reports.export'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.finance, DashboardTemplate.operations}),
+
+    _m(ErpModuleId.assets, 'assets', 'account_balance_wallet',
+        ModuleCategory.finance, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 330,
+        perms: {'assets.view', 'assets.create', 'assets.manage'}, basic: false),
+
+    _m(ErpModuleId.budgets, 'budgets', 'savings',
+        ModuleCategory.finance, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 335,
+        perms: {'budgets.view', 'budgets.create', 'budgets.approve'}, basic: false),
+
+    // ── People & Organization ────────────────────────────
+    _m(ErpModuleId.employees, 'employees', 'badge',
+        ModuleCategory.people, ModuleMaturity.implemented, ModuleVisibility.both, 400,
+        routes: ['/employees', '/employees/invite', '/employees/:id', '/employees/:id/assignment'],
+        navIds: ['employees'],
+        perms: {'employees.view', 'employees.create', 'employees.edit', 'employees.delete', 'employees.manage'},
+        dashTpls: {DashboardTemplate.executive, DashboardTemplate.hr, DashboardTemplate.operations},
+        wIds: {'w_employee_summary', 'w_hr_summary'}, qaIds: {'qa_invite_employee'}),
+
+    _m(ErpModuleId.roles, 'roles', 'shield',
+        ModuleCategory.people, ModuleMaturity.implemented, ModuleVisibility.advancedOnly, 410,
+        routes: ['/employees/roles', '/employees/roles/create', '/employees/roles/:id'],
+        navIds: ['roles'],
+        perms: {'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'roles.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    _m(ErpModuleId.departments, 'departments', 'business',
+        ModuleCategory.people, ModuleMaturity.implemented, ModuleVisibility.advancedOnly, 420,
+        routes: ['/employees/departments'],
+        navIds: ['departments'],
+        perms: {'departments.view', 'departments.create', 'departments.edit', 'departments.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    _m(ErpModuleId.teams, 'teams', 'groups',
+        ModuleCategory.people, ModuleMaturity.implemented, ModuleVisibility.advancedOnly, 425,
+        routes: ['/employees/teams'],
+        navIds: ['teams'],
+        perms: {'teams.view', 'teams.create', 'teams.edit', 'teams.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    _m(ErpModuleId.attendance, 'attendance', 'access_time',
+        ModuleCategory.people, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 430,
+        perms: {'attendance.view', 'attendance.record', 'attendance.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    _m(ErpModuleId.leave, 'leave', 'event_busy',
+        ModuleCategory.people, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 435,
+        perms: {'leave.view', 'leave.request', 'leave.approve', 'leave.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    _m(ErpModuleId.payroll, 'payroll', 'payments',
+        ModuleCategory.people, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 440,
+        perms: {'payroll.view', 'payroll.process', 'payroll.approve', 'payroll.manage'},
+        deps: {ErpModuleId.employees}, basic: false),
+
+    // ── Service & Project Work ───────────────────────────
+    _m(ErpModuleId.projects, 'projects', 'folder',
+        ModuleCategory.projects, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 500,
+        perms: {'projects.view', 'projects.create', 'projects.edit', 'projects.manage'},
+        dashTpls: {DashboardTemplate.projects}, wIds: {'w_project_summary'}, basic: false),
+
+    _m(ErpModuleId.tasks, 'tasks', 'checklist',
+        ModuleCategory.projects, ModuleMaturity.planned, ModuleVisibility.both, 505,
+        perms: {'tasks.view', 'tasks.create', 'tasks.edit', 'tasks.manage'},
+        optDeps: {ErpModuleId.projects}),
+
+    _m(ErpModuleId.timesheets, 'timesheets', 'timer',
+        ModuleCategory.projects, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 510,
+        perms: {'timesheets.view', 'timesheets.log', 'timesheets.approve'},
+        deps: {ErpModuleId.employees}, optDeps: {ErpModuleId.projects}, basic: false),
+
+    _m(ErpModuleId.bookings, 'bookings', 'calendar_today',
+        ModuleCategory.service, ModuleMaturity.planned, ModuleVisibility.both, 520,
+        perms: {'bookings.view', 'bookings.create', 'bookings.edit', 'bookings.manage'},
+        optDeps: {ErpModuleId.customers}),
+
+    _m(ErpModuleId.appointments, 'appointments', 'schedule',
+        ModuleCategory.service, ModuleMaturity.planned, ModuleVisibility.both, 525,
+        perms: {'appointments.view', 'appointments.create', 'appointments.manage'},
+        optDeps: {ErpModuleId.customers}),
+
+    _m(ErpModuleId.serviceJobs, 'service_jobs', 'build',
+        ModuleCategory.service, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 530,
+        perms: {'serviceJobs.view', 'serviceJobs.create', 'serviceJobs.edit', 'serviceJobs.manage'},
+        dashTpls: {DashboardTemplate.service}, wIds: {'w_service_schedule'}, basic: false),
+
+    _m(ErpModuleId.support, 'support', 'support_agent',
+        ModuleCategory.service, ModuleMaturity.planned, ModuleVisibility.both, 535,
+        perms: {'support.view', 'support.create', 'support.edit', 'support.manage'},
+        optDeps: {ErpModuleId.customers},
+        dashTpls: {DashboardTemplate.support}, wIds: {'w_support_queue'}),
+
+    // ── Industry Building Blocks ─────────────────────────
+    _m(ErpModuleId.restaurantTables, 'restaurant_tables', 'table_restaurant',
+        ModuleCategory.restaurant, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 600,
+        perms: {'restaurantTables.view', 'restaurantTables.manage'}, basic: false),
+
+    _m(ErpModuleId.restaurantOrders, 'restaurant_orders', 'restaurant_menu',
+        ModuleCategory.restaurant, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 605,
+        perms: {'restaurantOrders.view', 'restaurantOrders.create', 'restaurantOrders.manage'},
+        deps: {ErpModuleId.menuManagement}, basic: false),
+
+    _m(ErpModuleId.kitchenDisplay, 'kitchen_display', 'kitchen',
+        ModuleCategory.restaurant, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 610,
+        perms: {'kitchenDisplay.view'},
+        deps: {ErpModuleId.restaurantOrders}, basic: false),
+
+    _m(ErpModuleId.menuManagement, 'menu_management', 'menu_book',
+        ModuleCategory.restaurant, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 615,
+        perms: {'menuManagement.view', 'menuManagement.create', 'menuManagement.edit', 'menuManagement.manage'},
+        optDeps: {ErpModuleId.products}, basic: false),
+
+    _m(ErpModuleId.ingredients, 'ingredients', 'egg',
+        ModuleCategory.restaurant, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 620,
+        perms: {'ingredients.view', 'ingredients.create', 'ingredients.edit', 'ingredients.manage'},
+        optDeps: {ErpModuleId.inventory}, basic: false),
+
+    _m(ErpModuleId.manufacturing, 'manufacturing', 'precision_manufacturing',
+        ModuleCategory.manufacturing, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 700,
+        perms: {'manufacturing.view', 'manufacturing.create', 'manufacturing.manage'},
+        deps: {ErpModuleId.products, ErpModuleId.inventory}, basic: false),
+
+    _m(ErpModuleId.bom, 'bom', 'account_tree',
+        ModuleCategory.manufacturing, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 705,
+        perms: {'bom.view', 'bom.create', 'bom.edit', 'bom.manage'},
+        deps: {ErpModuleId.products}, basic: false),
+
+    _m(ErpModuleId.productionOrders, 'production_orders', 'factory',
+        ModuleCategory.manufacturing, ModuleMaturity.planned, ModuleVisibility.hiddenUnlessEnabled, 710,
+        perms: {'productionOrders.view', 'productionOrders.create', 'productionOrders.manage'},
+        deps: {ErpModuleId.bom}, basic: false),
+
+    _m(ErpModuleId.delivery, 'delivery', 'local_shipping',
+        ModuleCategory.logistics, ModuleMaturity.planned, ModuleVisibility.both, 800,
+        perms: {'delivery.view', 'delivery.create', 'delivery.manage'},
+        optDeps: {ErpModuleId.invoices}),
+
+    _m(ErpModuleId.fleet, 'fleet', 'directions_car',
+        ModuleCategory.logistics, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 805,
+        perms: {'fleet.view', 'fleet.create', 'fleet.manage'},
+        optDeps: {ErpModuleId.delivery}, basic: false),
+
+    _m(ErpModuleId.branches, 'branches', 'store',
+        ModuleCategory.platform, ModuleMaturity.planned, ModuleVisibility.advancedOnly, 810,
+        perms: {'branches.view', 'branches.create', 'branches.manage'}, basic: false),
+
+    // ── Platform (high order) ────────────────────────────
+    _m(ErpModuleId.settings, 'settings', 'settings',
+        ModuleCategory.platform, ModuleMaturity.implemented, ModuleVisibility.both, 900,
+        routes: ['/settings', '/settings/workspace', '/settings/branding'],
+        navIds: ['settings'],
+        perms: {'settings.view', 'settings.edit', 'settings.manage'},
+        basic: true, advanced: true),
+  ];
+}

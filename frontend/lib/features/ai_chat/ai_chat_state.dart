@@ -34,6 +34,7 @@ class AiChatState extends ChangeNotifier {
     final lower = text.toLowerCase();
     Future.delayed(const Duration(milliseconds: 900), () {
       _isThinking = false;
+      // ignore: use_build_context_synchronously
       _generateResponse(lower, context);
       notifyListeners();
     });
@@ -56,8 +57,10 @@ class AiChatState extends ChangeNotifier {
         id: 'ai-${_msgCounter++}',
         type: ChatMsgType.actionResult,
         sender: ChatSender.ai,
+        // ignore: use_build_context_synchronously
         text: tr(context, 'chat_action_success'),
         timestamp: DateTime.now(),
+        // ignore: use_build_context_synchronously
         resultSummary: tr(context, 'chat_action_success_detail'),
       ));
       notifyListeners();

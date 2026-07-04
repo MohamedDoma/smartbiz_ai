@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
+import '../../../core/pages/widgets/generic_page_state.dart';
 import '../products_state.dart';
 import '../models/product_models.dart';
 import '../widgets/product_widgets.dart';
@@ -26,7 +27,18 @@ class ProductsListScreen extends StatelessWidget {
         // Header
         Container(
           padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-          decoration: const BoxDecoration(color: AppColors.surface, border: Border(bottom: BorderSide(color: AppColors.divider))),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: const Border(bottom: BorderSide(color: AppColors.divider)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -84,23 +96,26 @@ class ProductsListScreen extends StatelessWidget {
               ),
             ],
           ),
+          )),
         ),
         // List
         Expanded(
           child: products.isEmpty
-              ? Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.inventory_2_outlined, size: 48, color: AppColors.neutral300),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(tr(context, 'prod_empty'), style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                  ]),
+              ? GenericPageState.empty(
+                  title: tr(context, 'prod_empty'),
+                  message: tr(context, 'prod_empty_hint'),
+                  icon: Icons.inventory_2_outlined,
+                  actionLabel: tr(context, 'prod_add'),
+                  onAction: () => context.go('/products/create'),
                 )
-              : ListView.separated(
-                  padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                  itemCount: products.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, i) => _ProductRow(product: products[i]),
-                ),
+              : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+                  child: ListView.separated(
+                    padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+                    itemCount: products.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, i) => _ProductRow(product: products[i]),
+                  ),
+                )),
         ),
       ],
     );

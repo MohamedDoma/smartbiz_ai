@@ -16,8 +16,12 @@ import 'features/employees/employees_state.dart';
 import 'features/settings/settings_state.dart';
 import 'features/customers/customers_state.dart';
 import 'features/inventory/inventory_state.dart';
+import 'features/payments/payments_state.dart';
 import 'features/employees/roles_state.dart';
 import 'features/employees/org_state.dart';
+import 'features/dashboard/dynamic_dashboard_state.dart';
+import 'core/modules/workspace_module_state.dart';
+import 'core/modules/blueprint_navigation_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,37 +35,45 @@ class SmartBizApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Essential — always needed at startup
         ChangeNotifierProvider(create: (_) => AppState()),
         ChangeNotifierProvider(create: (_) => ShellState()),
         ChangeNotifierProvider(create: (_) => OnboardingState()),
         ChangeNotifierProvider(create: (_) => AiChatState()),
-        ChangeNotifierProvider(create: (_) => AdvisorState()),
-        ChangeNotifierProvider(create: (_) => InvoicesState()),
-        ChangeNotifierProvider(create: (_) => ProductsState()),
-        ChangeNotifierProvider(create: (_) => FinanceState()),
-        ChangeNotifierProvider(create: (_) => EmployeesState()),
-        ChangeNotifierProvider(create: (_) => SettingsState()),
-        ChangeNotifierProvider(create: (_) => CustomersState()),
-        ChangeNotifierProvider(create: (_) => InventoryState()),
-        ChangeNotifierProvider(create: (_) => RolesState()),
-        ChangeNotifierProvider(create: (_) => OrgState()),
+        // Heavy feature providers — lazy: created on first access only
+        ChangeNotifierProvider(create: (_) => AdvisorState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => InvoicesState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => ProductsState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => FinanceState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => EmployeesState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => SettingsState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => CustomersState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => InventoryState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => PaymentsState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => RolesState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => OrgState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => DynamicDashboardState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => WorkspaceModuleState(), lazy: true),
+        ChangeNotifierProvider(create: (_) => BlueprintNavigationController(), lazy: true),
       ],
-      child: Consumer<AppState>(
-        builder: (context, appState, _) {
+      // Only rebuild the MaterialApp when locale or onboarding changes
+      child: Selector<AppState, ({AppLanguage lang, Locale locale, bool onboarded})>(
+        selector: (_, s) => (lang: s.uiLanguage, locale: s.locale, onboarded: s.isOnboardingCompleted),
+        builder: (context, sel, _) {
           return AppLocaleProvider(
-            language: appState.uiLanguage,
+            language: sel.lang,
             child: MaterialApp.router(
               title: 'SmartBiz AI',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light,
-              locale: appState.locale,
+              locale: sel.locale,
               supportedLocales: AppLanguage.values.map((l) => l.locale),
               localizationsDelegates: const [
                 GlobalMaterialLocalizations.delegate,
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,
               ],
-              routerConfig: buildAppRouter(appState),
+              routerConfig: buildAppRouter(context.read<AppState>()),
             ),
           );
         },
@@ -69,3 +81,4 @@ class SmartBizApp extends StatelessWidget {
     );
   }
 }
+

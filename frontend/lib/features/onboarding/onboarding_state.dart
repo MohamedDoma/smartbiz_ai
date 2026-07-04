@@ -103,6 +103,7 @@ class OnboardingState extends ChangeNotifier {
       _isAiThinking = false;
 
       final mockResponse = MockDiscovery.getResponseForStep(stepIndex);
+      // ignore: use_build_context_synchronously
       final resolvedText = tr(context, mockResponse.textKey);
       final resolvedReplies = mockResponse.quickReplyKeys
           ?.map((key) => tr(context, key))

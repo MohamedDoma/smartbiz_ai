@@ -47,7 +47,7 @@ class EmployeeAssignment {
   String? managerId;
   String primaryRoleId;
   List<String> extraRoleIds;
-  Set<_ExtraPerm> extraPermissions;
+  Set<ExtraPerm> extraPermissions;
 
   EmployeeAssignment({
     required this.employeeId,
@@ -56,7 +56,7 @@ class EmployeeAssignment {
     this.managerId,
     required this.primaryRoleId,
     List<String>? extraRoleIds,
-    Set<_ExtraPerm>? extraPermissions,
+    Set<ExtraPerm>? extraPermissions,
   }) : teamIds = teamIds ?? [],
        extraRoleIds = extraRoleIds ?? [],
        extraPermissions = extraPermissions ?? {};
@@ -67,13 +67,13 @@ class EmployeeAssignment {
 }
 
 /// A single extra permission override.
-class _ExtraPerm {
+class ExtraPerm {
   final AppModule module;
   final PermAction action;
-  const _ExtraPerm(this.module, this.action);
+  const ExtraPerm(this.module, this.action);
 
   @override
-  bool operator ==(Object other) => other is _ExtraPerm && other.module == module && other.action == action;
+  bool operator ==(Object other) => other is ExtraPerm && other.module == module && other.action == action;
 
   @override
   int get hashCode => module.hashCode ^ action.hashCode;

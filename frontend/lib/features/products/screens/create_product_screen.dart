@@ -57,20 +57,46 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header ──────────────────────────────────
               Row(
                 children: [
-                  IconButton(onPressed: () => context.go('/products'), icon: const Icon(Icons.arrow_back)),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text(tr(context, 'prod_create_title'), style: AppTypography.headingLarge)),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      onPressed: () => context.go('/products'),
+                      icon: const Icon(Icons.arrow_back, size: 18),
+                      tooltip: tr(context, 'inv_cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tr(context, 'prod_create_title'), style: AppTypography.headingSmall),
+                      Text(tr(context, 'prod_create_subtitle'), style: AppTypography.caption.copyWith(color: AppColors.textSecondary)),
+                    ],
+                  )),
                 ],
               ),
               const SizedBox(height: AppSpacing.xl),
 
+              // ── Product Info ────────────────────────────
+              _SectionHeader(label: tr(context, 'prod_details')),
+              const SizedBox(height: AppSpacing.md),
               _Field(controller: _nameC, label: tr(context, 'prod_name'), context: context),
               const SizedBox(height: AppSpacing.md),
               _Field(controller: _skuC, label: tr(context, 'prod_sku'), context: context),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
 
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Pricing ─────────────────────────────────
+              _SectionHeader(label: tr(context, 'prod_pricing')),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(child: _Field(controller: _priceC, label: tr(context, 'prod_selling_price'), isNum: true, context: context)),
@@ -78,8 +104,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   Expanded(child: _Field(controller: _costC, label: tr(context, 'prod_cost_price'), isNum: true, context: context)),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
 
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Stock ───────────────────────────────────
+              _SectionHeader(label: tr(context, 'prod_inventory')),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(child: _Field(controller: _stockC, label: tr(context, 'prod_initial_stock'), isNum: true, context: context)),
@@ -87,14 +119,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   Expanded(child: _Field(controller: _threshC, label: tr(context, 'prod_threshold'), isNum: true, context: context)),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xl),
 
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Actions ─────────────────────────────────
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => _save(addAnother: true),
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                       child: Text(tr(context, 'prod_save_add')),
                     ),
                   ),
@@ -105,7 +144,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       onPressed: _save,
                       icon: const Icon(Icons.check, size: 18),
                       label: Text(tr(context, 'prod_save')),
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ),
                 ],
@@ -117,6 +160,22 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       ),
     );
   }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader({required this.label});
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 3, height: 16,
+        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+      ),
+      const SizedBox(width: AppSpacing.sm),
+      Text(label, style: AppTypography.labelLarge.copyWith(color: AppColors.textSecondary)),
+    ],
+  );
 }
 
 class _Field extends StatelessWidget {
