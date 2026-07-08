@@ -425,7 +425,10 @@ class _BlueprintActions extends StatelessWidget {
             Expanded(
               flex: 2,
               child: FilledButton.icon(
-                onPressed: () => context.read<OnboardingState>().startProvisioning(),
+                onPressed: () {
+                  final appState = context.read<AppState>();
+                  context.read<OnboardingState>().startRealProvisioning(appState);
+                },
                 icon: const Icon(Icons.rocket_launch, size: 16),
                 label: Text(tr(context, 'bp_accept')),
                 style: FilledButton.styleFrom(
@@ -501,6 +504,9 @@ class _ProvisioningView extends StatelessWidget {
                   height: 50,
                   child: FilledButton.icon(
                     onPressed: () {
+                      // Session already refreshed by startRealProvisioning;
+                      // onboarding_completed is true on the server.
+                      // Use mock completeOnboarding as fallback for local state.
                       context.read<AppState>().completeOnboarding();
                       context.go('/dashboard');
                     },

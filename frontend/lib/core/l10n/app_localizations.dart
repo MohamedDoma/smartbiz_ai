@@ -28,7 +28,7 @@ enum AppLanguage {
   static AppLanguage fromCode(String code) {
     return AppLanguage.values.firstWhere(
       (l) => l.locale.languageCode == code,
-      orElse: () => AppLanguage.en,
+      orElse: () => AppLanguage.ar,
     );
   }
 }
@@ -42,7 +42,7 @@ const Map<AppLanguage, Map<String, String>> _strings = {
 /// Get a localized string by key, falling back to English.
 String tr(BuildContext context, String key) {
   final appState = _AppLocaleAccessor.of(context);
-  final lang = appState ?? AppLanguage.en;
+  final lang = appState ?? AppLanguage.ar;
   return _strings[lang]?[key] ?? _strings[AppLanguage.en]?[key] ?? '[$key]';
 }
 

@@ -122,12 +122,22 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
             },
             onSelected: (v) {
               if (v == 'settings') context.go('/settings');
-              if (v == 'logout') ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'ux_logout_coming')), behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+              if (v == 'logout') _handleLogout(context);
             },
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final app = context.read<AppState>();
+    try {
+      await app.signOutReal();
+    } catch (_) {
+      // Even if API call fails, signOutReal clears local state.
+    }
+    if (context.mounted) context.go('/login');
   }
 
   void _showNotifications(BuildContext context) {

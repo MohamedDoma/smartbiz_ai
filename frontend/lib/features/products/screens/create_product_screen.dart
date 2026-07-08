@@ -1,4 +1,4 @@
-// SmartBiz AI — Create Product screen.
+// SmartBiz AI — Create Product screen (real API).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,27 +21,47 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final _skuC = TextEditingController();
   final _priceC = TextEditingController();
   final _costC = TextEditingController();
-  final _stockC = TextEditingController();
-  final _threshC = TextEditingController(text: '5');
+  final _threshC = TextEditingController(text: '0');
+  bool _saving = false;
+  String? _error;
 
   @override
-  void dispose() { _nameC.dispose(); _skuC.dispose(); _priceC.dispose(); _costC.dispose(); _stockC.dispose(); _threshC.dispose(); super.dispose(); }
+  void dispose() { _nameC.dispose(); _skuC.dispose(); _priceC.dispose(); _costC.dispose(); _threshC.dispose(); super.dispose(); }
 
-  void _save({bool addAnother = false}) {
-    if (_nameC.text.trim().isEmpty || _priceC.text.trim().isEmpty) return;
-    context.read<ProductsState>().createProduct(
-      name: _nameC.text.trim(),
-      sku: _skuC.text.trim(),
-      sellingPrice: double.tryParse(_priceC.text) ?? 0,
-      costPrice: double.tryParse(_costC.text) ?? 0,
-      stock: int.tryParse(_stockC.text) ?? 0,
-      lowStockThreshold: int.tryParse(_threshC.text) ?? 5,
-    );
-    if (addAnother) {
-      _nameC.clear(); _skuC.clear(); _priceC.clear(); _costC.clear(); _stockC.clear(); _threshC.text = '5';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(context, 'prod_saved')), duration: const Duration(seconds: 1)));
-    } else {
-      context.go('/products');
+  Future<void> _save({bool addAnother = false}) async {
+    if (_nameC.text.trim().isEmpty || _priceC.text.trim().isEmpty) {
+      setState(() => _error = tr(context, 'prod_validation_required'));
+      return;
+    }
+
+    setState(() { _saving = true; _error = null; });
+
+    try {
+      await context.read<ProductsState>().createProduct(
+        name: _nameC.text.trim(),
+        sku: _skuC.text.trim(),
+        sellingPrice: double.tryParse(_priceC.text) ?? 0,
+        costPrice: double.tryParse(_costC.text) ?? 0,
+        minStockAlert: int.tryParse(_threshC.text) ?? 0,
+      );
+
+      if (!mounted) return;
+
+      if (addAnother) {
+        _nameC.clear(); _skuC.clear(); _priceC.clear(); _costC.clear(); _threshC.text = '0';
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr(context, 'prod_saved')), duration: const Duration(seconds: 1)),
+        );
+      } else {
+        context.go('/products');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
     }
   }
 
@@ -83,6 +103,27 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
+              // Error banner
+              if (_error != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(child: Text(_error!, style: AppTypography.bodySmall.copyWith(color: AppColors.error))),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+
               // ── Product Info ────────────────────────────
               _SectionHeader(label: tr(context, 'prod_details')),
               const SizedBox(height: AppSpacing.md),
@@ -109,50 +150,50 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               const Divider(color: AppColors.divider),
               const SizedBox(height: AppSpacing.lg),
 
-              // ── Stock ───────────────────────────────────
+              // ── Stock Alert ──────────────────────────────
               _SectionHeader(label: tr(context, 'prod_inventory')),
               const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(child: _Field(controller: _stockC, label: tr(context, 'prod_initial_stock'), isNum: true, context: context)),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(child: _Field(controller: _threshC, label: tr(context, 'prod_threshold'), isNum: true, context: context)),
-                ],
-              ),
+              _Field(controller: _threshC, label: tr(context, 'prod_threshold'), isNum: true, context: context),
               const SizedBox(height: AppSpacing.xl),
 
               const Divider(color: AppColors.divider),
               const SizedBox(height: AppSpacing.lg),
 
               // ── Actions ─────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _save(addAnother: true),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(tr(context, 'prod_save_add')),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: Text(tr(context, 'prod_save')),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              if (_saving)
+                const Center(child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.base),
+                  child: CircularProgressIndicator(),
+                ))
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _save(addAnother: true),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(tr(context, 'prod_save_add')),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _save,
+                        icon: const Icon(Icons.check, size: 18),
+                        label: Text(tr(context, 'prod_save')),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),

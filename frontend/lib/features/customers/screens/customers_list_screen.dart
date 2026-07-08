@@ -1,4 +1,4 @@
-// SmartBiz AI — Customers list screen.
+// SmartBiz AI — Customers list screen (real API).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,8 +12,22 @@ import '../customers_state.dart';
 import '../models/customer_models.dart';
 import '../widgets/customer_widgets.dart';
 
-class CustomersListScreen extends StatelessWidget {
+class CustomersListScreen extends StatefulWidget {
   const CustomersListScreen({super.key});
+
+  @override
+  State<CustomersListScreen> createState() => _CustomersListScreenState();
+}
+
+class _CustomersListScreenState extends State<CustomersListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<CustomersState>();
+    if (state.customers.isEmpty && !state.loading) {
+      Future.microtask(() => state.loadCustomers(refresh: true));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +75,7 @@ class CustomersListScreen extends StatelessWidget {
                 onChanged: state.setSearch,
                 decoration: InputDecoration(
                   hintText: tr(context, 'cust_search'), prefixIcon: const Icon(Icons.search, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.divider)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.divider)),
                   isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
               ),
@@ -78,26 +92,53 @@ class CustomersListScreen extends StatelessWidget {
           )),
         ),
 
-        // Virtualized list
+        // Content
         Expanded(
-          child: items.isEmpty
-              ? GenericPageState.empty(
-                  title: tr(context, 'cust_empty'),
-                  message: tr(context, 'cust_empty_hint'),
-                  icon: Icons.people_outline,
-                  actionLabel: tr(context, 'cust_add'),
-                  onAction: () => context.go('/customers/create'),
-                )
-              : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
-                  child: ListView.separated(
-                    padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, i) => CustomerCard(customer: items[i], onTap: () => context.go('/customers/${items[i].id}')),
-                  ),
-                )),
+          child: _buildContent(context, state, items, isMobile),
         ),
       ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, CustomersState state, List<Customer> items, bool isMobile) {
+    // Loading (initial)
+    if (state.loading && items.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Error
+    if (state.error != null && items.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'cust_load_failed'),
+        message: state.error!,
+        icon: Icons.error_outline,
+        actionLabel: tr(context, 'retry'),
+        onAction: () => state.loadCustomers(refresh: true),
+      );
+    }
+
+    // Empty
+    if (items.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'cust_empty'),
+        message: tr(context, 'cust_empty_hint'),
+        icon: Icons.people_outline,
+        actionLabel: tr(context, 'cust_add'),
+        onAction: () => context.go('/customers/create'),
+      );
+    }
+
+    // List
+    return RefreshIndicator(
+      onRefresh: () => state.loadCustomers(refresh: true),
+      child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView.separated(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, i) => CustomerCard(customer: items[i], onTap: () => context.go('/customers/${items[i].id}')),
+        ),
+      )),
     );
   }
 }

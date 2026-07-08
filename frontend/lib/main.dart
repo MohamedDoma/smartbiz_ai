@@ -11,6 +11,12 @@ import 'features/advisor/advisor_state.dart';
 import 'features/invoices/invoices_state.dart';
 import 'features/onboarding/onboarding_state.dart';
 import 'features/products/products_state.dart';
+import 'core/api/product_service.dart';
+import 'core/api/contact_service.dart';
+import 'core/api/invoice_service.dart';
+import 'core/api/payment_service.dart';
+import 'core/api/warehouse_service.dart';
+import 'core/api/inventory_service.dart';
 import 'features/finance/finance_state.dart';
 import 'features/employees/employees_state.dart';
 import 'features/settings/settings_state.dart';
@@ -19,9 +25,25 @@ import 'features/inventory/inventory_state.dart';
 import 'features/payments/payments_state.dart';
 import 'features/employees/roles_state.dart';
 import 'features/employees/org_state.dart';
+import 'features/employees/role_permission_state.dart';
+import 'core/api/role_permission_service.dart';
 import 'features/dashboard/dynamic_dashboard_state.dart';
 import 'core/modules/workspace_module_state.dart';
 import 'core/modules/blueprint_navigation_controller.dart';
+import 'core/api/org_service.dart';
+import 'features/employees/org_structure_state.dart';
+import 'core/api/pipeline_service.dart';
+import 'features/pipelines/pipeline_state.dart';
+import 'core/api/document_service.dart';
+import 'features/documents/document_state.dart';
+import 'core/api/commission_service.dart';
+import 'features/commissions/commission_state.dart';
+import 'core/api/ownership_service.dart';
+import 'features/ownership/ownership_state.dart';
+import 'core/api/duplicate_service.dart';
+import 'features/duplicates/duplicate_state.dart';
+import 'core/api/report_service.dart';
+import 'features/reports/report_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,16 +64,79 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AiChatState()),
         // Heavy feature providers — lazy: created on first access only
         ChangeNotifierProvider(create: (_) => AdvisorState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InvoicesState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => ProductsState(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, InvoicesState>(
+          create: (ctx) => InvoicesState(InvoiceService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, ProductsState>(
+          create: (ctx) => ProductsState(ProductService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => FinanceState(), lazy: true),
         ChangeNotifierProvider(create: (_) => EmployeesState(), lazy: true),
         ChangeNotifierProvider(create: (_) => SettingsState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => CustomersState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => InventoryState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => PaymentsState(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, CustomersState>(
+          create: (ctx) => CustomersState(ContactService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, InventoryState>(
+          create: (ctx) {
+            final client = ctx.read<AppState>().apiClient;
+            return InventoryState(WarehouseService(client), InventoryService(client));
+          },
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, PaymentsState>(
+          create: (ctx) => PaymentsState(PaymentService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => RolesState(), lazy: true),
         ChangeNotifierProvider(create: (_) => OrgState(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, RolePermissionState>(
+          create: (ctx) => RolePermissionState(RolePermissionService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, OrgStructureState>(
+          create: (ctx) => OrgStructureState(OrgService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, PipelineState>(
+          create: (ctx) => PipelineState(PipelineService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, DocumentState>(
+          create: (ctx) => DocumentState(DocumentService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, CommissionState>(
+          create: (ctx) => CommissionState(CommissionService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, OwnershipState>(
+          create: (ctx) => OwnershipState(OwnershipService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, DuplicateState>(
+          create: (ctx) => DuplicateState(DuplicateService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, ReportState>(
+          create: (ctx) => ReportState(ReportService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => DynamicDashboardState(), lazy: true),
         ChangeNotifierProvider(create: (_) => WorkspaceModuleState(), lazy: true),
         ChangeNotifierProvider(create: (_) => BlueprintNavigationController(), lazy: true),

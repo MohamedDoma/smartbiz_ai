@@ -1,4 +1,4 @@
-// SmartBiz AI — Invoices list screen.
+// SmartBiz AI — Invoices list screen (real API).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,8 +12,22 @@ import '../invoices_state.dart';
 import '../models/invoice_models.dart';
 import '../widgets/invoice_widgets.dart';
 
-class InvoicesListScreen extends StatelessWidget {
+class InvoicesListScreen extends StatefulWidget {
   const InvoicesListScreen({super.key});
+
+  @override
+  State<InvoicesListScreen> createState() => _InvoicesListScreenState();
+}
+
+class _InvoicesListScreenState extends State<InvoicesListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<InvoicesState>();
+    if (state.filtered.isEmpty && !state.loading) {
+      Future.microtask(() => state.loadInvoices(refresh: true));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +71,6 @@ class InvoicesListScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-
-                // Search
                 TextField(
                   onChanged: state.setSearch,
                   textDirection: Directionality.of(context),
@@ -72,8 +84,6 @@ class InvoicesListScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-
-                // Status filters
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -98,26 +108,53 @@ class InvoicesListScreen extends StatelessWidget {
 
           // Invoice list
           Expanded(
-            child: invoices.isEmpty
-                ? GenericPageState.empty(
-                    title: tr(context, 'inv_empty'),
-                    message: tr(context, 'inv_empty_hint'),
-                    icon: Icons.receipt_long,
-                    actionLabel: tr(context, 'inv_create'),
-                    onAction: () => context.go('/invoices/create'),
-                  )
-                : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
-                    child: ListView.separated(
-                      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                      itemCount: invoices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, index) => _InvoiceRow(invoice: invoices[index]),
-                    ),
-                  )),
+            child: _buildContent(context, state, invoices, isMobile),
           ),
         ],
       );
     });
+  }
+
+  Widget _buildContent(BuildContext context, InvoicesState state, List<Invoice> invoices, bool isMobile) {
+    // Loading
+    if (state.loading && invoices.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Error
+    if (state.error != null && invoices.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'inv_load_failed'),
+        message: state.error!,
+        icon: Icons.error_outline,
+        actionLabel: tr(context, 'retry'),
+        onAction: () => state.loadInvoices(refresh: true),
+      );
+    }
+
+    // Empty
+    if (invoices.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'inv_empty'),
+        message: tr(context, 'inv_empty_hint'),
+        icon: Icons.receipt_long,
+        actionLabel: tr(context, 'inv_create'),
+        onAction: () => context.go('/invoices/create'),
+      );
+    }
+
+    // List
+    return RefreshIndicator(
+      onRefresh: () => state.loadInvoices(refresh: true),
+      child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView.separated(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+          itemCount: invoices.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, index) => _InvoiceRow(invoice: invoices[index]),
+        ),
+      )),
+    );
   }
 }
 
@@ -163,15 +200,12 @@ class _InvoiceRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Invoice icon
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(color: AppColors.primarySurface, borderRadius: BorderRadius.circular(10)),
               child: const Icon(Icons.receipt_long, size: 20, color: AppColors.primary),
             ),
             const SizedBox(width: AppSpacing.md),
-
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,8 +226,6 @@ class _InvoiceRow extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Amount + status
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [

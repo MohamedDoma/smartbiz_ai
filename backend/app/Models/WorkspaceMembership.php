@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $workspace_id
  * @property string $user_id
  * @property string|null $department_id
+ * @property string|null $team_id
+ * @property string|null $job_title
  * @property string|null $branch_id
  * @property string|null $shift_id
  * @property string|null $manager_membership_id
@@ -39,6 +41,8 @@ class WorkspaceMembership extends Model
         'workspace_id',
         'user_id',
         'department_id',
+        'team_id',
+        'job_title',
         'branch_id',
         'shift_id',
         'manager_membership_id',
@@ -92,9 +96,24 @@ class WorkspaceMembership extends Model
         return $this->hasMany(PermissionDelegation::class, 'delegate_membership_id');
     }
 
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'team_id');
+    }
+
     public function managerMembership(): BelongsTo
     {
         return $this->belongsTo(self::class, 'manager_membership_id');
+    }
+
+    public function directReports(): HasMany
+    {
+        return $this->hasMany(self::class, 'manager_membership_id');
     }
 
     // ── Scopes ─────────────────────────────────────────────────

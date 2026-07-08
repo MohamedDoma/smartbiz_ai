@@ -9,6 +9,12 @@ import '../core/state/app_state.dart';
 import '../features/ai_chat/ai_chat_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/onboarding/onboarding_page.dart';
+import '../features/auth/screens/mock_session_screen.dart';
+import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/register_screen.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
+import '../features/auth/screens/invite_accept_screen.dart';
+import '../features/splash/screens/splash_screen.dart';
 import '../features/placeholder/placeholder_screen.dart';
 import '../shared/layout/app_shell.dart';
 import '../shared/widgets/deferred_route_loader.dart';
@@ -39,6 +45,21 @@ import '../features/employees/screens/departments_screen.dart' deferred as dept_
 import '../features/employees/screens/teams_screen.dart' deferred as teams_screen;
 import '../features/employees/screens/org_chart_screen.dart' deferred as org_chart;
 import '../features/employees/screens/employee_assignment_screen.dart' deferred as emp_assign;
+import '../features/employees/screens/role_management_real_screen.dart' deferred as role_mgmt;
+import '../features/employees/screens/employee_roles_screen.dart' deferred as emp_roles;
+import '../features/employees/screens/org_structure_screen.dart' deferred as org_struct;
+import '../features/pipelines/screens/pipelines_screen.dart' deferred as pipe_main;
+import '../features/pipelines/screens/pipeline_settings_screen.dart' deferred as pipe_settings;
+import '../features/documents/screens/document_checklists_screen.dart' deferred as doc_checklists;
+import '../features/documents/screens/record_documents_screen.dart' deferred as rec_docs;
+import '../features/commissions/screens/commission_settings_screen.dart' deferred as comm_settings;
+import '../features/commissions/screens/commission_entries_screen.dart' deferred as comm_entries;
+import '../features/duplicates/screens/duplicate_rules_screen.dart' deferred as dup_rules;
+import '../features/duplicates/screens/duplicate_matches_screen.dart' deferred as dup_matches;
+import '../features/ownership/screens/ownership_screen.dart' deferred as own_screen;
+import '../features/reports/screens/report_templates_screen.dart' deferred as rpt_templates;
+import '../features/reports/screens/report_results_screen.dart' deferred as rpt_results;
+import '../features/reports/screens/report_runs_screen.dart' deferred as rpt_runs;
 import '../features/customers/screens/customers_list_screen.dart' deferred as cust_list;
 import '../features/customers/screens/create_customer_screen.dart' deferred as cust_create;
 import '../features/customers/screens/customer_detail_screen.dart' deferred as cust_detail;
@@ -55,24 +76,83 @@ import '../features/settings/settings_screen.dart' deferred as set_main;
 import '../core/modules/blueprint_landing_route_resolver.dart';
 import '../core/modules/module_route_guard.dart';
 import '../core/modules/workspace_module_state.dart';
+import '../features/super_admin/layout/super_admin_shell.dart' deferred as sa_shell;
+import '../features/super_admin/screens/super_admin_dashboard_screen.dart' deferred as sa_dash;
+import '../features/super_admin/screens/super_admin_tenants_screen.dart' deferred as sa_tenants;
+import '../features/super_admin/screens/super_admin_tenant_detail_screen.dart' deferred as sa_tenant_detail;
+import '../features/super_admin/screens/super_admin_plans_screen.dart' deferred as sa_plans;
+import '../features/super_admin/screens/super_admin_modules_screen.dart' deferred as sa_modules;
+import '../features/super_admin/screens/super_admin_usage_screen.dart' deferred as sa_usage;
+import '../features/super_admin/screens/super_admin_health_screen.dart' deferred as sa_health;
 
 GoRouter buildAppRouter(AppState appState) {
   return GoRouter(
     initialLocation: '/',
     refreshListenable: appState,
     redirect: (context, state) {
+      final loc = state.uri.path;
+      final isLoginRoute = loc == '/login';
+      final isRegisterRoute = loc == '/register';
+      final isForgotRoute = loc == '/forgot-password';
+      final isMockSessionRoute = loc == '/auth/mock-session';
+      final isSplashRoute = loc == '/splash';
+      final isInviteRoute = loc.startsWith('/invite/');
+      final isAuthRoute = isLoginRoute || isRegisterRoute || isForgotRoute || isMockSessionRoute;
+      final isPublicRoute = isAuthRoute || isSplashRoute || isInviteRoute;
+      final isOnboardingRoute = loc == '/onboarding';
+      final isSuperAdminRoute = loc.startsWith('/super-admin');
+      final isRoot = loc == '/';
+      final isAuthenticated = appState.isAuthenticated;
       final onboardingDone = appState.isOnboardingCompleted;
-      final isOnboardingRoute = state.matchedLocation == '/onboarding';
-      final isRoot = state.matchedLocation == '/';
 
-      // Root → redirect based on onboarding status
-      if (isRoot) {
-        return onboardingDone ? '/dashboard' : '/onboarding';
+      // Helper: prevent redirect loops — never return current location.
+      String? guard(String target) => target == loc ? null : target;
+
+      // ── 1. Public routes — always allow (splash, login, register, etc.) ──
+      if (isPublicRoute && !isAuthenticated) {
+        return null;
+      }
+      // Authenticated users on splash — let it run its routing logic.
+      if (isSplashRoute && isAuthenticated) {
+        return null;
+      }
+      // Invite route — always allow (both auth states).
+      if (isInviteRoute) {
+        return null;
       }
 
-      // If onboarding not done and trying to access app pages, redirect
-      if (!onboardingDone && !isOnboardingRoute) {
-        return '/onboarding';
+      // ── 2. Unauthenticated gate — everything else requires auth ──
+      if (!isAuthenticated && !isRoot) {
+        return guard('/login');
+      }
+
+      // ── 3. Authenticated user on auth route — redirect away ──
+      if (isAuthenticated && isAuthRoute) {
+        if (appState.isSuperAdmin) return guard('/super-admin');
+        return guard(onboardingDone ? '/dashboard' : '/onboarding');
+      }
+
+      // ── 4. Root — go to splash ──
+      if (isRoot) {
+        return guard('/splash');
+      }
+
+      // ── 5. Super Admin guard ──
+      if (isSuperAdminRoute) {
+        if (!isAuthenticated) return guard('/login');
+        if (!appState.isSuperAdmin) return guard('/dashboard');
+        // Super admin bypasses onboarding — allow through.
+        return null;
+      }
+
+      // ── 6. Customer onboarding gate (authenticated non-SA only) ──
+      if (isAuthenticated && !appState.isSuperAdmin) {
+        if (!onboardingDone && !isOnboardingRoute) {
+          return guard('/onboarding');
+        }
+        if (onboardingDone && isOnboardingRoute) {
+          return guard('/dashboard');
+        }
       }
       // ── Module route guard ──────────────────────────────
       // Module ownership is determined by the ERP module registry.
@@ -121,6 +201,21 @@ GoRouter buildAppRouter(AppState appState) {
       return null; // no redirect
     },
     routes: [
+      // ── Splash ──────────────────────────────────────────
+      GoRoute(path: '/splash', pageBuilder: (_, __) => const NoTransitionPage(child: SplashScreen())),
+
+      // ── Public auth routes ──────────────────────────────
+      GoRoute(path: '/login', pageBuilder: (_, __) => const NoTransitionPage(child: LoginScreen())),
+      GoRoute(path: '/register', pageBuilder: (_, __) => const NoTransitionPage(child: RegisterScreen())),
+      GoRoute(path: '/forgot-password', pageBuilder: (_, __) => const NoTransitionPage(child: ForgotPasswordScreen())),
+      GoRoute(path: '/auth/mock-session', pageBuilder: (_, __) => const NoTransitionPage(child: MockSessionScreen())),
+      GoRoute(
+        path: '/invite/:token',
+        pageBuilder: (_, state) => NoTransitionPage(
+          child: InviteAcceptScreen(token: state.pathParameters['token'] ?? ''),
+        ),
+      ),
+
       // Onboarding — standalone (no shell)
       GoRoute(
         path: '/onboarding',
@@ -129,7 +224,7 @@ GoRouter buildAppRouter(AppState appState) {
         },
       ),
 
-      // Root redirect handled by redirect callback above
+      // Root → splash (handled by redirect callback above)
       GoRoute(path: '/', redirect: (_, __) => null),
 
       // Main app shell — wrapped with BlueprintNavigationCoordinator
@@ -337,6 +432,24 @@ GoRouter buildAppRouter(AppState appState) {
                 ],
               ),
               GoRoute(
+                path: 'role-management',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: DeferredRouteLoader(loader: role_mgmt.loadLibrary, builder: () => role_mgmt.RoleManagementScreen()),
+                ),
+              ),
+              GoRoute(
+                path: 'employee-roles',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: DeferredRouteLoader(loader: emp_roles.loadLibrary, builder: () => emp_roles.EmployeeRolesScreen()),
+                ),
+              ),
+              GoRoute(
+                path: 'org-structure',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: DeferredRouteLoader(loader: org_struct.loadLibrary, builder: () => org_struct.OrgStructureScreen()),
+                ),
+              ),
+              GoRoute(
                 path: 'organization',
                 pageBuilder: (context, state) => NoTransitionPage(
                   child: DeferredRouteLoader(loader: org_overview.loadLibrary, builder: () => org_overview.OrgOverviewScreen()),
@@ -382,6 +495,93 @@ GoRouter buildAppRouter(AppState appState) {
               ),
             ],
           ),
+
+          // ── Pipelines ──────────────────────────────────
+          GoRoute(
+            path: '/pipelines',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: pipe_main.loadLibrary, builder: () => pipe_main.PipelinesScreen()),
+            ),
+            routes: [
+              GoRoute(
+                path: 'settings',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: DeferredRouteLoader(loader: pipe_settings.loadLibrary, builder: () => pipe_settings.PipelineSettingsScreen()),
+                ),
+              ),
+            ],
+          ),
+
+          // ── Document Checklists ────────────────────────────
+          GoRoute(
+            path: '/documents/checklists',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: doc_checklists.loadLibrary, builder: () => doc_checklists.DocumentChecklistsScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/pipeline-records/:recordId/documents',
+            pageBuilder: (context, state) {
+              final recordId = state.pathParameters['recordId']!;
+              return NoTransitionPage(
+                child: DeferredRouteLoader(loader: rec_docs.loadLibrary, builder: () => rec_docs.RecordDocumentsScreen(recordId: recordId)),
+              );
+            },
+          ),
+
+          // ── Commissions ───────────────────────────────
+          GoRoute(
+            path: '/commissions/settings',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: comm_settings.loadLibrary, builder: () => comm_settings.CommissionSettingsScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/commissions',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: comm_entries.loadLibrary, builder: () => comm_entries.CommissionEntriesScreen()),
+            ),
+          ),
+
+          // ── Duplicates & Ownership ───────────────────
+          GoRoute(
+            path: '/duplicates/rules',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: dup_rules.loadLibrary, builder: () => dup_rules.DuplicateRulesScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/duplicates/matches',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: dup_matches.loadLibrary, builder: () => dup_matches.DuplicateMatchesScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/ownership',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: own_screen.loadLibrary, builder: () => own_screen.OwnershipScreen()),
+            ),
+          ),
+
+          // ── Reports ─────────────────────────────────
+          GoRoute(
+            path: '/reports/templates',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: rpt_templates.loadLibrary, builder: () => rpt_templates.ReportTemplatesScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/reports/results',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: rpt_results.loadLibrary, builder: () => rpt_results.ReportResultsScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/reports/runs',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: rpt_runs.loadLibrary, builder: () => rpt_runs.ReportRunsScreen()),
+            ),
+          ),
           GoRoute(
             path: '/settings',
             pageBuilder: (context, state) {
@@ -413,6 +613,56 @@ GoRouter buildAppRouter(AppState appState) {
                 child: PlaceholderScreen(titleKey: 'nav_admin', icon: Icons.admin_panel_settings_outlined, subtitleKey: 'admin_subtitle'),
               );
             },
+          ),
+        ],
+      ),
+
+      // ── Super Admin shell — separate from customer workspace ──
+      ShellRoute(
+        builder: (context, state, child) => DeferredRouteLoader(
+          loader: sa_shell.loadLibrary,
+          builder: () => sa_shell.SuperAdminShell(child: child),
+        ),
+        routes: [
+          GoRoute(
+            path: '/super-admin',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: sa_dash.loadLibrary, builder: () => sa_dash.SuperAdminDashboardScreen()),
+            ),
+            routes: [
+              GoRoute(
+                path: 'tenants',
+                pageBuilder: (_, __) => NoTransitionPage(
+                  child: DeferredRouteLoader(loader: sa_tenants.loadLibrary, builder: () => sa_tenants.SuperAdminTenantsScreen()),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id'] ?? '';
+                      return NoTransitionPage(
+                        child: DeferredRouteLoader(
+                          loader: sa_tenant_detail.loadLibrary,
+                          builder: () => sa_tenant_detail.SuperAdminTenantDetailScreen(tenantId: id),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              GoRoute(path: 'plans', pageBuilder: (_, __) => NoTransitionPage(
+                child: DeferredRouteLoader(loader: sa_plans.loadLibrary, builder: () => sa_plans.SuperAdminPlansScreen()),
+              )),
+              GoRoute(path: 'modules', pageBuilder: (_, __) => NoTransitionPage(
+                child: DeferredRouteLoader(loader: sa_modules.loadLibrary, builder: () => sa_modules.SuperAdminModulesScreen()),
+              )),
+              GoRoute(path: 'usage', pageBuilder: (_, __) => NoTransitionPage(
+                child: DeferredRouteLoader(loader: sa_usage.loadLibrary, builder: () => sa_usage.SuperAdminUsageScreen()),
+              )),
+              GoRoute(path: 'health', pageBuilder: (_, __) => NoTransitionPage(
+                child: DeferredRouteLoader(loader: sa_health.loadLibrary, builder: () => sa_health.SuperAdminHealthScreen()),
+              )),
+            ],
           ),
         ],
       ),

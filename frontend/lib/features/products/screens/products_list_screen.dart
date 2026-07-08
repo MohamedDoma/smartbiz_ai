@@ -1,4 +1,4 @@
-// SmartBiz AI — Products list screen.
+// SmartBiz AI — Products list screen (real API).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,8 +12,23 @@ import '../products_state.dart';
 import '../models/product_models.dart';
 import '../widgets/product_widgets.dart';
 
-class ProductsListScreen extends StatelessWidget {
+class ProductsListScreen extends StatefulWidget {
   const ProductsListScreen({super.key});
+
+  @override
+  State<ProductsListScreen> createState() => _ProductsListScreenState();
+}
+
+class _ProductsListScreenState extends State<ProductsListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load products on first mount if not already loaded.
+    final state = context.read<ProductsState>();
+    if (state.all.isEmpty && !state.loading) {
+      Future.microtask(() => state.loadProducts(refresh: true));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,26 +113,53 @@ class ProductsListScreen extends StatelessWidget {
           ),
           )),
         ),
-        // List
+        // Content
         Expanded(
-          child: products.isEmpty
-              ? GenericPageState.empty(
-                  title: tr(context, 'prod_empty'),
-                  message: tr(context, 'prod_empty_hint'),
-                  icon: Icons.inventory_2_outlined,
-                  actionLabel: tr(context, 'prod_add'),
-                  onAction: () => context.go('/products/create'),
-                )
-              : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
-                  child: ListView.separated(
-                    padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                    itemCount: products.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, i) => _ProductRow(product: products[i]),
-                  ),
-                )),
+          child: _buildContent(context, state, products, isMobile),
         ),
       ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, ProductsState state, List<Product> products, bool isMobile) {
+    // Loading state (initial load)
+    if (state.loading && products.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Error state
+    if (state.error != null && products.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'prod_load_failed'),
+        message: state.error!,
+        icon: Icons.error_outline,
+        actionLabel: tr(context, 'retry'),
+        onAction: () => state.loadProducts(refresh: true),
+      );
+    }
+
+    // Empty state
+    if (products.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'prod_empty'),
+        message: tr(context, 'prod_empty_hint'),
+        icon: Icons.inventory_2_outlined,
+        actionLabel: tr(context, 'prod_add'),
+        onAction: () => context.go('/products/create'),
+      );
+    }
+
+    // Products list
+    return RefreshIndicator(
+      onRefresh: () => state.loadProducts(refresh: true),
+      child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView.separated(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+          itemCount: products.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, i) => _ProductRow(product: products[i]),
+        ),
+      )),
     );
   }
 }

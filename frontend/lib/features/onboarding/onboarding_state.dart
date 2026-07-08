@@ -1,6 +1,7 @@
 // SmartBiz AI — Onboarding state management.
 import 'package:flutter/material.dart';
 import '../../core/l10n/app_localizations.dart';
+import '../../core/state/app_state.dart';
 import 'models/onboarding_models.dart';
 import 'data/mock_discovery.dart';
 
@@ -58,13 +59,92 @@ class OnboardingState extends ChangeNotifier {
     _provisioningError = null;
     notifyListeners();
 
-    // Simulate provisioning (2s delay)
+    // Simulate provisioning (2s delay) — mock-only fallback
     Future.delayed(const Duration(seconds: 2), () {
       _isProvisioning = false;
       _provisioningDone = true;
       _phase = OnboardingPhase.complete;
       notifyListeners();
     });
+  }
+
+  /// Apply a real business template via backend API.
+  ///
+  /// Maps the onboarding business type to a template_key and calls
+  /// AppState.applyBusinessTemplate, which applies modules/roles on the server
+  /// and refreshes the session.
+  Future<void> startRealProvisioning(AppState appState) async {
+    _phase = OnboardingPhase.provisioning;
+    _isProvisioning = true;
+    _provisioningError = null;
+    notifyListeners();
+
+    try {
+      final templateKey = resolveTemplateKey(appState);
+      await appState.applyBusinessTemplate(templateKey);
+
+      _isProvisioning = false;
+      _provisioningDone = true;
+      _phase = OnboardingPhase.complete;
+      notifyListeners();
+    } catch (e) {
+      _isProvisioning = false;
+      _provisioningError = e.toString();
+      _phase = OnboardingPhase.blueprint; // allow retry
+      notifyListeners();
+    }
+  }
+
+  /// Map the current onboarding context to a template_key.
+  ///
+  /// Uses the workspace's industry_type from registration, or the
+  /// blueprint's businessType from the mock discovery flow.
+  String resolveTemplateKey(AppState appState) {
+    // Check registered business type
+    final session = appState.lastSession;
+    String? raw;
+    if (session?.activeWorkspace != null) {
+      // Fallback: try blueprint data if available
+      raw = _blueprint?.businessType;
+    }
+
+    // Normalize and map to template key
+    final normalized = (raw ?? '').toLowerCase().trim();
+
+    if (normalized.contains('automotive') ||
+        normalized.contains('car') ||
+        normalized.contains('vehicle') ||
+        normalized.contains('dealer')) {
+      return 'automotive_dealer';
+    }
+    if (normalized.contains('retail') ||
+        normalized.contains('shop') ||
+        normalized.contains('pos') ||
+        normalized.contains('store')) {
+      return 'retail_pos';
+    }
+    if (normalized.contains('workshop') ||
+        normalized.contains('service') && normalized.contains('repair') ||
+        normalized.contains('garage') ||
+        normalized.contains('maintenance')) {
+      return 'workshop_service';
+    }
+    if (normalized.contains('restaurant') ||
+        normalized.contains('food') ||
+        normalized.contains('fnb') ||
+        normalized.contains('café') ||
+        normalized.contains('cafe')) {
+      return 'restaurant_fnb';
+    }
+    if (normalized.contains('consulting') ||
+        normalized.contains('agency') ||
+        normalized.contains('services') ||
+        normalized.contains('professional')) {
+      return 'professional_services';
+    }
+
+    // Safe default
+    return 'professional_services';
   }
 
   void resetOnboarding() {

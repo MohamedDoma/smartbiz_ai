@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(CorrelationIdMiddleware::class);
 
         // Enforce HTTPS in production
-        if (app()->environment('production')) {
+        if (env('APP_ENV') === 'production') {
             $middleware->prepend(\Illuminate\Http\Middleware\TrustProxies::class);
         }
     })

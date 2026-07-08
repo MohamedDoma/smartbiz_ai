@@ -1,4 +1,4 @@
-// SmartBiz AI — Payments list screen.
+// SmartBiz AI — Payments list screen (real API).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/l10n/app_localizations.dart';
@@ -10,8 +10,22 @@ import '../../../core/pages/widgets/generic_page_state.dart';
 import '../payments_state.dart';
 import '../models/payment_models.dart';
 
-class PaymentsListScreen extends StatelessWidget {
+class PaymentsListScreen extends StatefulWidget {
   const PaymentsListScreen({super.key});
+
+  @override
+  State<PaymentsListScreen> createState() => _PaymentsListScreenState();
+}
+
+class _PaymentsListScreenState extends State<PaymentsListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<PaymentsState>();
+    if (state.filtered.isEmpty && !state.loading) {
+      Future.microtask(() => state.loadPayments(refresh: true));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +53,10 @@ class PaymentsListScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
               Text(tr(context, 'pay_title'), style: AppTypography.headingLarge),
               const SizedBox(height: AppSpacing.md),
-
-              // Summary cards
               _SummaryRow(state: state),
               const SizedBox(height: AppSpacing.md),
-
-              // Search
               TextField(
                 onChanged: state.setSearch,
                 textDirection: Directionality.of(context),
@@ -61,8 +70,6 @@ class PaymentsListScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-
-              // Status filters
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -87,22 +94,49 @@ class PaymentsListScreen extends StatelessWidget {
 
         // ── Payment list ────────────────────────────────
         Expanded(
-          child: payments.isEmpty
-              ? GenericPageState.empty(
-                  title: tr(context, 'pay_empty'),
-                  message: tr(context, 'pay_empty_hint'),
-                  icon: Icons.payments_outlined,
-                )
-              : Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
-                  child: ListView.separated(
-                    padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
-                    itemCount: payments.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, i) => _PaymentRow(payment: payments[i]),
-                  ),
-                )),
+          child: _buildContent(context, state, payments, isMobile),
         ),
       ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, PaymentsState state, List<Payment> payments, bool isMobile) {
+    // Loading
+    if (state.loading && payments.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Error
+    if (state.error != null && payments.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'pay_load_failed'),
+        message: state.error!,
+        icon: Icons.error_outline,
+        actionLabel: tr(context, 'retry'),
+        onAction: () => state.loadPayments(refresh: true),
+      );
+    }
+
+    // Empty
+    if (payments.isEmpty) {
+      return GenericPageState.empty(
+        title: tr(context, 'pay_empty'),
+        message: tr(context, 'pay_empty_hint'),
+        icon: Icons.payments_outlined,
+      );
+    }
+
+    // List
+    return RefreshIndicator(
+      onRefresh: () => state.loadPayments(refresh: true),
+      child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView.separated(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
+          itemCount: payments.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, i) => _PaymentRow(payment: payments[i]),
+        ),
+      )),
     );
   }
 }
@@ -228,7 +262,6 @@ class _PaymentRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Method icon
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
@@ -238,28 +271,25 @@ class _PaymentRow extends StatelessWidget {
             child: Icon(_methodIcon, size: 20, color: _methodColor),
           ),
           const SizedBox(width: AppSpacing.md),
-
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(payment.referenceNumber, style: AppTypography.labelLarge),
                 const SizedBox(height: 2),
-                Text(payment.customerName, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                if (payment.customerName.isNotEmpty)
+                  Text(payment.customerName, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                 if (payment.invoiceNumber != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      '${tr(context, 'pay_invoice_ref')}: ${payment.invoiceNumber}',
+                      '${tr(context, 'pay_invoice_ref')}: ${payment.invoiceNumber!.substring(0, 8)}...',
                       style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
                     ),
                   ),
               ],
             ),
           ),
-
-          // Amount + status + date
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -294,7 +324,7 @@ class _PaymentRow extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  Payment Method Badge
+//  Payment Status Badge
 // ═══════════════════════════════════════════════════════════
 
 class _PaymentStatusBadge extends StatelessWidget {

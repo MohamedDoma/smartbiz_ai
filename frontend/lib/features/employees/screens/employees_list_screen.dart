@@ -47,6 +47,20 @@ class EmployeesListScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   OutlinedButton.icon(
+                    onPressed: () => context.go('/employees/role-management'),
+                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 16),
+                    label: Text(tr(context, 'rpm_title')),
+                    style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/employees/employee-roles'),
+                    icon: const Icon(Icons.group_outlined, size: 16),
+                    label: Text(tr(context, 'emr_title')),
+                    style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  OutlinedButton.icon(
                     onPressed: () => context.go('/employees/organization'),
                     icon: const Icon(Icons.account_tree_outlined, size: 16),
                     label: Text(tr(context, 'org_title')),

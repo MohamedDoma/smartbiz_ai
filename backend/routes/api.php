@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AiChatController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BomController;
+use App\Http\Controllers\Api\BusinessTemplateController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DiscoveryController;
 use App\Http\Controllers\Api\ProvisioningController;
@@ -25,6 +26,27 @@ use App\Http\Controllers\Api\RecurringExpenseController;
 use App\Http\Controllers\Api\ReportingController;
 use App\Http\Controllers\Api\StockReservationController;
 use App\Http\Controllers\Api\WarehouseController;
+use App\Http\Controllers\Api\WorkspaceInvitationController;
+use App\Http\Controllers\Api\RoleManagementController;
+use App\Http\Controllers\Api\WorkspaceEmployeeRoleController;
+use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\PipelineController;
+use App\Http\Controllers\Api\PipelineStageController;
+use App\Http\Controllers\Api\PipelineRecordController;
+use App\Http\Controllers\Api\CustomFieldController;
+use App\Http\Controllers\Api\DocumentChecklistController;
+use App\Http\Controllers\Api\DocumentChecklistItemController;
+use App\Http\Controllers\Api\RecordDocumentController;
+use App\Http\Controllers\Api\CommissionPlanController;
+use App\Http\Controllers\Api\CommissionRuleController;
+use App\Http\Controllers\Api\CommissionEntryController;
+use App\Http\Controllers\Api\OwnershipController;
+use App\Http\Controllers\Api\DuplicateRuleController;
+use App\Http\Controllers\Api\DuplicateMatchController;
+use App\Http\Controllers\Api\ReportCatalogController;
+use App\Http\Controllers\Api\ReportTemplateController;
+use App\Http\Controllers\Api\ReportRunController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SetWorkspaceContext;
 use App\Services\WorkspaceContextManager;
@@ -52,6 +74,17 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:auth')
     ->name('auth.login');
 
+Route::post('/auth/register', [AuthController::class, 'register'])
+    ->middleware('throttle:auth')
+    ->name('auth.register');
+
+// ── Public Invite Endpoints ────────────────────────────────────
+Route::get('/invites/{token}', [WorkspaceInvitationController::class, 'preview'])
+    ->name('invites.preview');
+Route::post('/invites/{token}/accept', [WorkspaceInvitationController::class, 'accept'])
+    ->middleware('throttle:auth')
+    ->name('invites.accept');
+
 // ── Authenticated (no workspace required) ───────────────────────
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -61,6 +94,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/auth/me', [AuthController::class, 'me'])
         ->name('auth.me');
+
+    // ── Business Templates (read-only, no workspace required) ───
+
+    Route::get('/business-templates', [BusinessTemplateController::class, 'index'])
+        ->name('templates.index');
+
+    Route::get('/business-templates/{template_key}', [BusinessTemplateController::class, 'show'])
+        ->name('templates.show');
+
+    Route::post('/business-templates/{template_key}/apply', [BusinessTemplateController::class, 'apply'])
+        ->name('templates.apply');
 
     // ── Workspace-Scoped (requires X-Workspace-Id header) ───────
 
@@ -261,6 +305,179 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/advisor/{id}/reject',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'reject'])->name('ai.advisor.reject');
             Route::post('/advisor/{id}/apply',       [\App\Http\Controllers\Api\AiAdvisorController::class, 'apply'])->name('ai.advisor.apply');
         });
+
+        // ── Workspace Invitations ──────────────────────────────────
+        Route::prefix('workspace-invitations')->group(function () {
+            Route::get('/',             [WorkspaceInvitationController::class, 'index'])->name('workspace-invitations.index');
+            Route::post('/',            [WorkspaceInvitationController::class, 'store'])->name('workspace-invitations.store');
+            Route::post('/{id}/revoke', [WorkspaceInvitationController::class, 'revoke'])->name('workspace-invitations.revoke');
+        });
+
+        // ── Workspace Roles (CRUD + permission catalog) ──────────
+        Route::get('/permission-catalog', [RoleManagementController::class, 'permissionCatalog'])
+            ->name('permission-catalog.index');
+        Route::prefix('workspace-roles')->group(function () {
+            Route::get('/',               [RoleManagementController::class, 'index'])->name('workspace-roles.index');
+            Route::post('/',              [RoleManagementController::class, 'store'])->name('workspace-roles.store');
+            Route::put('/{id}',           [RoleManagementController::class, 'update'])->name('workspace-roles.update');
+            Route::post('/{id}/deactivate', [RoleManagementController::class, 'deactivate'])->name('workspace-roles.deactivate');
+        });
+
+        // ── Workspace Employees (role assignment + org assignment) ─
+        Route::prefix('workspace-employees')->group(function () {
+            Route::get('/',                    [WorkspaceEmployeeRoleController::class, 'index'])->name('workspace-employees.index');
+            Route::put('/{id}/roles',          [WorkspaceEmployeeRoleController::class, 'updateRoles'])->name('workspace-employees.updateRoles');
+            Route::put('/{id}/assignment',     [WorkspaceEmployeeRoleController::class, 'updateAssignment'])->name('workspace-employees.updateAssignment');
+        });
+
+        // ── Departments ───────────────────────────────────────────
+        Route::prefix('departments')->group(function () {
+            Route::get('/',     [DepartmentController::class, 'index'])->name('departments.index');
+            Route::post('/',    [DepartmentController::class, 'store'])->name('departments.store');
+            Route::get('/{id}', [DepartmentController::class, 'show'])->name('departments.show');
+            Route::put('/{id}', [DepartmentController::class, 'update'])->name('departments.update');
+            Route::delete('/{id}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+        });
+
+        // ── Teams ──────────────────────────────────────────────────
+        Route::prefix('teams')->group(function () {
+            Route::get('/',     [TeamController::class, 'index'])->name('teams.index');
+            Route::post('/',    [TeamController::class, 'store'])->name('teams.store');
+            Route::get('/{id}', [TeamController::class, 'show'])->name('teams.show');
+            Route::put('/{id}', [TeamController::class, 'update'])->name('teams.update');
+            Route::delete('/{id}', [TeamController::class, 'destroy'])->name('teams.destroy');
+        });
+
+        // ── Pipelines ─────────────────────────────────────────────
+        Route::prefix('pipelines')->group(function () {
+            Route::get('/',     [PipelineController::class, 'index'])->name('pipelines.index');
+            Route::post('/',    [PipelineController::class, 'store'])->name('pipelines.store');
+            Route::get('/{id}', [PipelineController::class, 'show'])->name('pipelines.show');
+            Route::put('/{id}', [PipelineController::class, 'update'])->name('pipelines.update');
+            Route::delete('/{id}', [PipelineController::class, 'destroy'])->name('pipelines.destroy');
+
+            // Nested stages
+            Route::get('/{pipelineId}/stages',  [PipelineStageController::class, 'index'])->name('pipeline-stages.index');
+            Route::post('/{pipelineId}/stages', [PipelineStageController::class, 'store'])->name('pipeline-stages.store');
+        });
+
+        // ── Pipeline Stages (standalone) ───────────────────────────
+        Route::put('/pipeline-stages/{id}',    [PipelineStageController::class, 'update'])->name('pipeline-stages.update');
+        Route::delete('/pipeline-stages/{id}', [PipelineStageController::class, 'destroy'])->name('pipeline-stages.destroy');
+
+        // ── Pipeline Records ──────────────────────────────────────
+        Route::prefix('pipeline-records')->group(function () {
+            Route::get('/',        [PipelineRecordController::class, 'index'])->name('pipeline-records.index');
+            Route::post('/',       [PipelineRecordController::class, 'store'])->name('pipeline-records.store');
+            Route::get('/{id}',    [PipelineRecordController::class, 'show'])->name('pipeline-records.show');
+            Route::put('/{id}',    [PipelineRecordController::class, 'update'])->name('pipeline-records.update');
+            Route::post('/{id}/move', [PipelineRecordController::class, 'move'])->name('pipeline-records.move');
+            Route::delete('/{id}', [PipelineRecordController::class, 'destroy'])->name('pipeline-records.destroy');
+
+            // Nested record documents
+            Route::get('/{recordId}/documents',       [RecordDocumentController::class, 'index'])->name('record-documents.index');
+            Route::post('/{recordId}/documents',      [RecordDocumentController::class, 'store'])->name('record-documents.store');
+            Route::get('/{recordId}/document-status',  [RecordDocumentController::class, 'documentStatus'])->name('record-documents.status');
+            Route::post('/{recordId}/calculate-commissions', [CommissionEntryController::class, 'calculateForRecord'])->name('commission-entries.calculate');
+        });
+
+        // ── Custom Fields ─────────────────────────────────────────
+        Route::prefix('custom-fields')->group(function () {
+            Route::get('/',     [CustomFieldController::class, 'index'])->name('custom-fields.index');
+            Route::post('/',    [CustomFieldController::class, 'store'])->name('custom-fields.store');
+            Route::get('/{id}', [CustomFieldController::class, 'show'])->name('custom-fields.show');
+            Route::put('/{id}', [CustomFieldController::class, 'update'])->name('custom-fields.update');
+            Route::delete('/{id}', [CustomFieldController::class, 'destroy'])->name('custom-fields.destroy');
+        });
+
+        // ── Document Checklists ───────────────────────────────
+        Route::prefix('document-checklists')->group(function () {
+            Route::get('/',     [DocumentChecklistController::class, 'index'])->name('document-checklists.index');
+            Route::post('/',    [DocumentChecklistController::class, 'store'])->name('document-checklists.store');
+            Route::get('/{id}', [DocumentChecklistController::class, 'show'])->name('document-checklists.show');
+            Route::put('/{id}', [DocumentChecklistController::class, 'update'])->name('document-checklists.update');
+            Route::delete('/{id}', [DocumentChecklistController::class, 'destroy'])->name('document-checklists.destroy');
+
+            // Nested items
+            Route::get('/{checklistId}/items',  [DocumentChecklistItemController::class, 'index'])->name('document-checklist-items.index');
+            Route::post('/{checklistId}/items', [DocumentChecklistItemController::class, 'store'])->name('document-checklist-items.store');
+        });
+
+        // ── Document Checklist Items (standalone) ─────────────────
+        Route::put('/document-checklist-items/{id}',    [DocumentChecklistItemController::class, 'update'])->name('document-checklist-items.update');
+        Route::delete('/document-checklist-items/{id}', [DocumentChecklistItemController::class, 'destroy'])->name('document-checklist-items.destroy');
+
+        // ── Record Documents (standalone) ───────────────────────
+        Route::delete('/record-documents/{id}', [RecordDocumentController::class, 'destroy'])->name('record-documents.destroy');
+
+        // ── Commission Plans ───────────────────────────────
+        Route::prefix('commission-plans')->group(function () {
+            Route::get('/',     [CommissionPlanController::class, 'index'])->name('commission-plans.index');
+            Route::post('/',    [CommissionPlanController::class, 'store'])->name('commission-plans.store');
+            Route::get('/{id}', [CommissionPlanController::class, 'show'])->name('commission-plans.show');
+            Route::put('/{id}', [CommissionPlanController::class, 'update'])->name('commission-plans.update');
+            Route::delete('/{id}', [CommissionPlanController::class, 'destroy'])->name('commission-plans.destroy');
+        });
+
+        // ── Commission Rules ───────────────────────────────
+        Route::prefix('commission-rules')->group(function () {
+            Route::get('/',     [CommissionRuleController::class, 'index'])->name('commission-rules.index');
+            Route::post('/',    [CommissionRuleController::class, 'store'])->name('commission-rules.store');
+            Route::get('/{id}', [CommissionRuleController::class, 'show'])->name('commission-rules.show');
+            Route::put('/{id}', [CommissionRuleController::class, 'update'])->name('commission-rules.update');
+            Route::delete('/{id}', [CommissionRuleController::class, 'destroy'])->name('commission-rules.destroy');
+        });
+
+        // ── Commission Entries ─────────────────────────────
+        Route::prefix('commission-entries')->group(function () {
+            Route::get('/',     [CommissionEntryController::class, 'index'])->name('commission-entries.index');
+            Route::get('/{id}', [CommissionEntryController::class, 'show'])->name('commission-entries.show');
+            Route::post('/{id}/mark-approved', [CommissionEntryController::class, 'markApproved'])->name('commission-entries.approve');
+            Route::post('/{id}/mark-paid',     [CommissionEntryController::class, 'markPaid'])->name('commission-entries.pay');
+            Route::post('/{id}/cancel',        [CommissionEntryController::class, 'cancel'])->name('commission-entries.cancel');
+        });
+
+        // ── Ownership Assignments ───────────────────────
+        Route::prefix('ownership-assignments')->group(function () {
+            Route::get('/',     [OwnershipController::class, 'index'])->name('ownership.index');
+            Route::post('/',    [OwnershipController::class, 'store'])->name('ownership.store');
+            Route::get('/{id}', [OwnershipController::class, 'show'])->name('ownership.show');
+            Route::put('/{id}/transfer', [OwnershipController::class, 'transfer'])->name('ownership.transfer');
+        });
+        Route::get('/ownership/resolve', [OwnershipController::class, 'resolve'])->name('ownership.resolve');
+
+        // ── Duplicate Rules ────────────────────────────
+        Route::prefix('duplicate-rules')->group(function () {
+            Route::get('/',     [DuplicateRuleController::class, 'index'])->name('duplicate-rules.index');
+            Route::post('/',    [DuplicateRuleController::class, 'store'])->name('duplicate-rules.store');
+            Route::get('/{id}', [DuplicateRuleController::class, 'show'])->name('duplicate-rules.show');
+            Route::put('/{id}', [DuplicateRuleController::class, 'update'])->name('duplicate-rules.update');
+            Route::delete('/{id}', [DuplicateRuleController::class, 'destroy'])->name('duplicate-rules.destroy');
+        });
+
+        // ── Duplicate Checks & Matches ─────────────────
+        Route::post('/duplicates/check', [DuplicateMatchController::class, 'check'])->name('duplicates.check');
+        Route::get('/duplicate-matches', [DuplicateMatchController::class, 'index'])->name('duplicate-matches.index');
+        Route::post('/duplicate-matches/{id}/resolve', [DuplicateMatchController::class, 'resolve'])->name('duplicate-matches.resolve');
+
+        // ── Report Catalog ────────────────────────────
+        Route::get('/report-catalog',               [ReportCatalogController::class, 'index'])->name('report-catalog.index');
+        Route::get('/report-catalog/{data_source}', [ReportCatalogController::class, 'show'])->name('report-catalog.show');
+
+        // ── Report Templates ──────────────────────────
+        Route::prefix('report-templates')->group(function () {
+            Route::get('/',         [ReportTemplateController::class, 'index'])->name('report-templates.index');
+            Route::post('/',        [ReportTemplateController::class, 'store'])->name('report-templates.store');
+            Route::get('/{id}',     [ReportTemplateController::class, 'show'])->name('report-templates.show');
+            Route::put('/{id}',     [ReportTemplateController::class, 'update'])->name('report-templates.update');
+            Route::delete('/{id}',  [ReportTemplateController::class, 'destroy'])->name('report-templates.destroy');
+            Route::post('/{id}/run', [ReportTemplateController::class, 'run'])->name('report-templates.run');
+        });
+
+        // ── Report Runs ───────────────────────────────
+        Route::get('/report-runs',      [ReportRunController::class, 'index'])->name('report-runs.index');
+        Route::get('/report-runs/{id}', [ReportRunController::class, 'show'])->name('report-runs.show');
+        Route::post('/reports/run',     [ReportRunController::class, 'runAdHoc'])->name('reports.run-adhoc');
     });
 });
 

@@ -1,4 +1,4 @@
-// SmartBiz AI — Create Invoice screen.
+// SmartBiz AI — Create Invoice screen (real API).
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -7,8 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
+import '../../../core/api/invoice_models.dart';
+import '../../customers/customers_state.dart';
+import '../../products/products_state.dart';
 import '../invoices_state.dart';
-import '../models/invoice_models.dart';
 
 class CreateInvoiceScreen extends StatefulWidget {
   const CreateInvoiceScreen({super.key});
@@ -18,28 +20,77 @@ class CreateInvoiceScreen extends StatefulWidget {
 }
 
 class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
-  Customer? _selectedCustomer;
-  final List<InvoiceItem> _items = [InvoiceItem(productName: '', quantity: 1, unitPrice: 0)];
+  String? _selectedContactId;
+  final List<_LineItem> _items = [_LineItem()];
+  bool _saving = false;
+  String? _error;
 
-  double get _subtotal => _items.fold(0.0, (s, i) => s + i.total);
-  double get _tax => _subtotal * 0.15;
-  double get _total => _subtotal + _tax;
+  double get _subtotal => _items.fold(0.0, (s, i) => s + i.lineTotal);
 
-  void _addItem() => setState(() => _items.add(InvoiceItem(productName: '', quantity: 1, unitPrice: 0)));
-  void _removeItem(int i) { if (_items.length > 1) setState(() => _items.removeAt(i)); }
+  void _addItem() => setState(() => _items.add(_LineItem()));
 
-  void _save() {
-    if (_selectedCustomer == null || _items.every((i) => i.productName.isEmpty)) return;
-    final validItems = _items.where((i) => i.productName.isNotEmpty && i.unitPrice > 0).toList();
-    if (validItems.isEmpty) return;
-    context.read<InvoicesState>().createInvoice(_selectedCustomer!, validItems);
-    context.go('/invoices');
+  void _removeItem(int i) {
+    if (_items.length > 1) setState(() => _items.removeAt(i));
+  }
+
+  Future<void> _save() async {
+    if (_items.every((i) => i.productName.isEmpty && i.unitPrice <= 0)) {
+      setState(() => _error = tr(context, 'inv_need_item'));
+      return;
+    }
+
+    final validItems = _items
+        .where((i) => i.unitPrice > 0 && i.quantity > 0)
+        .map((i) => InvoiceItemPayload(
+              productId: i.productId,
+              quantity: i.quantity.toDouble(),
+              unitPrice: i.unitPrice,
+              productNameSnapshot: i.productName.isNotEmpty ? i.productName : null,
+            ))
+        .toList();
+
+    if (validItems.isEmpty) {
+      setState(() => _error = tr(context, 'inv_need_item'));
+      return;
+    }
+
+    setState(() { _saving = true; _error = null; });
+
+    try {
+      final payload = InvoicePayload(
+        contactId: _selectedContactId,
+        invoiceType: 'sale',
+        items: validItems,
+      );
+      await context.read<InvoicesState>().createInvoice(payload);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(context, 'inv_saved')), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      );
+      context.go('/invoices');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<InvoicesState>();
+    final custState = context.watch<CustomersState>();
+    final prodState = context.watch<ProductsState>();
     final isMobile = Responsive.isMobile(context);
+
+    // Ensure customers and products are loaded
+    if (custState.customers.isEmpty && !custState.loading) {
+      Future.microtask(() => custState.loadCustomers(refresh: true));
+    }
+    if (prodState.all.isEmpty && !prodState.loading) {
+      Future.microtask(() => prodState.loadProducts(refresh: true));
+    }
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.base),
@@ -75,7 +126,26 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              // ── Customer ────────────────────────────────
+              // Error banner
+              if (_error != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: Text(_error!, style: AppTypography.bodySmall.copyWith(color: AppColors.error))),
+                  ]),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+
+              // ── Customer selector ─────────────────────────
               _SectionHeader(label: tr(context, 'inv_customer')),
               const SizedBox(height: AppSpacing.md),
               Container(
@@ -85,12 +155,15 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Customer>(
-                    value: _selectedCustomer,
+                  child: DropdownButton<String>(
+                    value: _selectedContactId,
                     isExpanded: true,
                     hint: Text(tr(context, 'inv_select_customer')),
-                    items: state.customers.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
-                    onChanged: (c) => setState(() => _selectedCustomer = c),
+                    items: custState.customers.map((c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.name),
+                    )).toList(),
+                    onChanged: (id) => setState(() => _selectedContactId = id),
                   ),
                 ),
               ),
@@ -115,6 +188,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ..._items.asMap().entries.map((e) => _ItemRow(
                 index: e.key,
                 item: e.value,
+                products: prodState.all,
                 onRemove: () => _removeItem(e.key),
                 onChanged: () => setState(() {}),
               )),
@@ -129,24 +203,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(tr(context, 'inv_subtotal'), style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                  Text('\$${_subtotal.toStringAsFixed(2)}', style: AppTypography.bodyMedium),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${tr(context, 'inv_tax')} (15%)', style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary)),
-                  Text('\$${_tax.toStringAsFixed(2)}', style: AppTypography.bodyMedium),
-                ],
-              ),
-              const Divider(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
                   Text(tr(context, 'inv_total'), style: AppTypography.headingSmall),
-                  Text('\$${_total.toStringAsFixed(2)}', style: AppTypography.headingSmall),
+                  Text('\$${_subtotal.toStringAsFixed(2)}', style: AppTypography.headingSmall),
                 ],
               ),
 
@@ -155,34 +213,40 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               const SizedBox(height: AppSpacing.lg),
 
               // ── Actions ─────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => context.go('/invoices'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(tr(context, 'inv_cancel')),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: Text(tr(context, 'inv_save_draft')),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              if (_saving)
+                const Center(child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.base),
+                  child: CircularProgressIndicator(),
+                ))
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => context.go('/invoices'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(tr(context, 'inv_cancel')),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _save,
+                        icon: const Icon(Icons.check, size: 18),
+                        label: Text(tr(context, 'inv_save_draft')),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),
@@ -190,6 +254,16 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       ),
     );
   }
+}
+
+/// Mutable line item for the create form.
+class _LineItem {
+  String? productId;
+  String productName = '';
+  int quantity = 1;
+  double unitPrice = 0;
+
+  double get lineTotal => quantity * unitPrice;
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -210,10 +284,11 @@ class _SectionHeader extends StatelessWidget {
 
 class _ItemRow extends StatelessWidget {
   final int index;
-  final InvoiceItem item;
+  final _LineItem item;
+  final List<dynamic> products;
   final VoidCallback onRemove;
   final VoidCallback onChanged;
-  const _ItemRow({required this.index, required this.item, required this.onRemove, required this.onChanged});
+  const _ItemRow({required this.index, required this.item, required this.products, required this.onRemove, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +310,7 @@ class _ItemRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+          // Product name (text field, user can type freely)
           TextField(
             onChanged: (v) { item.productName = v; onChanged(); },
             textDirection: Directionality.of(context),
@@ -276,7 +352,7 @@ class _ItemRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               SizedBox(
                 width: 80,
-                child: Text('\$${item.total.toStringAsFixed(2)}', style: AppTypography.labelMedium, textAlign: TextAlign.end),
+                child: Text('\$${item.lineTotal.toStringAsFixed(2)}', style: AppTypography.labelMedium, textAlign: TextAlign.end),
               ),
             ],
           ),
