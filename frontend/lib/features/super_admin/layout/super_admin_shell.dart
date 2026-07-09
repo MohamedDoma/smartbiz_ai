@@ -20,12 +20,15 @@ class _SaNavItem {
 }
 
 const _saNavItems = <_SaNavItem>[
-  _SaNavItem('sa_dashboard', 'sa_nav_dashboard', Icons.dashboard_outlined, '/super-admin'),
-  _SaNavItem('sa_tenants',   'sa_nav_tenants',   Icons.business_outlined,  '/super-admin/tenants'),
-  _SaNavItem('sa_plans',     'sa_nav_plans',      Icons.card_membership_outlined, '/super-admin/plans'),
-  _SaNavItem('sa_modules',   'sa_nav_modules',    Icons.extension_outlined, '/super-admin/modules'),
-  _SaNavItem('sa_usage',     'sa_nav_usage',      Icons.auto_awesome_outlined, '/super-admin/usage'),
-  _SaNavItem('sa_health',    'sa_nav_health',     Icons.monitor_heart_outlined, '/super-admin/health'),
+  _SaNavItem('plt_dashboard',  'sa_nav_dashboard',    Icons.dashboard_outlined,        '/platform'),
+  _SaNavItem('plt_workspaces', 'plt_workspaces',      Icons.business_outlined,         '/platform/workspaces'),
+  _SaNavItem('plt_users',      'plt_users',           Icons.people_outlined,           '/platform/users'),
+  _SaNavItem('plt_campaigns',  'plt_campaigns',       Icons.campaign_outlined,         '/platform/campaigns'),
+  _SaNavItem('plt_codes',      'plt_codes',           Icons.qr_code_2_outlined,        '/platform/codes'),
+  _SaNavItem('plt_cards',      'plt_print_cards',     Icons.credit_card_outlined,      '/platform/cards'),
+  _SaNavItem('plt_plans',      'sa_nav_plans',        Icons.card_membership_outlined,  '/platform/plans'),
+  _SaNavItem('plt_health',     'sa_nav_health',       Icons.monitor_heart_outlined,    '/platform/health'),
+  _SaNavItem('plt_usage',      'sa_nav_usage',        Icons.auto_awesome_outlined,     '/platform/usage'),
 ];
 
 class SuperAdminShell extends StatefulWidget {

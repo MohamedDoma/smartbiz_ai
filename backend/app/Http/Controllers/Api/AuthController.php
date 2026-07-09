@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\MembershipRole;
+use App\Models\PlatformActivationCode;
 use App\Models\PlatformPlan;
 use App\Models\Role;
 use App\Models\User;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Services\PlatformActivationCodeService;
 
 class AuthController extends Controller
 {
@@ -80,7 +82,28 @@ class AuthController extends Controller
             'business_type'         => 'nullable|string|max:100',
             'business_size'         => 'nullable|string|max:50',
             'preferred_locale'      => 'nullable|string|in:en,ar',
+            'activation_code'       => 'nullable|string|max:50',
         ]);
+
+        // ── Activation Code Validation (before transaction) ────
+        $activationCode = null;
+        if (!empty($validated['activation_code'])) {
+            $codeSvc = new PlatformActivationCodeService();
+            $codeResult = $codeSvc->validate($validated['activation_code']);
+            if (!$codeResult['valid']) {
+                $reasons = [
+                    'not_found' => 'Activation code not found.',
+                    'disabled'  => 'Activation code is disabled.',
+                    'expired'   => 'Activation code has expired.',
+                    'used'      => 'Activation code has already been used.',
+                ];
+                return response()->json([
+                    'message' => $reasons[$codeResult['reason']] ?? 'Invalid activation code.',
+                    'errors'  => ['activation_code' => [$reasons[$codeResult['reason']] ?? 'Invalid.']],
+                ], 422);
+            }
+            $activationCode = $codeResult['code'];
+        }
 
         // Normalize workspace name: accept either field.
         $workspaceName = $validated['workspace_name']
@@ -98,7 +121,7 @@ class AuthController extends Controller
 
         // ── Transaction ───────────────────────────────────────
         try {
-            $result = DB::transaction(function () use ($validated, $workspaceName) {
+            $result = DB::transaction(function () use ($validated, $workspaceName, $activationCode) {
 
                 // 1. Create User
                 $user = User::create([
@@ -150,7 +173,12 @@ class AuthController extends Controller
                 ]);
 
                 // 6. Optional trial subscription
-                $this->createTrialSubscription($workspace);
+                $this->createTrialSubscription($workspace, $activationCode);
+
+                // 7. Mark activation code as used
+                if ($activationCode) {
+                    (new PlatformActivationCodeService())->markUsed($activationCode, $user->id, $workspace->id);
+                }
 
                 return $user;
             });
@@ -272,8 +300,11 @@ class AuthController extends Controller
      * Uses the first active plan (prefers "Free" or "Starter").
      * Silently skips if no plans are seeded.
      */
-    private function createTrialSubscription(Workspace $workspace): void
+    private function createTrialSubscription(Workspace $workspace, ?PlatformActivationCode $activationCode = null): void
     {
+        // Determine trial days from activation code or default
+        $trialDays = $activationCode?->trial_days ?? $activationCode?->campaign?->trial_days ?? 14;
+
         $plan = PlatformPlan::where('is_active', true)
             ->orderByRaw("CASE WHEN slug = 'free' THEN 0 WHEN slug = 'starter' THEN 1 ELSE 2 END")
             ->first();
@@ -296,8 +327,8 @@ class AuthController extends Controller
             'status'                 => 'trial',
             'billing_cycle'          => $planPrice->billing_cycle ?? 'monthly',
             'current_period_start'   => now(),
-            'current_period_end'     => now()->addDays(14),
-            'trial_ends_at'          => now()->addDays(14),
+            'current_period_end'     => now()->addDays($trialDays),
+            'trial_ends_at'          => now()->addDays($trialDays),
             'included_employees'     => $plan->max_employees ?? 5,
             'current_employee_count' => 1,
             'billable_employee_count' => 0,

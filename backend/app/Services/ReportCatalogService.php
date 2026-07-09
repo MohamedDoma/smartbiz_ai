@@ -22,6 +22,9 @@ class ReportCatalogService
             'payments'              => $this->payments(),
             'ownership_assignments' => $this->ownershipAssignments(),
             'duplicate_matches'     => $this->duplicateMatches(),
+            'finance_accounts'      => $this->financeAccounts(),
+            'finance_transactions'  => $this->financeTransactions(),
+            'finance_expenses'      => $this->financeExpenses(),
         ];
     }
 
@@ -247,6 +250,78 @@ class ReportCatalogService
                 ['key' => 'entity_type', 'label' => 'نوع الكيان', 'type' => 'status', 'operators' => ['equals']],
                 ['key' => 'status',      'label' => 'الحالة',     'type' => 'status', 'operators' => ['equals', 'not_equals']],
                 ['key' => 'created_at',  'label' => 'تاريخ الإنشاء', 'type' => 'datetime', 'operators' => ['date_from', 'date_to']],
+            ],
+        ];
+    }
+
+    private function financeAccounts(): array
+    {
+        return [
+            'key'          => 'finance_accounts',
+            'display_name' => 'الحسابات المالية',
+            'table'        => 'finance_accounts',
+            'columns'      => [
+                ['key' => 'code',           'label' => 'الرمز',          'type' => 'text'],
+                ['key' => 'name',           'label' => 'الاسم',          'type' => 'text'],
+                ['key' => 'type',           'label' => 'النوع',          'type' => 'status'],
+                ['key' => 'normal_balance', 'label' => 'الرصيد الطبيعي', 'type' => 'status'],
+                ['key' => 'is_system',      'label' => 'حساب نظامي',    'type' => 'status'],
+                ['key' => 'is_active',      'label' => 'نشط',           'type' => 'status'],
+                ['key' => 'created_at',     'label' => 'تاريخ الإنشاء',  'type' => 'datetime'],
+            ],
+            'filters'      => [
+                ['key' => 'type',      'label' => 'النوع',  'type' => 'status', 'operators' => ['equals', 'not_equals']],
+                ['key' => 'is_active', 'label' => 'نشط',   'type' => 'status', 'operators' => ['equals']],
+            ],
+        ];
+    }
+
+    private function financeTransactions(): array
+    {
+        return [
+            'key'          => 'finance_transactions',
+            'display_name' => 'المعاملات المالية',
+            'table'        => 'finance_transactions',
+            'columns'      => [
+                ['key' => 'transaction_date', 'label' => 'تاريخ المعاملة', 'type' => 'date'],
+                ['key' => 'description',      'label' => 'الوصف',          'type' => 'text'],
+                ['key' => 'source_type',      'label' => 'نوع المصدر',     'type' => 'status'],
+                ['key' => 'status',           'label' => 'الحالة',         'type' => 'status'],
+                ['key' => 'currency',         'label' => 'العملة',         'type' => 'text'],
+                ['key' => 'total_debit',      'label' => 'إجمالي المدين',  'type' => 'money'],
+                ['key' => 'total_credit',     'label' => 'إجمالي الدائن',  'type' => 'money'],
+                ['key' => 'created_at',       'label' => 'تاريخ الإنشاء',  'type' => 'datetime'],
+            ],
+            'filters'      => [
+                ['key' => 'status',           'label' => 'الحالة',         'type' => 'status',   'operators' => ['equals', 'not_equals']],
+                ['key' => 'source_type',      'label' => 'نوع المصدر',     'type' => 'status',   'operators' => ['equals']],
+                ['key' => 'total_debit',      'label' => 'إجمالي المدين',  'type' => 'number',   'operators' => ['greater_than', 'less_than']],
+                ['key' => 'transaction_date', 'label' => 'تاريخ المعاملة', 'type' => 'datetime', 'operators' => ['date_from', 'date_to']],
+            ],
+        ];
+    }
+
+    private function financeExpenses(): array
+    {
+        return [
+            'key'          => 'finance_expenses',
+            'display_name' => 'المصروفات المالية',
+            'table'        => 'finance_expenses',
+            'columns'      => [
+                ['key' => 'expense_date',   'label' => 'تاريخ المصروف',  'type' => 'date'],
+                ['key' => 'category',       'label' => 'الفئة',          'type' => 'status'],
+                ['key' => 'description',    'label' => 'الوصف',          'type' => 'text'],
+                ['key' => 'amount',         'label' => 'المبلغ',         'type' => 'money'],
+                ['key' => 'currency',       'label' => 'العملة',         'type' => 'text'],
+                ['key' => 'payment_method', 'label' => 'طريقة الدفع',   'type' => 'status'],
+                ['key' => 'status',         'label' => 'الحالة',         'type' => 'status'],
+                ['key' => 'created_at',     'label' => 'تاريخ الإنشاء',  'type' => 'datetime'],
+            ],
+            'filters'      => [
+                ['key' => 'status',       'label' => 'الحالة',         'type' => 'status',   'operators' => ['equals', 'not_equals']],
+                ['key' => 'category',     'label' => 'الفئة',          'type' => 'status',   'operators' => ['equals']],
+                ['key' => 'amount',       'label' => 'المبلغ',         'type' => 'number',   'operators' => ['greater_than', 'less_than', 'between']],
+                ['key' => 'expense_date', 'label' => 'تاريخ المصروف', 'type' => 'datetime', 'operators' => ['date_from', 'date_to']],
             ],
         ];
     }

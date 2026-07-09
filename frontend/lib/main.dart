@@ -44,6 +44,9 @@ import 'core/api/duplicate_service.dart';
 import 'features/duplicates/duplicate_state.dart';
 import 'core/api/report_service.dart';
 import 'features/reports/report_state.dart';
+import 'core/api/finance_service.dart';
+import 'core/api/platform_service.dart';
+import 'features/platform/platform_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +77,11 @@ class SmartBizApp extends StatelessWidget {
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
-        ChangeNotifierProvider(create: (_) => FinanceState(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, FinanceState>(
+          create: (ctx) => FinanceState(FinanceService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => EmployeesState(), lazy: true),
         ChangeNotifierProvider(create: (_) => SettingsState(), lazy: true),
         ChangeNotifierProxyProvider<AppState, CustomersState>(
@@ -140,6 +147,11 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DynamicDashboardState(), lazy: true),
         ChangeNotifierProvider(create: (_) => WorkspaceModuleState(), lazy: true),
         ChangeNotifierProvider(create: (_) => BlueprintNavigationController(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, PlatformState>(
+          create: (ctx) => PlatformState(PlatformService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
       ],
       // Only rebuild the MaterialApp when locale or onboarding changes
       child: Selector<AppState, ({AppLanguage lang, Locale locale, bool onboarded})>(

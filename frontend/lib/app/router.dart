@@ -31,9 +31,10 @@ import '../features/invoices/screens/invoice_detail_screen.dart' deferred as inv
 import '../features/products/screens/products_list_screen.dart' deferred as prod_list;
 import '../features/products/screens/create_product_screen.dart' deferred as prod_create;
 import '../features/products/screens/product_detail_screen.dart' deferred as prod_detail;
-import '../features/finance/screens/finance_overview_screen.dart' deferred as fin_overview;
-import '../features/finance/screens/expenses_screen.dart' deferred as fin_expenses;
-import '../features/finance/screens/reports_screen.dart' deferred as fin_reports;
+import '../features/finance/screens/finance_dashboard_screen.dart' deferred as fin_dashboard;
+import '../features/finance/screens/finance_accounts_screen.dart' deferred as fin_accounts;
+import '../features/finance/screens/finance_transactions_screen.dart' deferred as fin_transactions;
+import '../features/finance/screens/finance_expenses_screen.dart' deferred as fin_expenses;
 import '../features/employees/screens/employees_list_screen.dart' deferred as emp_list;
 import '../features/employees/screens/invite_employee_screen.dart' deferred as emp_invite;
 import '../features/employees/screens/employee_detail_screen.dart' deferred as emp_detail;
@@ -84,6 +85,13 @@ import '../features/super_admin/screens/super_admin_plans_screen.dart' deferred 
 import '../features/super_admin/screens/super_admin_modules_screen.dart' deferred as sa_modules;
 import '../features/super_admin/screens/super_admin_usage_screen.dart' deferred as sa_usage;
 import '../features/super_admin/screens/super_admin_health_screen.dart' deferred as sa_health;
+import '../features/platform/screens/platform_dashboard_screen.dart' deferred as plt_dash;
+import '../features/platform/screens/platform_workspaces_screen.dart' deferred as plt_ws;
+import '../features/platform/screens/platform_users_screen.dart' deferred as plt_users;
+import '../features/platform/screens/activation_campaigns_screen.dart' deferred as plt_camps;
+import '../features/platform/screens/activation_codes_screen.dart' deferred as plt_codes;
+import '../features/platform/screens/activation_cards_print_screen.dart' deferred as plt_cards;
+import '../features/auth/screens/activation_code_screen.dart' deferred as act_code;
 
 GoRouter buildAppRouter(AppState appState) {
   return GoRouter(
@@ -98,9 +106,10 @@ GoRouter buildAppRouter(AppState appState) {
       final isSplashRoute = loc == '/splash';
       final isInviteRoute = loc.startsWith('/invite/');
       final isAuthRoute = isLoginRoute || isRegisterRoute || isForgotRoute || isMockSessionRoute;
-      final isPublicRoute = isAuthRoute || isSplashRoute || isInviteRoute;
+      final isActivateRoute = loc == '/activate';
+      final isPublicRoute = isAuthRoute || isSplashRoute || isInviteRoute || isActivateRoute;
       final isOnboardingRoute = loc == '/onboarding';
-      final isSuperAdminRoute = loc.startsWith('/super-admin');
+      final isSuperAdminRoute = loc.startsWith('/super-admin') || loc.startsWith('/platform');
       final isRoot = loc == '/';
       final isAuthenticated = appState.isAuthenticated;
       final onboardingDone = appState.isOnboardingCompleted;
@@ -209,6 +218,15 @@ GoRouter buildAppRouter(AppState appState) {
       GoRoute(path: '/register', pageBuilder: (_, __) => const NoTransitionPage(child: RegisterScreen())),
       GoRoute(path: '/forgot-password', pageBuilder: (_, __) => const NoTransitionPage(child: ForgotPasswordScreen())),
       GoRoute(path: '/auth/mock-session', pageBuilder: (_, __) => const NoTransitionPage(child: MockSessionScreen())),
+      GoRoute(
+        path: '/activate',
+        pageBuilder: (_, state) {
+          final code = state.uri.queryParameters['code'] ?? '';
+          return NoTransitionPage(
+            child: DeferredRouteLoader(loader: act_code.loadLibrary, builder: () => act_code.ActivationCodeScreen(code: code)),
+          );
+        },
+      ),
       GoRoute(
         path: '/invite/:token',
         pageBuilder: (_, state) => NoTransitionPage(
@@ -378,26 +396,35 @@ GoRouter buildAppRouter(AppState appState) {
             pageBuilder: (context, state) {
               _syncIndex(context, 7);
               return NoTransitionPage(
-                child: DeferredRouteLoader(loader: fin_overview.loadLibrary, builder: () => fin_overview.FinanceOverviewScreen()),
+                child: DeferredRouteLoader(loader: fin_dashboard.loadLibrary, builder: () => fin_dashboard.FinanceDashboardScreen()),
               );
             },
             routes: [
               GoRoute(
                 path: 'expenses',
                 pageBuilder: (context, state) => NoTransitionPage(
-                  child: DeferredRouteLoader(loader: fin_expenses.loadLibrary, builder: () => fin_expenses.ExpensesScreen()),
+                  child: DeferredRouteLoader(loader: fin_expenses.loadLibrary, builder: () => fin_expenses.FinanceExpensesScreen()),
                 ),
               ),
             ],
           ),
           GoRoute(
-            path: '/reports',
-            pageBuilder: (context, state) {
-              _syncIndex(context, 8);
-              return NoTransitionPage(
-                child: DeferredRouteLoader(loader: fin_reports.loadLibrary, builder: () => fin_reports.ReportsScreen()),
-              );
-            },
+            path: '/finance/accounts',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: fin_accounts.loadLibrary, builder: () => fin_accounts.FinanceAccountsScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/finance/transactions',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: fin_transactions.loadLibrary, builder: () => fin_transactions.FinanceTransactionsScreen()),
+            ),
+          ),
+          GoRoute(
+            path: '/finance/expenses',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: fin_expenses.loadLibrary, builder: () => fin_expenses.FinanceExpensesScreen()),
+            ),
           ),
           GoRoute(
             path: '/employees',
@@ -664,6 +691,26 @@ GoRouter buildAppRouter(AppState appState) {
               )),
             ],
           ),
+          // ── Platform Admin routes (Step 58) ──────────────
+          GoRoute(path: '/platform', pageBuilder: (_, __) => NoTransitionPage(
+            child: DeferredRouteLoader(loader: plt_dash.loadLibrary, builder: () => plt_dash.PlatformDashboardScreen()),
+          ), routes: [
+            GoRoute(path: 'workspaces', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_ws.loadLibrary, builder: () => plt_ws.PlatformWorkspacesScreen()),
+            )),
+            GoRoute(path: 'users', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_users.loadLibrary, builder: () => plt_users.PlatformUsersScreen()),
+            )),
+            GoRoute(path: 'campaigns', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_camps.loadLibrary, builder: () => plt_camps.ActivationCampaignsScreen()),
+            )),
+            GoRoute(path: 'codes', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_codes.loadLibrary, builder: () => plt_codes.ActivationCodesScreen()),
+            )),
+            GoRoute(path: 'cards', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_cards.loadLibrary, builder: () => plt_cards.ActivationCardsPrintScreen()),
+            )),
+          ]),
         ],
       ),
     ],

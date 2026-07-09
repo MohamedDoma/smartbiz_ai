@@ -1,87 +1,105 @@
 // SmartBiz AI — Finance state management.
-// Performance: lazy mock data + cached filtered expenses.
-import 'package:flutter/material.dart';
-import 'models/finance_models.dart';
-import 'data/mock_finance.dart';
+import 'package:flutter/foundation.dart';
+import '../../core/api/finance_models.dart';
+import '../../core/api/finance_service.dart';
 
 class FinanceState extends ChangeNotifier {
-  List<Expense>? _expenses;
-  List<Transaction>? _transactions;
+  final FinanceService _svc;
+  FinanceState(this._svc);
+
+  List<FinanceAccount> _accounts = [];
+  List<FinanceTransaction> _transactions = [];
+  List<FinanceExpense> _expenses = [];
   FinanceSummary? _summary;
-  ExpenseCategory? _categoryFilter;
-  int _counter = 8;
+  ProfitLossSummary? _profitLoss;
+  List<AccountBalance> _balances = [];
+  bool _loading = false;
+  String? _error;
 
-  List<Expense>? _filteredCache;
+  List<FinanceAccount> get accounts => _accounts;
+  List<FinanceTransaction> get transactions => _transactions;
+  List<FinanceExpense> get expenses => _expenses;
+  FinanceSummary? get summary => _summary;
+  ProfitLossSummary? get profitLoss => _profitLoss;
+  List<AccountBalance> get balances => _balances;
+  bool get loading => _loading;
+  String? get error => _error;
 
-  List<Expense> get _expData => _expenses ??= MockFinance.expenses();
-  List<Transaction> get _txData => _transactions ??= MockFinance.transactions();
-
-  // ── Getters ─────────────────────────────────────────────
-  FinanceSummary get summary => _summary ??= MockFinance.summary;
-  List<Transaction> get transactions => List.unmodifiable(_txData);
-
-  List<Expense> get filteredExpenses {
-    if (_filteredCache != null) return _filteredCache!;
-    if (_categoryFilter == null) {
-      _filteredCache = List.unmodifiable(_expData);
-    } else {
-      _filteredCache = _expData.where((e) => e.category == _categoryFilter).toList();
-    }
-    return _filteredCache!;
+  Future<void> bootstrap() async {
+    _loading = true; _error = null; notifyListeners();
+    try {
+      await _svc.bootstrapFinance();
+      await loadAccounts();
+    } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  ExpenseCategory? get categoryFilter => _categoryFilter;
-  double get totalExpenses => _expData.fold(0.0, (s, e) => s + e.amount);
-
-  // ── Filter ──────────────────────────────────────────────
-  void setCategoryFilter(ExpenseCategory? c) {
-    _categoryFilter = _categoryFilter == c ? null : c;
-    _filteredCache = null;
-    notifyListeners();
+  Future<void> loadAccounts() async {
+    _loading = true; _error = null; notifyListeners();
+    try { _accounts = await _svc.listAccounts(); } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  // ── Actions ─────────────────────────────────────────────
-  void addExpense({required String title, required double amount, required ExpenseCategory category}) {
-    _expData.insert(0, Expense(
-      id: 'e${_counter++}',
-      title: title,
-      amount: amount,
-      category: category,
-      date: DateTime.now(),
-    ));
-    _txData.insert(0, Transaction(
-      id: 't${_counter++}',
-      type: TxnType.expenseAdded,
-      description: title,
-      amount: amount,
-      date: DateTime.now(),
-    ));
-    final s = summary;
-    _summary = FinanceSummary(
-      totalRevenue: s.totalRevenue,
-      totalExpenses: s.totalExpenses + amount,
-      outstanding: s.outstanding,
-      cashBalance: s.cashBalance - amount,
-    );
-    _filteredCache = null;
-    notifyListeners();
+  Future<void> loadTransactions() async {
+    _loading = true; _error = null; notifyListeners();
+    try { _transactions = await _svc.listTransactions(); } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
   }
 
-  void recordPayment({required String invoiceNumber, required String customerName, required double amount}) {
-    _txData.insert(0, Transaction(
-      id: 't${_counter++}',
-      type: TxnType.invoicePaid,
-      description: '$invoiceNumber — $customerName',
-      amount: amount,
-      date: DateTime.now(),
-    ));
-    final s = summary;
-    _summary = FinanceSummary(
-      totalRevenue: s.totalRevenue + amount,
-      totalExpenses: s.totalExpenses,
-      outstanding: (s.outstanding - amount).clamp(0, double.infinity),
-      cashBalance: s.cashBalance + amount,
-    );
-    notifyListeners();
+  Future<void> loadExpenses() async {
+    _loading = true; _error = null; notifyListeners();
+    try { _expenses = await _svc.listExpenses(); } catch (e) { _error = e.toString(); }
+    _loading = false; notifyListeners();
+  }
+
+  Future<FinanceExpense?> createExpense(FinanceExpensePayload p) async {
+    try {
+      final exp = await _svc.createExpense(p);
+      _expenses = [exp, ..._expenses];
+      notifyListeners();
+      return exp;
+    } catch (e) { _error = e.toString(); notifyListeners(); return null; }
+  }
+
+  Future<FinanceTransaction?> createTransaction(FinanceTransactionPayload p) async {
+    try {
+      final txn = await _svc.createTransaction(p);
+      _transactions = [txn, ..._transactions];
+      notifyListeners();
+      return txn;
+    } catch (e) { _error = e.toString(); notifyListeners(); return null; }
+  }
+
+  Future<void> voidTransaction(String id) async {
+    try {
+      await _svc.voidTransaction(id);
+      await loadTransactions();
+    } catch (e) { _error = e.toString(); notifyListeners(); }
+  }
+
+  Future<void> voidExpense(String id) async {
+    try {
+      await _svc.voidExpense(id);
+      await loadExpenses();
+    } catch (e) { _error = e.toString(); notifyListeners(); }
+  }
+
+  Future<void> postCommissionEntry(String id) async {
+    try {
+      await _svc.postCommissionEntry(id);
+      notifyListeners();
+    } catch (e) { _error = e.toString(); notifyListeners(); }
+  }
+
+  Future<void> loadSummary() async {
+    try { _summary = await _svc.getSummary(); notifyListeners(); } catch (e) { _error = e.toString(); notifyListeners(); }
+  }
+
+  Future<void> loadProfitLoss({String? from, String? to}) async {
+    try { _profitLoss = await _svc.getProfitLoss(from: from, to: to); notifyListeners(); } catch (e) { _error = e.toString(); notifyListeners(); }
+  }
+
+  Future<void> loadBalances() async {
+    try { _balances = await _svc.getAccountBalances(); notifyListeners(); } catch (e) { _error = e.toString(); notifyListeners(); }
   }
 }

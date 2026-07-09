@@ -47,6 +47,16 @@ use App\Http\Controllers\Api\DuplicateMatchController;
 use App\Http\Controllers\Api\ReportCatalogController;
 use App\Http\Controllers\Api\ReportTemplateController;
 use App\Http\Controllers\Api\ReportRunController;
+use App\Http\Controllers\Api\FinanceAccountController;
+use App\Http\Controllers\Api\FinanceTransactionController;
+use App\Http\Controllers\Api\FinanceExpenseController;
+use App\Http\Controllers\Api\FinanceSummaryController;
+use App\Http\Controllers\Api\PlatformDashboardController;
+use App\Http\Controllers\Api\PlatformWorkspaceController;
+use App\Http\Controllers\Api\PlatformUserController;
+use App\Http\Controllers\Api\PlatformActivationCampaignController;
+use App\Http\Controllers\Api\PlatformActivationCodeController;
+use App\Http\Controllers\Api\PlatformSystemHealthController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SetWorkspaceContext;
 use App\Services\WorkspaceContextManager;
@@ -84,6 +94,12 @@ Route::get('/invites/{token}', [WorkspaceInvitationController::class, 'preview']
 Route::post('/invites/{token}/accept', [WorkspaceInvitationController::class, 'accept'])
     ->middleware('throttle:auth')
     ->name('invites.accept');
+
+// ── Public Activation Code Validation ──────────────────────────
+Route::get('/activation-codes/{code}', [PlatformActivationCodeController::class, 'publicShow'])
+    ->name('activation-codes.public-show');
+Route::post('/activation-codes/{code}/validate', [PlatformActivationCodeController::class, 'publicValidate'])
+    ->name('activation-codes.public-validate');
 
 // ── Authenticated (no workspace required) ───────────────────────
 
@@ -478,6 +494,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/report-runs',      [ReportRunController::class, 'index'])->name('report-runs.index');
         Route::get('/report-runs/{id}', [ReportRunController::class, 'show'])->name('report-runs.show');
         Route::post('/reports/run',     [ReportRunController::class, 'runAdHoc'])->name('reports.run-adhoc');
+
+        // ── Finance ──────────────────────────────────────
+        Route::prefix('finance')->group(function () {
+            Route::get('/accounts',              [FinanceAccountController::class, 'index'])->name('finance.accounts.index');
+            Route::post('/accounts',             [FinanceAccountController::class, 'store'])->name('finance.accounts.store');
+            Route::put('/accounts/{id}',         [FinanceAccountController::class, 'update'])->name('finance.accounts.update');
+            Route::post('/bootstrap',            [FinanceAccountController::class, 'bootstrap'])->name('finance.bootstrap');
+
+            Route::get('/transactions',          [FinanceTransactionController::class, 'index'])->name('finance.transactions.index');
+            Route::get('/transactions/{id}',     [FinanceTransactionController::class, 'show'])->name('finance.transactions.show');
+            Route::post('/transactions',         [FinanceTransactionController::class, 'store'])->name('finance.transactions.store');
+            Route::post('/transactions/{id}/void', [FinanceTransactionController::class, 'void'])->name('finance.transactions.void');
+
+            Route::get('/expenses',              [FinanceExpenseController::class, 'index'])->name('finance.expenses.index');
+            Route::post('/expenses',             [FinanceExpenseController::class, 'store'])->name('finance.expenses.store');
+            Route::get('/expenses/{id}',         [FinanceExpenseController::class, 'show'])->name('finance.expenses.show');
+            Route::post('/expenses/{id}/void',   [FinanceExpenseController::class, 'void'])->name('finance.expenses.void');
+
+            Route::get('/summary',               [FinanceSummaryController::class, 'summary'])->name('finance.summary');
+            Route::get('/profit-loss',           [FinanceSummaryController::class, 'profitLoss'])->name('finance.profit-loss');
+            Route::get('/account-balances',      [FinanceSummaryController::class, 'accountBalances'])->name('finance.account-balances');
+        });
+
+        // ── Finance Posting Integrations ──────────────────
+        Route::post('/commission-entries/{id}/post-to-finance', [FinanceTransactionController::class, 'postCommissionEntry'])->name('finance.post-commission');
+        Route::post('/invoices/{id}/post-to-finance',           [FinanceTransactionController::class, 'postInvoice'])->name('finance.post-invoice');
+        Route::post('/payments/{id}/post-to-finance',           [FinanceTransactionController::class, 'postPayment'])->name('finance.post-payment');
     });
 });
 
@@ -518,6 +561,41 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'throttle:admin', SuperAdmin
     Route::get('/manual-payments',                     [SuperAdminController::class, 'listManualPayments'])->name('admin.manual-payments.index');
     Route::post('/manual-payments/{id}/confirm',       [SuperAdminController::class, 'confirmManualPayment'])->name('admin.manual-payments.confirm');
     Route::post('/manual-payments/{id}/reject',        [SuperAdminController::class, 'rejectManualPayment'])->name('admin.manual-payments.reject');
+});
+
+// ══════════════════════════════════════════════════════════════
+// Platform Admin Routes (activation codes, campaigns, workspace/user mgmt)
+// ══════════════════════════════════════════════════════════════
+Route::prefix('platform')->middleware(['auth:sanctum', 'throttle:admin', SuperAdminMiddleware::class])->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [PlatformDashboardController::class, 'dashboard'])->name('platform.dashboard');
+
+    // Workspaces
+    Route::get('/workspaces',                  [PlatformWorkspaceController::class, 'index'])->name('platform.workspaces.index');
+    Route::get('/workspaces/{id}',             [PlatformWorkspaceController::class, 'show'])->name('platform.workspaces.show');
+    Route::put('/workspaces/{id}/status',      [PlatformWorkspaceController::class, 'updateStatus'])->name('platform.workspaces.status');
+    Route::put('/workspaces/{id}/subscription', [PlatformWorkspaceController::class, 'updateSubscription'])->name('platform.workspaces.subscription');
+
+    // Users
+    Route::get('/users',                       [PlatformUserController::class, 'index'])->name('platform.users.index');
+    Route::get('/users/{id}',                  [PlatformUserController::class, 'show'])->name('platform.users.show');
+    Route::put('/users/{id}/platform-admin',   [PlatformUserController::class, 'updatePlatformAdmin'])->name('platform.users.admin');
+
+    // Activation Campaigns
+    Route::get('/activation-campaigns',        [PlatformActivationCampaignController::class, 'index'])->name('platform.campaigns.index');
+    Route::post('/activation-campaigns',       [PlatformActivationCampaignController::class, 'store'])->name('platform.campaigns.store');
+    Route::get('/activation-campaigns/{id}',   [PlatformActivationCampaignController::class, 'show'])->name('platform.campaigns.show');
+    Route::put('/activation-campaigns/{id}',   [PlatformActivationCampaignController::class, 'update'])->name('platform.campaigns.update');
+    Route::delete('/activation-campaigns/{id}', [PlatformActivationCampaignController::class, 'destroy'])->name('platform.campaigns.destroy');
+
+    // Activation Codes
+    Route::get('/activation-codes',                                  [PlatformActivationCodeController::class, 'index'])->name('platform.codes.index');
+    Route::post('/activation-campaigns/{campaignId}/codes/generate', [PlatformActivationCodeController::class, 'generateBatch'])->name('platform.codes.generate');
+    Route::get('/activation-codes/{id}',                             [PlatformActivationCodeController::class, 'show'])->name('platform.codes.show');
+    Route::put('/activation-codes/{id}/status',                      [PlatformActivationCodeController::class, 'updateStatus'])->name('platform.codes.status');
+
+    // System Health
+    Route::get('/system-health', [PlatformSystemHealthController::class, 'health'])->name('platform.health');
 });
 
 // ══════════════════════════════════════════════════════════════
