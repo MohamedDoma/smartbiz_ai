@@ -291,6 +291,7 @@ class AuthController extends Controller
             'audit.list', 'audit.show',
             'reports.view',
             'discovery.manage',
+            'pipelines.list',
         ];
     }
 

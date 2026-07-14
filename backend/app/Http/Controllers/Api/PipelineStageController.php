@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Pipeline;
 use App\Models\PipelineStage;
-use App\Models\WorkspaceMembership;
+use App\Services\PipelineAuditService;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
 
 class PipelineStageController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(string $pipelineId): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
@@ -34,7 +32,6 @@ class PipelineStageController extends Controller
     public function store(Request $request, string $pipelineId): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         Pipeline::where('workspace_id', $ctx->workspaceId())->findOrFail($pipelineId);
 
         $validated = $request->validate([
@@ -55,13 +52,16 @@ class PipelineStageController extends Controller
             'is_active'    => true,
         ]);
 
+        PipelineAuditService::log($ctx->workspaceId(), 'created', 'pipeline_stage', $stage->id, null, [
+            'name' => $stage->name, 'pipeline_id' => $pipelineId, 'status_type' => $stage->status_type,
+        ]);
+
         return response()->json(['data' => $this->fmt($stage)], 201);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $stage = PipelineStage::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $validated = $request->validate([
@@ -75,7 +75,13 @@ class PipelineStageController extends Controller
         if (isset($validated['name'])) {
             $validated['stage_key'] = Str::slug($validated['name'], '_');
         }
+
+        $oldValues = $stage->only(['name', 'description', 'status_type', 'sort_order', 'is_active']);
         $stage->update($validated);
+        $diff = PipelineAuditService::diff($oldValues, $stage->only(array_keys($oldValues)));
+        if (!empty($diff)) {
+            PipelineAuditService::log($ctx->workspaceId(), 'updated', 'pipeline_stage', $stage->id, $oldValues, $diff);
+        }
 
         return response()->json(['data' => $this->fmt($stage->fresh())]);
     }
@@ -83,16 +89,19 @@ class PipelineStageController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $stage = PipelineStage::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $activeCount = $stage->records()->where('status', 'open')->count();
+        $stage->update(['is_active' => false]);
+
+        PipelineAuditService::log($ctx->workspaceId(), 'deleted', 'pipeline_stage', $stage->id, [
+            'name' => $stage->name, 'had_open_records' => $activeCount > 0,
+        ]);
+
         if ($activeCount > 0) {
-            $stage->update(['is_active' => false]);
             return response()->json(['message' => 'Stage deactivated (has open records).'], 200);
         }
 
-        $stage->update(['is_active' => false]);
         return response()->json(['message' => 'Stage deactivated.']);
     }
 
@@ -110,18 +119,5 @@ class PipelineStageController extends Controller
             'records_count' => $s->records_count ?? null,
             'created_at'   => $s->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (! $membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

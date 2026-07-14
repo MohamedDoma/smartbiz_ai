@@ -28,6 +28,8 @@ enum ErpModuleId {
   payments,
   pos,
   recurringBilling,
+  pipelines,
+  commissions,
 
   // ── Products & Operations ──────────────────────────────
   products,
@@ -53,6 +55,7 @@ enum ErpModuleId {
   attendance,
   leave,
   payroll,
+  approvals,
 
   // ── Service & Project Work ─────────────────────────────
   projects,
@@ -177,6 +180,13 @@ class ErpModuleDefinition {
   /// Permission keys provided by this module.
   final Set<String> permissionKeys;
 
+  /// Explicit permission keys that gate sidebar navigation visibility.
+  /// When non-empty, the user must hold at least one of these keys for the
+  /// module's nav item to appear. When empty, the module is always visible
+  /// (no permission gate on navigation). This replaces the old heuristic
+  /// that searched for *.view / *.list suffixes in permissionKeys.
+  final Set<String> navigationPermissionKeys;
+
   /// Modules that MUST be enabled for this module to function.
   final Set<ErpModuleId> dependencies;
 
@@ -213,6 +223,7 @@ class ErpModuleDefinition {
     this.routePaths = const [],
     this.navigationItemIds = const [],
     this.permissionKeys = const {},
+    this.navigationPermissionKeys = const {},
     this.dependencies = const {},
     this.optionalDependencies = const {},
     this.compatibleDashboardTemplates = const {},

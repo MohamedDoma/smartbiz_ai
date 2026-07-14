@@ -8,6 +8,7 @@ use App\Models\BusinessTemplateModule;
 use App\Models\BusinessTemplateRole;
 use App\Models\BusinessTemplateWorkflow;
 use Illuminate\Database\Seeder;
+use App\Services\PermissionCatalog;
 
 /**
  * Seeds idempotent business templates for SmartBiz AI.
@@ -18,26 +19,16 @@ class BusinessTemplateSeeder extends Seeder
 {
     // ── Common permission sets ─────────────────────────────
 
-    private const OWNER_PERMS = [
-        'contacts.list', 'contacts.show', 'contacts.create', 'contacts.update', 'contacts.delete',
-        'categories.list', 'categories.show', 'categories.create', 'categories.update', 'categories.delete',
-        'products.list', 'products.show', 'products.create', 'products.update', 'products.delete',
-        'invoices.list', 'invoices.show', 'invoices.create', 'invoices.update',
-        'accounts.list', 'accounts.show', 'accounts.create', 'accounts.update', 'accounts.delete',
-        'orders.list', 'orders.show', 'orders.create', 'orders.update',
-        'journal_entries.list', 'journal_entries.show', 'journal_entries.create', 'journal_entries.update',
-        'warehouses.list', 'warehouses.show', 'warehouses.create', 'warehouses.update', 'warehouses.delete',
-        'payments.list', 'payments.show', 'payments.create',
-        'inventory.list', 'inventory.show', 'inventory.create',
-        'reservations.list', 'reservations.show', 'reservations.create', 'reservations.update',
-        'bom.list', 'bom.show', 'bom.create', 'bom.update', 'bom.delete',
-        'production.list', 'production.show', 'production.create', 'production.update',
-        'recurring.list', 'recurring.show', 'recurring.create', 'recurring.update', 'recurring.delete',
-        'notifications.list', 'notifications.update',
-        'audit.list', 'audit.show',
-        'reports.view',
-        'discovery.manage',
-    ];
+    /**
+     * Owner permissions — derived from the canonical PermissionCatalog.
+     * Cannot use a class const because PHP constants cannot call methods.
+     *
+     * @return string[]
+     */
+    private static function ownerPerms(): array
+    {
+        return PermissionCatalog::allKeys();
+    }
 
     private const MANAGER_PERMS = [
         'contacts.list', 'contacts.show', 'contacts.create', 'contacts.update',
@@ -54,6 +45,7 @@ class BusinessTemplateSeeder extends Seeder
 
     private const SALES_PERMS = [
         'contacts.list', 'contacts.show', 'contacts.create', 'contacts.update',
+        'contacts.own',
         'products.list', 'products.show',
         'invoices.list', 'invoices.show', 'invoices.create',
         'orders.list', 'orders.show', 'orders.create',
@@ -131,11 +123,11 @@ class BusinessTemplateSeeder extends Seeder
 
         // ── Roles ──
         $roles = [
-            ['role_key' => 'owner',                  'name' => 'Owner',                     'hierarchy_level' => 0,  'permissions' => self::OWNER_PERMS, 'is_primary_owner_role' => true],
-            ['role_key' => 'general_manager',         'name' => 'General Manager',           'hierarchy_level' => 1,  'permissions' => self::OWNER_PERMS],
-            ['role_key' => 'sales_manager',           'name' => 'Sales Manager',             'hierarchy_level' => 2,  'permissions' => self::MANAGER_PERMS],
-            ['role_key' => 'vehicle_sales_agent',     'name' => 'Vehicle Sales Agent',       'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
-            ['role_key' => 'spare_parts_sales_agent', 'name' => 'Spare Parts Sales Agent',   'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
+            ['role_key' => 'owner',                  'name' => 'Owner',                     'hierarchy_level' => 0,  'permissions' => self::ownerPerms(), 'is_primary_owner_role' => true],
+            ['role_key' => 'general_manager',         'name' => 'General Manager',           'hierarchy_level' => 1,  'permissions' => self::ownerPerms()],
+            ['role_key' => 'sales_manager',           'name' => 'Sales Manager',             'hierarchy_level' => 2,  'permissions' => array_merge(self::MANAGER_PERMS, ['contacts.own', 'contacts.manage_team', 'contacts.assign', 'pipelines.list', 'pipelines.manage', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.delete', 'pipeline_records.own', 'pipeline_records.manage_team', 'pipeline_records.assign'])],
+            ['role_key' => 'vehicle_sales_agent',     'name' => 'Vehicle Sales Agent',       'hierarchy_level' => 3,  'permissions' => array_merge(self::SALES_PERMS, ['pipelines.list', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.own'])],
+            ['role_key' => 'spare_parts_sales_agent', 'name' => 'Spare Parts Sales Agent',   'hierarchy_level' => 3,  'permissions' => array_merge(self::SALES_PERMS, ['pipelines.list', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.own'])],
             ['role_key' => 'inventory_manager',       'name' => 'Inventory Manager',         'hierarchy_level' => 3,  'permissions' => array_merge(self::VIEWER_PERMS, ['inventory.create', 'warehouses.list', 'warehouses.show', 'warehouses.create', 'warehouses.update'])],
             ['role_key' => 'accountant',              'name' => 'Accountant',                'hierarchy_level' => 3,  'permissions' => self::FINANCE_PERMS],
             ['role_key' => 'hr_manager',              'name' => 'HR Manager',                'hierarchy_level' => 3,  'permissions' => self::VIEWER_PERMS],
@@ -222,8 +214,8 @@ class BusinessTemplateSeeder extends Seeder
         ]);
 
         $this->seedRoles($t, [
-            ['role_key' => 'owner',     'name' => 'Owner',      'hierarchy_level' => 0,  'permissions' => self::OWNER_PERMS, 'is_primary_owner_role' => true],
-            ['role_key' => 'manager',   'name' => 'Manager',    'hierarchy_level' => 1,  'permissions' => self::MANAGER_PERMS],
+            ['role_key' => 'owner',     'name' => 'Owner',      'hierarchy_level' => 0,  'permissions' => self::ownerPerms(), 'is_primary_owner_role' => true],
+            ['role_key' => 'manager',   'name' => 'Manager',    'hierarchy_level' => 1,  'permissions' => array_merge(self::MANAGER_PERMS, ['pipelines.list', 'pipelines.manage', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.delete', 'pipeline_records.manage_all', 'pipeline_records.assign'])],
             ['role_key' => 'cashier',   'name' => 'Cashier',    'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
             ['role_key' => 'inventory', 'name' => 'Stock Clerk','hierarchy_level' => 3,  'permissions' => array_merge(self::VIEWER_PERMS, ['inventory.create'])],
             ['role_key' => 'accountant','name' => 'Accountant', 'hierarchy_level' => 3,  'permissions' => self::FINANCE_PERMS],
@@ -269,10 +261,10 @@ class BusinessTemplateSeeder extends Seeder
         ]);
 
         $this->seedRoles($t, [
-            ['role_key' => 'owner',      'name' => 'Owner',        'hierarchy_level' => 0,  'permissions' => self::OWNER_PERMS, 'is_primary_owner_role' => true],
-            ['role_key' => 'manager',    'name' => 'Shop Manager', 'hierarchy_level' => 1,  'permissions' => self::MANAGER_PERMS],
+            ['role_key' => 'owner',      'name' => 'Owner',        'hierarchy_level' => 0,  'permissions' => self::ownerPerms(), 'is_primary_owner_role' => true],
+            ['role_key' => 'manager',    'name' => 'Shop Manager', 'hierarchy_level' => 1,  'permissions' => array_merge(self::MANAGER_PERMS, ['pipelines.list', 'pipelines.manage', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.delete', 'pipeline_records.manage_all', 'pipeline_records.assign'])],
             ['role_key' => 'technician', 'name' => 'Technician',   'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
-            ['role_key' => 'receptionist','name' => 'Receptionist','hierarchy_level' => 4,  'permissions' => self::SALES_PERMS],
+            ['role_key' => 'receptionist','name' => 'Receptionist','hierarchy_level' => 4,  'permissions' => array_merge(self::SALES_PERMS, ['pipelines.list', 'pipeline_records.create', 'pipeline_records.update', 'pipeline_records.own'])],
             ['role_key' => 'accountant', 'name' => 'Accountant',   'hierarchy_level' => 3,  'permissions' => self::FINANCE_PERMS],
             ['role_key' => 'viewer',     'name' => 'Viewer',       'hierarchy_level' => 99, 'permissions' => self::VIEWER_PERMS],
         ]);
@@ -321,8 +313,8 @@ class BusinessTemplateSeeder extends Seeder
         ]);
 
         $this->seedRoles($t, [
-            ['role_key' => 'owner',     'name' => 'Owner',        'hierarchy_level' => 0,  'permissions' => self::OWNER_PERMS, 'is_primary_owner_role' => true],
-            ['role_key' => 'manager',   'name' => 'Manager',      'hierarchy_level' => 1,  'permissions' => self::MANAGER_PERMS],
+            ['role_key' => 'owner',     'name' => 'Owner',        'hierarchy_level' => 0,  'permissions' => self::ownerPerms(), 'is_primary_owner_role' => true],
+            ['role_key' => 'manager',   'name' => 'Manager',      'hierarchy_level' => 1,  'permissions' => array_merge(self::MANAGER_PERMS, ['pipelines.list'])],
             ['role_key' => 'cashier',   'name' => 'Cashier',      'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
             ['role_key' => 'waiter',    'name' => 'Waiter/Server','hierarchy_level' => 4,  'permissions' => ['orders.list', 'orders.show', 'orders.create', 'notifications.list']],
             ['role_key' => 'chef',      'name' => 'Chef/Kitchen', 'hierarchy_level' => 4,  'permissions' => ['orders.list', 'orders.show', 'inventory.list', 'inventory.show', 'notifications.list']],
@@ -367,8 +359,8 @@ class BusinessTemplateSeeder extends Seeder
         ]);
 
         $this->seedRoles($t, [
-            ['role_key' => 'owner',     'name' => 'Owner',          'hierarchy_level' => 0,  'permissions' => self::OWNER_PERMS, 'is_primary_owner_role' => true],
-            ['role_key' => 'manager',   'name' => 'Project Manager','hierarchy_level' => 1,  'permissions' => self::MANAGER_PERMS],
+            ['role_key' => 'owner',     'name' => 'Owner',          'hierarchy_level' => 0,  'permissions' => self::ownerPerms(), 'is_primary_owner_role' => true],
+            ['role_key' => 'manager',   'name' => 'Project Manager','hierarchy_level' => 1,  'permissions' => array_merge(self::MANAGER_PERMS, ['pipelines.list', 'pipeline_records.create', 'pipeline_records.update'])],
             ['role_key' => 'consultant','name' => 'Consultant',     'hierarchy_level' => 3,  'permissions' => self::SALES_PERMS],
             ['role_key' => 'accountant','name' => 'Accountant',     'hierarchy_level' => 3,  'permissions' => self::FINANCE_PERMS],
             ['role_key' => 'viewer',    'name' => 'Viewer',         'hierarchy_level' => 99, 'permissions' => self::VIEWER_PERMS],

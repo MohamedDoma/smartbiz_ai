@@ -15,13 +15,17 @@ class WorkspaceBrandingCard extends StatelessWidget {
   const WorkspaceBrandingCard({
     super.key,
     this.workspaceName,
+    this.roleName,
     required this.template,
   });
 
   /// Workspace/org display name. Falls back to a l10n default.
   final String? workspaceName;
 
-  /// Current dashboard template — used for profile label + accent preview.
+  /// Real role display name (localized). Falls back to template label.
+  final String? roleName;
+
+  /// Current dashboard template — used for accent preview.
   final DashboardTemplate template;
 
   @override
@@ -30,7 +34,9 @@ class WorkspaceBrandingCard extends StatelessWidget {
         ? workspaceName!
         : tr(context, 'ws_brand_default_name');
 
-    final profileLabel = tr(context, template.labelKey);
+    final profileLabel = (roleName != null && roleName!.isNotEmpty)
+        ? roleName!
+        : tr(context, template.labelKey);
     final accentColor = mapColor(template.colorName);
 
     return Container(

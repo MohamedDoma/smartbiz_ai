@@ -55,7 +55,7 @@ class OpenAiProvider implements LlmProviderInterface
             'model'       => $options['model'] ?? $this->model,
             'messages'    => $messages,
             'temperature' => $options['temperature'] ?? 0.3,
-            'max_tokens'  => $options['max_tokens'] ?? 2048,
+            'max_completion_tokens'  => $options['max_tokens'] ?? 2048,
         ];
 
         if (! empty($tools)) {

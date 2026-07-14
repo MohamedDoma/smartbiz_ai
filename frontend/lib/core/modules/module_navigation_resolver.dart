@@ -163,21 +163,20 @@ class ModuleNavigationResolver {
     }
   }
 
-  /// Returns true if the user has the required view permission.
-  /// If the module has no `*.view` permission key, it always passes.
+  /// Returns true if the user has the required navigation permission.
+  ///
+  /// Uses the module's explicit [navigationPermissionKeys]. If the module
+  /// declares no navigation permission keys, it always passes (no gate).
+  /// Otherwise the user must hold at least one of the declared keys.
   bool _passesPermissionCheck(
     ErpModuleDefinition def,
     Set<String> effectivePermissions,
   ) {
-    // Find the canonical view permission for this module.
-    final viewPerm = def.permissionKeys
-        .where((p) => p.endsWith('.view'))
-        .toList();
+    // No navigation permission declared → always visible.
+    if (def.navigationPermissionKeys.isEmpty) return true;
 
-    // No view permission declared → always visible.
-    if (viewPerm.isEmpty) return true;
-
-    // User must have at least one of the view permissions.
-    return viewPerm.any((p) => effectivePermissions.contains(p));
+    // User must have at least one of the navigation permission keys.
+    return def.navigationPermissionKeys
+        .any((p) => effectivePermissions.contains(p));
   }
 }

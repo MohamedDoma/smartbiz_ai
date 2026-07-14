@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/responsive.dart';
+import '../../core/state/app_state.dart';
 import 'ai_chat_state.dart';
 import 'models/chat_models.dart';
 import 'widgets/chat_widgets.dart';
@@ -22,17 +23,31 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    // Bind AI chat to the current user and workspace, and load history
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final app = context.read<AppState>();
+      final chat = context.read<AiChatState>();
+      chat.ensureUserContext(app.currentUser.id, app.currentWorkspace.id);
+      chat.loadConversationHistory();
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _send() {
+  void _send() async {
     final text = _controller.text;
     if (text.trim().isEmpty) return;
-    context.read<AiChatState>().sendMessage(text, context);
     _controller.clear();
+    _scrollToBottom();
+    await context.read<AiChatState>().sendMessage(text, context);
     _scrollToBottom();
   }
 
@@ -136,11 +151,11 @@ class _ChatHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.toll, size: 13, color: AppColors.accent),
+                const Icon(Icons.generating_tokens, size: 13, color: AppColors.accent),
                 const SizedBox(width: 4),
                 Text('$credits', style: AppTypography.labelMedium.copyWith(color: AppColors.accent)),
                 const SizedBox(width: 2),
-                Text(tr(context, 'chat_credits'), style: AppTypography.caption.copyWith(color: AppColors.accent)),
+                Text(tr(context, 'ai_total_tokens'), style: AppTypography.caption.copyWith(color: AppColors.accent)),
               ],
             ),
           ),

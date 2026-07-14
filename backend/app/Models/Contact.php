@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $email
  * @property string|null $address
  * @property string|null $tax_number
+ * @property string|null $assigned_membership_id
  * @property float $balance        >= 0, default 0.00
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
@@ -35,6 +36,7 @@ class Contact extends Model
         'email',
         'address',
         'tax_number',
+        'assigned_membership_id',
     ];
 
     protected function casts(): array
@@ -49,5 +51,10 @@ class Contact extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class, 'workspace_id');
+    }
+
+    public function assignedMembership(): BelongsTo
+    {
+        return $this->belongsTo(WorkspaceMembership::class, 'assigned_membership_id');
     }
 }

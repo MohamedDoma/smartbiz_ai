@@ -6,6 +6,12 @@ class CommissionService {
   final ApiClient _c;
   CommissionService(this._c);
 
+  // ── Settings Options (permission-safe) ──────────────────
+  Future<CommissionSettingsOptions> getSettingsOptions() async {
+    final r = await _c.get('/commission-settings/options');
+    return CommissionSettingsOptions.fromJson(r.data['data'] as Map<String, dynamic>);
+  }
+
   // ── Plans ───────────────────────────────────────────────
   Future<List<CommissionPlan>> listPlans() async {
     final r = await _c.get('/commission-plans');
@@ -17,7 +23,7 @@ class CommissionService {
     return CommissionPlan.fromJson(r.data['data'] as Map<String, dynamic>);
   }
 
-  Future<CommissionPlan> updatePlan(String id, CommissionPlanPayload p) async {
+  Future<CommissionPlan> updatePlan(String id, CommissionPlanUpdatePayload p) async {
     final r = await _c.put('/commission-plans/$id', data: p.toJson());
     return CommissionPlan.fromJson(r.data['data'] as Map<String, dynamic>);
   }
@@ -37,7 +43,7 @@ class CommissionService {
     return CommissionRule.fromJson(r.data['data'] as Map<String, dynamic>);
   }
 
-  Future<CommissionRule> updateRule(String id, CommissionRulePayload p) async {
+  Future<CommissionRule> updateRule(String id, CommissionRuleUpdatePayload p) async {
     final r = await _c.put('/commission-rules/$id', data: p.toJson());
     return CommissionRule.fromJson(r.data['data'] as Map<String, dynamic>);
   }

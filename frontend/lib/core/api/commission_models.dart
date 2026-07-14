@@ -1,4 +1,5 @@
 // SmartBiz AI — Commission API models.
+import 'json_parse_helpers.dart';
 
 // ═══════════════════════════════════════════════════════
 //  Commission Plan
@@ -37,6 +38,7 @@ class CommissionPlan {
       );
 }
 
+/// Payload for creating a commission plan.
 class CommissionPlanPayload {
   final String name;
   final String? description;
@@ -47,6 +49,24 @@ class CommissionPlanPayload {
   Map<String, dynamic> toJson() => {
         'name': name,
         if (description != null) 'description': description,
+        if (sortOrder != null) 'sort_order': sortOrder,
+      };
+}
+
+/// Payload for updating a commission plan.
+/// Supports partial updates — only non-null fields are sent.
+class CommissionPlanUpdatePayload {
+  final String? name;
+  final String? description;
+  final bool? isActive;
+  final int? sortOrder;
+
+  const CommissionPlanUpdatePayload({this.name, this.description, this.isActive, this.sortOrder});
+
+  Map<String, dynamic> toJson() => {
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+        if (isActive != null) 'is_active': isActive,
         if (sortOrder != null) 'sort_order': sortOrder,
       };
 }
@@ -113,17 +133,18 @@ class CommissionRule {
         teamId: j['team_id'] as String?,
         targetType: j['target_type'] as String? ?? 'assigned_employee',
         calculationType: j['calculation_type'] as String? ?? 'percentage',
-        percentageRate: (j['percentage_rate'] as num?)?.toDouble(),
-        fixedAmount: (j['fixed_amount'] as num?)?.toDouble(),
+        percentageRate: parseJsonDouble(j['percentage_rate']),
+        fixedAmount: parseJsonDouble(j['fixed_amount']),
         currency: j['currency'] as String?,
-        minRecordValue: (j['min_record_value'] as num?)?.toDouble(),
-        maxRecordValue: (j['max_record_value'] as num?)?.toDouble(),
+        minRecordValue: parseJsonDouble(j['min_record_value']),
+        maxRecordValue: parseJsonDouble(j['max_record_value']),
         triggerStatus: j['trigger_status'] as String? ?? 'won',
         isActive: j['is_active'] as bool? ?? true,
         sortOrder: j['sort_order'] as int? ?? 0,
       );
 }
 
+/// Payload for creating a commission rule.
 class CommissionRulePayload {
   final String commissionPlanId;
   final String? pipelineId;
@@ -138,7 +159,6 @@ class CommissionRulePayload {
   final String? currency;
   final double? minRecordValue;
   final double? maxRecordValue;
-  final String? triggerStatus;
 
   const CommissionRulePayload({
     required this.commissionPlanId,
@@ -154,7 +174,6 @@ class CommissionRulePayload {
     this.currency,
     this.minRecordValue,
     this.maxRecordValue,
-    this.triggerStatus,
   });
 
   Map<String, dynamic> toJson() => {
@@ -171,7 +190,47 @@ class CommissionRulePayload {
         if (currency != null) 'currency': currency,
         if (minRecordValue != null) 'min_record_value': minRecordValue,
         if (maxRecordValue != null) 'max_record_value': maxRecordValue,
-        if (triggerStatus != null) 'trigger_status': triggerStatus,
+      };
+}
+
+/// Payload for updating a commission rule.
+/// Supports partial updates — only non-null fields are sent.
+class CommissionRuleUpdatePayload {
+  final String? pipelineId;
+  final String? stageId;
+  final String? targetType;
+  final String? calculationType;
+  final double? percentageRate;
+  final double? fixedAmount;
+  final String? currency;
+  final double? minRecordValue;
+  final double? maxRecordValue;
+  final bool? isActive;
+
+  const CommissionRuleUpdatePayload({
+    this.pipelineId,
+    this.stageId,
+    this.targetType,
+    this.calculationType,
+    this.percentageRate,
+    this.fixedAmount,
+    this.currency,
+    this.minRecordValue,
+    this.maxRecordValue,
+    this.isActive,
+  });
+
+  Map<String, dynamic> toJson() => {
+        if (pipelineId != null) 'pipeline_id': pipelineId,
+        if (stageId != null) 'stage_id': stageId,
+        if (targetType != null) 'target_type': targetType,
+        if (calculationType != null) 'calculation_type': calculationType,
+        if (percentageRate != null) 'percentage_rate': percentageRate,
+        if (fixedAmount != null) 'fixed_amount': fixedAmount,
+        if (currency != null) 'currency': currency,
+        if (minRecordValue != null) 'min_record_value': minRecordValue,
+        if (maxRecordValue != null) 'max_record_value': maxRecordValue,
+        if (isActive != null) 'is_active': isActive,
       };
 }
 
@@ -237,12 +296,12 @@ class CommissionEntry {
         recipient: j['recipient'] as Map<String, dynamic>?,
         sourceMembershipId: j['source_membership_id'] as String?,
         source: j['source'] as Map<String, dynamic>?,
-        baseAmount: (j['base_amount'] as num).toDouble(),
-        commissionAmount: (j['commission_amount'] as num).toDouble(),
+        baseAmount: parseJsonDoubleOr(j['base_amount']),
+        commissionAmount: parseJsonDoubleOr(j['commission_amount']),
         currency: j['currency'] as String? ?? 'LYD',
         calculationType: j['calculation_type'] as String? ?? 'percentage',
-        percentageRate: (j['percentage_rate'] as num?)?.toDouble(),
-        fixedAmount: (j['fixed_amount'] as num?)?.toDouble(),
+        percentageRate: parseJsonDouble(j['percentage_rate']),
+        fixedAmount: parseJsonDouble(j['fixed_amount']),
         status: j['status'] as String? ?? 'pending',
         calculatedAt: j['calculated_at'] as String?,
         approvedAt: j['approved_at'] as String?,
@@ -265,5 +324,62 @@ class CommissionCalculationResult {
 
 const kTargetTypes = ['assigned_employee', 'direct_manager', 'team_manager', 'department_manager'];
 const kCalculationTypes = ['percentage', 'fixed_amount'];
-const kTriggerStatuses = ['won', 'completed', 'open'];
 const kEntryStatuses = ['pending', 'approved', 'paid', 'cancelled'];
+
+// ═══════════════════════════════════════════════════════
+//  Commission Settings Options (permission-safe)
+// ═══════════════════════════════════════════════════════
+
+/// A single eligible stage returned by the settings options endpoint.
+class CommissionStageOption {
+  final String id;
+  final String name;
+  final String statusType;
+
+  const CommissionStageOption({required this.id, required this.name, required this.statusType});
+
+  factory CommissionStageOption.fromJson(Map<String, dynamic> j) => CommissionStageOption(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        statusType: j['status_type'] as String? ?? 'won',
+      );
+}
+
+/// A pipeline with its eligible stages, returned by the settings options endpoint.
+class CommissionPipelineOption {
+  final String id;
+  final String name;
+  final String entityType;
+  final List<CommissionStageOption> stages;
+
+  const CommissionPipelineOption({
+    required this.id,
+    required this.name,
+    required this.entityType,
+    required this.stages,
+  });
+
+  factory CommissionPipelineOption.fromJson(Map<String, dynamic> j) => CommissionPipelineOption(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        entityType: j['entity_type'] as String? ?? 'deal',
+        stages: (j['stages'] as List?)
+                ?.map((e) => CommissionStageOption.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}
+
+/// Top-level response from GET /commission-settings/options.
+class CommissionSettingsOptions {
+  final List<CommissionPipelineOption> pipelines;
+
+  const CommissionSettingsOptions({required this.pipelines});
+
+  factory CommissionSettingsOptions.fromJson(Map<String, dynamic> j) => CommissionSettingsOptions(
+        pipelines: (j['pipelines'] as List?)
+                ?.map((e) => CommissionPipelineOption.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}

@@ -56,6 +56,7 @@ class ModuleNavigationAdapter {
     'payments':                Icons.payments_outlined,
     'point_of_sale':           Icons.point_of_sale_outlined,
     'autorenew':               Icons.autorenew_outlined,
+    'monetization_on':         Icons.monetization_on_outlined,
 
     // Inventory
     'inventory_2':             Icons.inventory_2_outlined,

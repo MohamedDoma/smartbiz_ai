@@ -226,6 +226,8 @@ class CustomersState extends ChangeNotifier {
         email: api.email,
         address: api.address,
         balance: api.balance,
+        assignedEmployeeId: api.assignedTo?.membershipId,
+        assignedToName: api.assignedTo?.fullName,
       );
 
   // ── Error formatting ───────────────────────────────────

@@ -2,8 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api/pipeline_models.dart';
+import '../../../core/api/contact_models.dart';
+import '../../../core/api/contact_service.dart';
+import '../../../core/api/api_exceptions.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/modules/blueprint_navigation_controller.dart';
 import '../pipeline_state.dart';
 import '../../commissions/commission_state.dart';
 import '../../duplicates/duplicate_state.dart';
@@ -25,17 +29,26 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
     });
   }
 
+  /// Check if the current user has a specific permission.
+  bool _hasPerm(BuildContext context, String key) {
+    return context.read<BlueprintNavigationController>().effectivePermissions.contains(key);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canManage = _hasPerm(context, 'pipelines.manage');
+    final canCreateRecords = _hasPerm(context, 'pipeline_records.create');
+
     return Scaffold(
       appBar: AppBar(
         title: Text(tr(context, 'pip_title')),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: tr(context, 'pip_settings'),
-            onPressed: () => Navigator.of(context).pushNamed('/pipelines/settings'),
-          ),
+          if (canManage)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: tr(context, 'pip_settings'),
+              onPressed: () => Navigator.of(context).pushNamed('/pipelines/settings'),
+            ),
         ],
       ),
       body: Consumer<PipelineState>(
@@ -52,12 +65,14 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
                 Icon(Icons.linear_scale, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(tr(context, 'pip_no_pipelines'), style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: Text(tr(context, 'pip_create')),
-                  onPressed: () => _showCreatePipelineDialog(context),
-                ),
+                if (canManage) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: Text(tr(context, 'pip_create')),
+                    onPressed: () => _showCreatePipelineDialog(context),
+                  ),
+                ],
               ]),
             );
           }
@@ -78,12 +93,14 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: tr(context, 'pip_create'),
-                  onPressed: () => _showCreatePipelineDialog(context),
-                ),
+                if (canManage) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: tr(context, 'pip_create'),
+                    onPressed: () => _showCreatePipelineDialog(context),
+                  ),
+                ],
               ]),
             ),
             const Divider(height: 1),
@@ -97,7 +114,7 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
       ),
       floatingActionButton: Consumer<PipelineState>(
         builder: (ctx, state, _) {
-          if (state.activePipeline == null || state.stages.isEmpty) return const SizedBox.shrink();
+          if (state.activePipeline == null || state.stages.isEmpty || !canCreateRecords) return const SizedBox.shrink();
           return FloatingActionButton(
             onPressed: () => _showCreateRecordDialog(context, state),
             child: const Icon(Icons.add),
@@ -141,55 +158,358 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
     String? selectedStageId = state.stages.isNotEmpty ? state.stages.first.id : null;
     final customValues = <String, dynamic>{};
 
+    // Customer selector state
+    List<ApiContact> availableContacts = [];
+    ApiContact? selectedContact;
+    bool contactsLoading = true;
+    bool contactsLoaded = false;
+    String? contactsError;
+    String contactSearch = '';
+
+    // Quick-add customer state
+    bool showAddForm = false;
+    final newNameCtrl = TextEditingController();
+    final newPhoneCtrl = TextEditingController();
+    final newEmailCtrl = TextEditingController();
+    bool addingSaving = false;
+    String? addError;
+
+    // Deal-creation error state
+    String? dealError;
+
+    // Load contacts — must be called after setDlg is available.
+    final contactSvc = context.read<ContactService>();
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
-          title: Text(tr(context, 'pip_create_record')),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
-                controller: titleCtrl,
-                decoration: InputDecoration(labelText: tr(context, 'pip_record_title')),
+        builder: (ctx, setDlg) {
+          // Kick off the load exactly once, now that setDlg is captured.
+          if (!contactsLoaded && contactsLoading && contactsError == null) {
+            contactSvc.listContacts(perPage: 100, type: 'customer').then((result) {
+              availableContacts = result.data;
+              contactsError = null;
+            }).catchError((e) {
+              contactsError = e.toString();
+            }).whenComplete(() {
+              contactsLoading = false;
+              contactsLoaded = true;
+              if (ctx.mounted) setDlg(() {});
+            });
+          }
+
+          // Filter contacts
+          final lowerSearch = contactSearch.toLowerCase();
+          final filteredContacts = lowerSearch.isEmpty
+              ? availableContacts
+              : availableContacts.where((c) {
+                  return c.name.toLowerCase().contains(lowerSearch) ||
+                      (c.phone?.toLowerCase().contains(lowerSearch) ?? false) ||
+                      (c.email?.toLowerCase().contains(lowerSearch) ?? false);
+                }).toList();
+
+          // Responsive width: use 90% of screen but cap at 400.
+          final dialogWidth = MediaQuery.of(ctx).size.width * 0.9;
+          final safeWidth = dialogWidth > 400.0 ? 400.0 : dialogWidth;
+          // Cap the customer list at 30% of screen height to avoid overflow.
+          final maxListH = MediaQuery.of(ctx).size.height * 0.3;
+          final listHeight = maxListH > 150.0 ? 150.0 : maxListH;
+
+          return AlertDialog(
+            title: Text(tr(context, 'pip_create_record')),
+            content: SizedBox(
+              width: safeWidth,
+              child: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: InputDecoration(labelText: tr(context, 'pip_record_title')),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedStageId,
+                    decoration: InputDecoration(labelText: tr(context, 'pip_select_stage')),
+                    items: state.stages.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+                    onChanged: (v) => setDlg(() => selectedStageId = v),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // ── Customer selector ─────────────────────────
+                  if (contactsLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: LinearProgressIndicator(),
+                    )
+                  else if (contactsError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(contactsError!, style: TextStyle(color: AppColors.error, fontSize: 13)),
+                    )
+                  else ...[
+                    if (selectedContact != null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primary,
+                          child: Text(selectedContact!.name.isNotEmpty ? selectedContact!.name[0] : '?',
+                              style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                        title: Text(selectedContact!.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        subtitle: Text(selectedContact!.phone ?? selectedContact!.email ?? '', style: const TextStyle(fontSize: 12)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setDlg(() {
+                            selectedContact = null;
+                            dealError = null;
+                          }),
+                        ),
+                        dense: true,
+                      )
+                    else if (showAddForm)
+                      // ── Quick-add customer form ───────────────
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.person_add, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Text(tr(context, 'pip_add_customer'),
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () => setDlg(() {
+                                  showAddForm = false;
+                                  addError = null;
+                                }),
+                                tooltip: tr(context, 'cancel'),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: newNameCtrl,
+                            decoration: InputDecoration(
+                              labelText: '${tr(context, 'pip_customer_name')} *',
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: newPhoneCtrl,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'pip_customer_phone'),
+                              isDense: true,
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: newEmailCtrl,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'pip_customer_email'),
+                              isDense: true,
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          if (addError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(addError!, style: TextStyle(color: AppColors.error, fontSize: 12)),
+                            ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              icon: addingSaving
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.check, size: 16),
+                              label: Text(addingSaving ? tr(context, 'pip_saving_customer') : tr(context, 'pip_save_record'),
+                                  style: const TextStyle(fontSize: 13)),
+                              onPressed: addingSaving ? null : () async {
+                                if (newNameCtrl.text.trim().isEmpty) {
+                                  setDlg(() => addError = tr(context, 'pip_customer_name_required'));
+                                  return;
+                                }
+                                setDlg(() { addingSaving = true; addError = null; });
+                                try {
+                                  final created = await contactSvc.createContact(ContactPayload(
+                                    name: newNameCtrl.text.trim(),
+                                    type: 'customer',
+                                    phone: newPhoneCtrl.text.trim().isNotEmpty ? newPhoneCtrl.text.trim() : null,
+                                    email: newEmailCtrl.text.trim().isNotEmpty ? newEmailCtrl.text.trim() : null,
+                                  ));
+                                  // Auto-select the newly created customer
+                                  availableContacts = [created, ...availableContacts];
+                                  if (ctx.mounted) setDlg(() {
+                                    selectedContact = created;
+                                    showAddForm = false;
+                                    addingSaving = false;
+                                  });
+                                } on ConflictException catch (ce) {
+                                  if (ce.errorCode == 'contact_duplicate' && ce.existing != null) {
+                                    // Visible duplicate — offer to use existing
+                                    final existingName = ce.existing!['name'] as String? ?? '';
+                                    final existingId = ce.existing!['id'] as String? ?? '';
+                                    if (ctx.mounted) setDlg(() {
+                                      addingSaving = false;
+                                      addError = '${tr(context, 'pip_dup_contact_visible')} ($existingName)';
+                                    });
+                                    // Find or construct the existing contact
+                                    final match = availableContacts.where((c) => c.id == existingId).toList();
+                                    if (match.isNotEmpty) {
+                                      if (ctx.mounted) setDlg(() {
+                                        selectedContact = match.first;
+                                        showAddForm = false;
+                                        addError = null;
+                                      });
+                                    }
+                                  } else {
+                                    // Out of scope duplicate
+                                    if (ctx.mounted) setDlg(() {
+                                      addingSaving = false;
+                                      addError = tr(context, 'pip_dup_contact_outside_scope');
+                                    });
+                                  }
+                                } catch (e) {
+                                  if (ctx.mounted) setDlg(() {
+                                    addingSaving = false;
+                                    addError = e is ApiException ? e.message : e.toString();
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      // ── Existing customer search ───────────────
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'pip_select_customer'),
+                              prefixIcon: const Icon(Icons.person_search, size: 20),
+                              isDense: true,
+                            ),
+                            onChanged: (v) => setDlg(() => contactSearch = v),
+                          ),
+                          if (filteredContacts.isNotEmpty)
+                            SizedBox(
+                              height: listHeight,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: filteredContacts.map((c) => ListTile(
+                                    dense: true,
+                                    title: Text(c.name, style: const TextStyle(fontSize: 13)),
+                                    subtitle: Text(c.phone ?? c.email ?? '', style: const TextStyle(fontSize: 11)),
+                                    onTap: () => setDlg(() {
+                                      selectedContact = c;
+                                      contactSearch = '';
+                                      dealError = null;
+                                    }),
+                                  )).toList(),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 6),
+                          // Quick-add toggle
+                          InkWell(
+                            onTap: () => setDlg(() {
+                              showAddForm = true;
+                              addError = null;
+                            }),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.person_add_alt_1, size: 16, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Text(tr(context, 'pip_add_customer'),
+                                      style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+
+                  // ── Deal error banner ──────────────────────────
+                  if (dealError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.error),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(dealError!, style: TextStyle(color: AppColors.error, fontSize: 12))),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 8),
+
+                  TextField(
+                    controller: amountCtrl,
+                    decoration: InputDecoration(labelText: tr(context, 'pip_value_amount')),
+                    keyboardType: TextInputType.number,
+                  ),
+                  // Custom fields
+                  ...state.customFields.where((f) => f.isActive).map((f) => Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: _buildFieldInput(f, customValues, setDlg),
+                      )),
+                ]),
               ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: selectedStageId,
-                decoration: InputDecoration(labelText: tr(context, 'pip_select_stage')),
-                items: state.stages.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-                onChanged: (v) => setDlg(() => selectedStageId = v),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: amountCtrl,
-                decoration: InputDecoration(labelText: tr(context, 'pip_value_amount')),
-                keyboardType: TextInputType.number,
-              ),
-              // Custom fields
-              ...state.customFields.where((f) => f.isActive).map((f) => Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: _buildFieldInput(f, customValues, setDlg),
-                  )),
-            ]),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr(context, 'cancel'))),
-            FilledButton(
-              onPressed: () async {
-                if (titleCtrl.text.trim().isEmpty || selectedStageId == null) return;
-                final rec = await state.createRecord(PipelineRecordPayload(
-                  pipelineId: state.activePipeline!.id,
-                  stageId: selectedStageId!,
-                  title: titleCtrl.text.trim(),
-                  valueAmount: double.tryParse(amountCtrl.text),
-                  customValues: customValues.isNotEmpty ? customValues : null,
-                ));
-                if (rec != null && ctx.mounted) Navigator.pop(ctx);
-              },
-              child: Text(tr(context, 'pip_save_record')),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr(context, 'cancel'))),
+              FilledButton(
+                onPressed: () async {
+                  if (titleCtrl.text.trim().isEmpty || selectedStageId == null) return;
+                  setDlg(() => dealError = null);
+                  final rec = await state.createRecord(PipelineRecordPayload(
+                    pipelineId: state.activePipeline!.id,
+                    stageId: selectedStageId!,
+                    title: titleCtrl.text.trim(),
+                    contactId: selectedContact?.id,
+                    valueAmount: double.tryParse(amountCtrl.text),
+                    customValues: customValues.isNotEmpty ? customValues : null,
+                  ));
+                  if (rec != null && ctx.mounted) {
+                    Navigator.pop(ctx);
+                  } else if (ctx.mounted) {
+                    // Check state.error for conflict codes
+                    final err = state.error ?? '';
+                    if (err.contains('open_deal_duplicate') || err.contains('open deal')) {
+                      setDlg(() => dealError = tr(context, 'pip_dup_deal_visible'));
+                    } else if (err.contains('outside_scope') || err.contains('another employee')) {
+                      setDlg(() => dealError = tr(context, 'pip_dup_deal_outside_scope'));
+                    } else if (err.isNotEmpty) {
+                      setDlg(() => dealError = err);
+                    }
+                  }
+                },
+                child: Text(tr(context, 'pip_save_record')),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -295,8 +615,17 @@ class _RecordCard extends StatelessWidget {
   final PipelineState state;
   const _RecordCard({required this.record, required this.stages, required this.state});
 
+  /// Check if the current user has a specific permission.
+  bool _hasPerm(BuildContext context, String key) {
+    return context.read<BlueprintNavigationController>().effectivePermissions.contains(key);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canUpdate = _hasPerm(context, 'pipeline_records.update');
+    final canDelete = _hasPerm(context, 'pipeline_records.delete');
+    final canAssign = _hasPerm(context, 'pipeline_records.assign');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
@@ -329,6 +658,10 @@ class _RecordCard extends StatelessWidget {
               _checkDuplicate(context);
             } else if (val == '__resolve_owner__') {
               _resolveOwner(context);
+            } else if (val == '__assign__') {
+              _showAssignDialog(context);
+            } else if (val == '__delete__') {
+              _confirmDelete(context);
             } else {
               state.moveRecord(record.id, val);
             }
@@ -342,14 +675,24 @@ class _RecordCard extends StatelessWidget {
                 Text(tr(context, 'doc_record_documents')),
               ]),
             ),
-            PopupMenuItem(
-              value: '__calculate_commission__',
-              child: Row(children: [
-                const Icon(Icons.monetization_on_outlined, size: 18),
-                const SizedBox(width: 8),
-                Text(tr(context, 'comm_calculate')),
-              ]),
-            ),
+            if (canAssign)
+              PopupMenuItem(
+                value: '__assign__',
+                child: Row(children: [
+                  const Icon(Icons.person_add_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'pip_assign')),
+                ]),
+              ),
+            if (canUpdate && _hasPerm(context, 'commissions.calculate'))
+              PopupMenuItem(
+                value: '__calculate_commission__',
+                child: Row(children: [
+                  const Icon(Icons.monetization_on_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'comm_calculate')),
+                ]),
+              ),
             PopupMenuItem(
               value: '__check_duplicate__',
               child: Row(children: [
@@ -366,10 +709,21 @@ class _RecordCard extends StatelessWidget {
                 Text(tr(context, 'own_resolve')),
               ]),
             ),
-            const PopupMenuDivider(),
-            ...stages
-                .where((s) => s.id != record.stageId && s.isActive)
-                .map((s) => PopupMenuItem(value: s.id, child: Text('→ ${s.name}'))),
+            if (canDelete)
+              PopupMenuItem(
+                value: '__delete__',
+                child: Row(children: [
+                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                  const SizedBox(width: 8),
+                  Text(tr(context, 'delete'), style: TextStyle(color: AppColors.error)),
+                ]),
+              ),
+            if (canUpdate) ...[
+              const PopupMenuDivider(),
+              ...stages
+                  .where((s) => s.id != record.stageId && s.isActive)
+                  .map((s) => PopupMenuItem(value: s.id, child: Text('→ ${s.name}'))),
+            ],
           ],
           icon: const Icon(Icons.more_vert, size: 20),
         ),
@@ -415,6 +769,120 @@ class _RecordCard extends StatelessWidget {
         SnackBar(content: Text('${tr(context, 'own_owner')}: $name ($src)')),
       );
     }
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr(context, 'delete')),
+        content: Text('${tr(context, 'gen_confirm')} — ${record.title}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr(context, 'cancel'))),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () {
+              state.deleteRecord(record.id);
+              Navigator.pop(ctx);
+            },
+            child: Text(tr(context, 'delete')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAssignDialog(BuildContext context) {
+    final state = context.read<PipelineState>();
+    state.loadAssignableMembers();
+    String search = '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          return AlertDialog(
+            title: Text(tr(context, 'pip_assign_select')),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 360,
+              child: Consumer<PipelineState>(
+                builder: (ctx2, ps, _) {
+                  if (ps.assignableLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (ps.assignableError != null) {
+                    return Center(child: Text(tr(context, 'pip_assign_error'), style: TextStyle(color: AppColors.error)));
+                  }
+
+                  final lower = search.toLowerCase();
+                  final filtered = ps.assignableMembers.where((m) {
+                    if (lower.isEmpty) return true;
+                    final name = m.fullName.toLowerCase();
+                    final role = (m.roleName ?? '').toLowerCase();
+                    final dept = (m.department ?? '').toLowerCase();
+                    return name.contains(lower) || role.contains(lower) || dept.contains(lower);
+                  }).toList();
+
+                  return Column(children: [
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'pip_assign_search'),
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setDlg(() => search = v),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? Center(child: Text(tr(context, 'pip_assign_no_results'), style: TextStyle(color: Colors.grey[500])))
+                          : ListView.separated(
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (ctx3, i) {
+                                final m = filtered[i];
+                                final isCurrentAssignee = record.assignedTo?.membershipId == m.membershipId;
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: isCurrentAssignee ? AppColors.primary : Colors.grey[300],
+                                    child: Text(
+                                      m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
+                                      style: TextStyle(color: isCurrentAssignee ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                  subtitle: Text(
+                                    [m.roleName, m.department].where((e) => e != null && e.isNotEmpty).join(' · '),
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                  trailing: isCurrentAssignee ? Icon(Icons.check_circle, color: AppColors.primary, size: 20) : null,
+                                  dense: true,
+                                  onTap: () async {
+                                    final updated = await state.updateRecord(record.id, {'assigned_membership_id': m.membershipId});
+                                    if (ctx.mounted) {
+                                      Navigator.pop(ctx);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(updated != null ? tr(context, 'pip_assigned_ok') : tr(context, 'pip_assign_failed'))),
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ]);
+                },
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr(context, 'cancel'))),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 

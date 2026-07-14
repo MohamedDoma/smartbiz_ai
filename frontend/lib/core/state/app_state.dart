@@ -3,6 +3,7 @@
 // Manages: UI language, workspace doc language, current user/role/workspace.
 // Separate from ShellState (which is navigation-only).
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import '../api/api_client.dart';
 import '../api/auth_models.dart';
@@ -99,7 +100,27 @@ class AppState extends ChangeNotifier {
   WorkspaceInfo _currentWorkspace;
   bool _onboardingCompleted = false;
   bool _authenticated = false;
+  bool _sessionInitialized = false;
   PlatformRole _platformRole = PlatformRole.none;
+
+  /// Real backend role name from the membership's primary_role.
+  /// Used for display instead of the generic AppRole label.
+  String? _backendRoleName;
+
+  /// Real backend role key from the session (e.g. 'sales_manager').
+  /// Used to look up localized role display names.
+  String? _backendRoleKey;
+
+  /// Current workspace membership ID for the authenticated user.
+  String? _currentMembershipId;
+
+  /// Locally persisted language preference.
+  /// Non-null when the user has made an explicit manual choice.
+  /// Takes absolute precedence over backend preferred_locale.
+  AppLanguage? _savedLocaleChoice;
+
+  /// SharedPreferences key for the persisted UI language.
+  static const _localeStorageKey = 'smartbiz.ui_language';
 
   /// API client — created once, shared across services.
   late final ApiClient apiClient;
@@ -130,6 +151,24 @@ class AppState extends ChangeNotifier {
     authService = AuthService(apiClient);
     templateService = BusinessTemplateService(apiClient);
     inviteService = WorkspaceInviteService(apiClient);
+    _loadSavedLocale();
+  }
+
+  /// Load saved UI language from local storage on startup.
+  /// This runs asynchronously but applies before session restore completes.
+  Future<void> _loadSavedLocale() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_localeStorageKey);
+      if (saved != null) {
+        final lang = saved == 'en' ? AppLanguage.en : AppLanguage.ar;
+        _savedLocaleChoice = lang;
+        _currentUser = _currentUser.copyWith(uiLanguage: lang);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Storage unavailable — use default.
+    }
   }
 
   /// Called by ApiClient interceptor on 401 responses.
@@ -172,14 +211,66 @@ class AppState extends ChangeNotifier {
   /// Whether workspace onboarding is completed.
   bool get isOnboardingCompleted => _onboardingCompleted;
 
+  /// Whether the initial session restoration attempt has completed.
+  /// Used by the router to avoid premature redirects on page reload.
+  bool get isSessionInitialized => _sessionInitialized;
+
   /// Last loaded auth session from backend.
   AuthSession? get lastSession => _lastSession;
+
+  /// The real backend role name for display.
+  /// Null when using mock sessions without backend data.
+  String? get backendRoleName => _backendRoleName;
+
+  /// The real backend role key.
+  /// Null when using mock sessions without backend data.
+  String? get backendRoleKey => _backendRoleKey;
+
+  /// Current workspace membership ID.
+  String? get currentMembershipId => _currentMembershipId;
+
+  /// Returns the best available localized role display name.
+  ///
+  /// Priority:
+  /// 1. Localized label for the backend role_key (e.g. bk_role_sales_manager)
+  /// 2. Backend role_name for custom/unknown roles
+  /// 3. AppRole localized label (mock sessions only)
+  /// 4. Generic employee label (final fallback)
+  String displayRoleName(AppLanguage lang) {
+    // 1. Try localized key for known backend role keys.
+    if (_backendRoleKey != null && _backendRoleKey!.isNotEmpty) {
+      final l10nKey = 'bk_role_${_backendRoleKey!}';
+      final localized = trForLang(lang, l10nKey);
+      // trForLang returns '[$key]' when the key is missing.
+      if (!localized.startsWith('[')) {
+        return localized;
+      }
+    }
+    // 2. Fall back to backend role_name (custom roles).
+    if (_backendRoleName != null && _backendRoleName!.isNotEmpty) {
+      return _backendRoleName!;
+    }
+    // 3. AppRole label for mock/legacy sessions.
+    return _currentRole.label(lang);
+  }
 
   // ── Setters ─────────────────────────────────────────────
 
   void setUiLanguage(AppLanguage lang) {
+    _savedLocaleChoice = lang;
     _currentUser = _currentUser.copyWith(uiLanguage: lang);
     notifyListeners();
+    _persistLocale(lang);
+  }
+
+  /// Persist the manual language choice to local storage.
+  Future<void> _persistLocale(AppLanguage lang) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_localeStorageKey, lang.locale.languageCode);
+    } catch (_) {
+      // Storage unavailable — in-memory choice still works.
+    }
   }
 
   void setDocumentLanguage(AppLanguage lang) {
@@ -233,14 +324,20 @@ class AppState extends ChangeNotifier {
       final session = await authService.me();
       if (session == null) {
         _clearSession();
+        _sessionInitialized = true;
+        notifyListeners();
         return false;
       }
       _applySession(session);
+      _sessionInitialized = true;
+      notifyListeners();
       return true;
     } catch (_) {
       // Network error, server down, unexpected error — clear and fail safe.
       await TokenStorage.clearToken();
       _clearSession();
+      _sessionInitialized = true;
+      notifyListeners();
       return false;
     }
   }
@@ -330,9 +427,16 @@ class AppState extends ChangeNotifier {
         ? PlatformRole.superAdmin
         : PlatformRole.none;
 
-    // User info
-    final preferredLocale = session.user.preferredLocale;
-    final uiLang = preferredLocale == 'en' ? AppLanguage.en : AppLanguage.ar;
+    // User info — preserve local language choice over backend preferred_locale.
+    final AppLanguage uiLang;
+    if (_savedLocaleChoice != null) {
+      // User has made an explicit local language choice — keep it.
+      uiLang = _savedLocaleChoice!;
+    } else {
+      // No local choice — use backend preferred_locale as initial fallback.
+      final preferredLocale = session.user.preferredLocale;
+      uiLang = preferredLocale == 'en' ? AppLanguage.en : AppLanguage.ar;
+    }
     _currentUser = UserInfo(
       id: session.user.id,
       fullName: session.user.fullName,
@@ -352,6 +456,17 @@ class AppState extends ChangeNotifier {
       _onboardingCompleted = aw.onboardingCompleted;
       _currentRole = _mapRoleKey(aw.roleKey);
 
+      // Extract real role data from the membership's primary_role.
+      final membership = session.memberships.firstWhere(
+        (m) => m.workspaceId == aw.id,
+        orElse: () => session.memberships.isNotEmpty
+            ? session.memberships.first
+            : const AuthMembership(id: '', workspaceId: ''),
+      );
+      _backendRoleName = membership.primaryRole?.roleName;
+      _backendRoleKey = membership.primaryRole?.roleKey ?? aw.roleKey;
+      _currentMembershipId = membership.id.isNotEmpty ? membership.id : null;
+
       // Set workspace ID on ApiClient for workspace-scoped requests.
       apiClient.setWorkspaceId(aw.id);
     } else {
@@ -368,37 +483,55 @@ class AppState extends ChangeNotifier {
   }
 
   /// Clear all session state (logout).
+  /// Preserves the user's manually selected UI language.
   void _clearSession() {
     _authenticated = false;
     _platformRole = PlatformRole.none;
     _currentRole = AppRole.owner;
-    _currentUser = _defaultUser;
+    // Preserve language choice across logout.
+    final preservedLang = _savedLocaleChoice ?? _currentUser.uiLanguage;
+    _currentUser = _defaultUser.copyWith(uiLanguage: preservedLang);
     _currentWorkspace = _defaultWorkspace;
     _onboardingCompleted = false;
     _lastSession = null;
+    _backendRoleName = null;
+    _backendRoleKey = null;
+    _currentMembershipId = null;
     apiClient.setWorkspaceId(null);
     notifyListeners();
   }
 
   /// Map backend role_key to frontend AppRole.
+  ///
+  /// For real authenticated sessions, the dynamic blueprint navigation
+  /// system uses backend permissions exclusively — AppRole.navFilter
+  /// is only relevant in the legacy fallback path (mock sessions).
+  /// Therefore, non-owner roles safely map to AppRole.employee as a
+  /// neutral default; actual module visibility is controlled by
+  /// backend permissions + enabled workspace modules.
   static AppRole _mapRoleKey(String? roleKey) {
     switch (roleKey) {
       case 'owner':
         return AppRole.owner;
       case 'admin':
         return AppRole.owner; // admin = full access like owner
-      case 'cashier':
-        return AppRole.cashier;
+      case 'general_manager':
+        return AppRole.owner; // GM = broad access
+      case 'inventory_manager':
+        return AppRole.warehouse;
+      case 'warehouse_staff':
       case 'warehouse':
       case 'warehouse_manager':
         return AppRole.warehouse;
+      case 'cashier':
+        return AppRole.cashier;
       case 'accountant':
       case 'finance':
         return AppRole.accountant;
       case 'super_admin':
         return AppRole.superAdmin;
       default:
-        return AppRole.employee; // safe fallback for unknown roles
+        return AppRole.employee; // all other roles: dynamic nav handles filtering
     }
   }
 

@@ -42,12 +42,15 @@ class WorkspaceBlueprintProfileResolver {
     ErpModuleId.invoices,
     ErpModuleId.payments,
     ErpModuleId.pos,
+    ErpModuleId.pipelines,
     ErpModuleId.accounting,
     ErpModuleId.reports,
     ErpModuleId.employees,
     ErpModuleId.roles,
     ErpModuleId.departments,
     ErpModuleId.teams,
+    ErpModuleId.commissions,
+    ErpModuleId.approvals,
   };
 
   /// Finance/accountant: accounting, reports, invoices.
@@ -62,6 +65,8 @@ class WorkspaceBlueprintProfileResolver {
     ErpModuleId.invoices,
     ErpModuleId.payments,
     ErpModuleId.customers,
+    ErpModuleId.commissions,
+    ErpModuleId.approvals,
   };
 
   /// Sales/cashier: customers, products, invoices.
@@ -74,7 +79,10 @@ class WorkspaceBlueprintProfileResolver {
     ErpModuleId.invoices,
     ErpModuleId.payments,
     ErpModuleId.pos,
+    ErpModuleId.pipelines,
     ErpModuleId.reports,
+    ErpModuleId.commissions,
+    ErpModuleId.approvals,
   };
 
   /// Inventory/warehouse: products, inventory, stock management.
@@ -124,19 +132,60 @@ class WorkspaceBlueprintProfileResolver {
   /// Resolves the module set for a given dashboard template.
   static BlueprintProfile forTemplate(DashboardTemplate template) =>
       switch (template) {
-        DashboardTemplate.executive  => const BlueprintProfile(id: 'owner',      modules: _ownerModules),
-        DashboardTemplate.finance    => const BlueprintProfile(id: 'finance',    modules: _financeModules),
-        DashboardTemplate.sales      => const BlueprintProfile(id: 'sales',      modules: _salesModules),
-        DashboardTemplate.inventory  => const BlueprintProfile(id: 'inventory',  modules: _inventoryModules),
-        DashboardTemplate.hr         => const BlueprintProfile(id: 'hr',         modules: _hrModules),
-        DashboardTemplate.operations => const BlueprintProfile(id: 'operations', modules: _operationsModules),
-        DashboardTemplate.projects   => const BlueprintProfile(id: 'operations', modules: _operationsModules),
-        DashboardTemplate.support    => const BlueprintProfile(id: 'basic',      modules: _basicModules),
-        DashboardTemplate.service    => const BlueprintProfile(id: 'basic',      modules: _basicModules),
-        DashboardTemplate.basicEmployee => const BlueprintProfile(id: 'basic',   modules: _basicModules),
-        DashboardTemplate.custom     => const BlueprintProfile(id: 'basic',      modules: _basicModules),
+        DashboardTemplate.executive => const BlueprintProfile(
+          id: 'owner',
+          modules: _ownerModules,
+        ),
+        DashboardTemplate.finance => const BlueprintProfile(
+          id: 'finance',
+          modules: _financeModules,
+        ),
+        DashboardTemplate.sales => const BlueprintProfile(
+          id: 'sales',
+          modules: _salesModules,
+        ),
+        DashboardTemplate.inventory => const BlueprintProfile(
+          id: 'inventory',
+          modules: _inventoryModules,
+        ),
+        DashboardTemplate.hr => const BlueprintProfile(
+          id: 'hr',
+          modules: _hrModules,
+        ),
+        DashboardTemplate.operations => const BlueprintProfile(
+          id: 'operations',
+          modules: _operationsModules,
+        ),
+        DashboardTemplate.projects => const BlueprintProfile(
+          id: 'operations',
+          modules: _operationsModules,
+        ),
+        DashboardTemplate.support => const BlueprintProfile(
+          id: 'basic',
+          modules: _basicModules,
+        ),
+        DashboardTemplate.service => const BlueprintProfile(
+          id: 'basic',
+          modules: _basicModules,
+        ),
+        DashboardTemplate.basicEmployee => const BlueprintProfile(
+          id: 'basic',
+          modules: _basicModules,
+        ),
+        DashboardTemplate.custom => const BlueprintProfile(
+          id: 'basic',
+          modules: _basicModules,
+        ),
       };
 
   /// All defined profile IDs for reference.
-  static const allProfileIds = ['owner', 'finance', 'sales', 'inventory', 'hr', 'operations', 'basic'];
+  static const allProfileIds = [
+    'owner',
+    'finance',
+    'sales',
+    'inventory',
+    'hr',
+    'operations',
+    'basic',
+  ];
 }

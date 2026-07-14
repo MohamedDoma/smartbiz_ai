@@ -121,9 +121,24 @@ class _BlueprintNavigationCoordinatorState
       orgState: orgState,
     );
 
+    // Determine the effective permission set.
+    // When a real backend session exists, its permissions are the sole
+    // authority — the backend RBAC system is the source of truth.
+    // Frontend-computed permissions (from mock role templates) are only
+    // used as a fallback when no backend session is available.
+    final Set<String> effectivePermissions;
+    final session = appState.lastSession;
+    if (session?.activeWorkspace != null) {
+      // Backend is authoritative — use its permissions exclusively.
+      effectivePermissions = Set<String>.from(session!.activeWorkspace!.permissions);
+    } else {
+      // No backend session — fall back to frontend-computed permissions.
+      effectivePermissions = empCtx.effectivePermissions;
+    }
+
     // Push permissions to the navigation controller.
     // The controller internally skips if permissions are unchanged.
-    navCtrl.updatePermissions(empCtx.effectivePermissions);
+    navCtrl.updatePermissions(effectivePermissions);
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -4,13 +4,21 @@ import 'package:provider/provider.dart';
 import '../../../core/api/pipeline_models.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/modules/blueprint_navigation_controller.dart';
 import '../pipeline_state.dart';
 
 class PipelineSettingsScreen extends StatelessWidget {
   const PipelineSettingsScreen({super.key});
 
+  /// Check if the current user has a specific permission.
+  bool _hasPerm(BuildContext context, String key) {
+    return context.read<BlueprintNavigationController>().effectivePermissions.contains(key);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canManage = _hasPerm(context, 'pipelines.manage');
+
     return Scaffold(
       appBar: AppBar(title: Text(tr(context, 'pip_settings'))),
       body: Consumer<PipelineState>(
@@ -24,11 +32,12 @@ class PipelineSettingsScreen extends StatelessWidget {
               // ── Stages section ──
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text(tr(context, 'pip_stages'), style: Theme.of(context).textTheme.titleMedium),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: tr(context, 'pip_create_stage'),
-                  onPressed: () => _showCreateStageDialog(context, state),
-                ),
+                if (canManage)
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: tr(context, 'pip_create_stage'),
+                    onPressed: () => _showCreateStageDialog(context, state),
+                  ),
               ]),
               if (state.stages.isEmpty)
                 Padding(padding: const EdgeInsets.all(16), child: Text(tr(context, 'pip_no_stages')))
@@ -53,11 +62,12 @@ class PipelineSettingsScreen extends StatelessWidget {
               // ── Custom fields section ──
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text(tr(context, 'pip_custom_fields'), style: Theme.of(context).textTheme.titleMedium),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: tr(context, 'pip_create_field'),
-                  onPressed: () => _showCreateFieldDialog(context, state),
-                ),
+                if (canManage)
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    tooltip: tr(context, 'pip_create_field'),
+                    onPressed: () => _showCreateFieldDialog(context, state),
+                  ),
               ]),
               if (state.customFields.isEmpty)
                 Padding(padding: const EdgeInsets.all(16), child: Text(tr(context, 'pip_no_fields')))
@@ -70,6 +80,16 @@ class PipelineSettingsScreen extends StatelessWidget {
                             style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       ),
                     )),
+
+              if (!canManage)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Text(
+                    tr(context, 'pip_settings_readonly_hint'),
+                    style: TextStyle(color: Colors.grey[500], fontStyle: FontStyle.italic),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
             ],
           );
         },
@@ -213,3 +233,4 @@ class PipelineSettingsScreen extends StatelessWidget {
         _ => Icons.text_fields,
       };
 }
+

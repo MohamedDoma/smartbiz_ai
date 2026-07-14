@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AiChatController;
+use App\Http\Controllers\Api\AiFoundationController;
+use App\Http\Controllers\Api\PlatformAiUsageController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BomController;
@@ -41,6 +43,7 @@ use App\Http\Controllers\Api\RecordDocumentController;
 use App\Http\Controllers\Api\CommissionPlanController;
 use App\Http\Controllers\Api\CommissionRuleController;
 use App\Http\Controllers\Api\CommissionEntryController;
+use App\Http\Controllers\Api\CommissionSettingsController;
 use App\Http\Controllers\Api\OwnershipController;
 use App\Http\Controllers\Api\DuplicateRuleController;
 use App\Http\Controllers\Api\DuplicateMatchController;
@@ -57,6 +60,8 @@ use App\Http\Controllers\Api\PlatformUserController;
 use App\Http\Controllers\Api\PlatformActivationCampaignController;
 use App\Http\Controllers\Api\PlatformActivationCodeController;
 use App\Http\Controllers\Api\PlatformSystemHealthController;
+use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\ApprovalWorkflowController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SetWorkspaceContext;
 use App\Services\WorkspaceContextManager;
@@ -139,6 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Contacts ────────────────────────────────────────────
         Route::prefix('contacts')->group(function () {
+            Route::get('/assignable-members', [ContactController::class, 'assignableMembers'])->middleware(CheckPermission::class . ':contacts.assign')->name('contacts.assignable-members');
             Route::get('/',     [ContactController::class, 'index'])->middleware(CheckPermission::class . ':contacts.list')->name('contacts.index');
             Route::get('/{id}', [ContactController::class, 'show'])->middleware(CheckPermission::class . ':contacts.show')->name('contacts.show');
             Route::post('/',    [ContactController::class, 'store'])->middleware(CheckPermission::class . ':contacts.create')->name('contacts.store');
@@ -322,6 +328,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/advisor/{id}/apply',       [\App\Http\Controllers\Api\AiAdvisorController::class, 'apply'])->name('ai.advisor.apply');
         });
 
+        // ── AI Foundation (Step 59.1) — non-conflicting utilities ────
+        Route::prefix('ai')->group(function () {
+            Route::post('/test',              [AiFoundationController::class, 'test'])->name('ai.foundation.test');
+            // /chat is handled by AiChatController above (the canonical route)
+            Route::get('/conversations',      [AiFoundationController::class, 'conversations'])->name('ai.foundation.conversations');
+            Route::get('/conversations/{id}', [AiFoundationController::class, 'showConversation'])->name('ai.foundation.conversation');
+        });
+
         // ── Workspace Invitations ──────────────────────────────────
         Route::prefix('workspace-invitations')->group(function () {
             Route::get('/',             [WorkspaceInvitationController::class, 'index'])->name('workspace-invitations.index');
@@ -366,44 +380,45 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Pipelines ─────────────────────────────────────────────
         Route::prefix('pipelines')->group(function () {
-            Route::get('/',     [PipelineController::class, 'index'])->name('pipelines.index');
-            Route::post('/',    [PipelineController::class, 'store'])->name('pipelines.store');
-            Route::get('/{id}', [PipelineController::class, 'show'])->name('pipelines.show');
-            Route::put('/{id}', [PipelineController::class, 'update'])->name('pipelines.update');
-            Route::delete('/{id}', [PipelineController::class, 'destroy'])->name('pipelines.destroy');
+            Route::get('/',     [PipelineController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('pipelines.index');
+            Route::post('/',    [PipelineController::class, 'store'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipelines.store');
+            Route::get('/{id}', [PipelineController::class, 'show'])->middleware(CheckPermission::class . ':pipelines.list')->name('pipelines.show');
+            Route::put('/{id}', [PipelineController::class, 'update'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipelines.update');
+            Route::delete('/{id}', [PipelineController::class, 'destroy'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipelines.destroy');
 
             // Nested stages
-            Route::get('/{pipelineId}/stages',  [PipelineStageController::class, 'index'])->name('pipeline-stages.index');
-            Route::post('/{pipelineId}/stages', [PipelineStageController::class, 'store'])->name('pipeline-stages.store');
+            Route::get('/{pipelineId}/stages',  [PipelineStageController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('pipeline-stages.index');
+            Route::post('/{pipelineId}/stages', [PipelineStageController::class, 'store'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipeline-stages.store');
         });
 
         // ── Pipeline Stages (standalone) ───────────────────────────
-        Route::put('/pipeline-stages/{id}',    [PipelineStageController::class, 'update'])->name('pipeline-stages.update');
-        Route::delete('/pipeline-stages/{id}', [PipelineStageController::class, 'destroy'])->name('pipeline-stages.destroy');
+        Route::put('/pipeline-stages/{id}',    [PipelineStageController::class, 'update'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipeline-stages.update');
+        Route::delete('/pipeline-stages/{id}', [PipelineStageController::class, 'destroy'])->middleware(CheckPermission::class . ':pipelines.manage')->name('pipeline-stages.destroy');
 
         // ── Pipeline Records ──────────────────────────────────────
         Route::prefix('pipeline-records')->group(function () {
-            Route::get('/',        [PipelineRecordController::class, 'index'])->name('pipeline-records.index');
-            Route::post('/',       [PipelineRecordController::class, 'store'])->name('pipeline-records.store');
-            Route::get('/{id}',    [PipelineRecordController::class, 'show'])->name('pipeline-records.show');
-            Route::put('/{id}',    [PipelineRecordController::class, 'update'])->name('pipeline-records.update');
-            Route::post('/{id}/move', [PipelineRecordController::class, 'move'])->name('pipeline-records.move');
-            Route::delete('/{id}', [PipelineRecordController::class, 'destroy'])->name('pipeline-records.destroy');
+            Route::get('/assignable-members', [PipelineRecordController::class, 'assignableMembers'])->middleware(CheckPermission::class . ':pipeline_records.assign')->name('pipeline-records.assignable-members');
+            Route::get('/',        [PipelineRecordController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('pipeline-records.index');
+            Route::post('/',       [PipelineRecordController::class, 'store'])->middleware(CheckPermission::class . ':pipeline_records.create')->name('pipeline-records.store');
+            Route::get('/{id}',    [PipelineRecordController::class, 'show'])->middleware(CheckPermission::class . ':pipelines.list')->name('pipeline-records.show');
+            Route::put('/{id}',    [PipelineRecordController::class, 'update'])->middleware(CheckPermission::class . ':pipeline_records.update')->name('pipeline-records.update');
+            Route::post('/{id}/move', [PipelineRecordController::class, 'move'])->middleware(CheckPermission::class . ':pipeline_records.update')->name('pipeline-records.move');
+            Route::delete('/{id}', [PipelineRecordController::class, 'destroy'])->middleware(CheckPermission::class . ':pipeline_records.delete')->name('pipeline-records.destroy');
 
             // Nested record documents
-            Route::get('/{recordId}/documents',       [RecordDocumentController::class, 'index'])->name('record-documents.index');
-            Route::post('/{recordId}/documents',      [RecordDocumentController::class, 'store'])->name('record-documents.store');
-            Route::get('/{recordId}/document-status',  [RecordDocumentController::class, 'documentStatus'])->name('record-documents.status');
+            Route::get('/{recordId}/documents',       [RecordDocumentController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('record-documents.index');
+            Route::post('/{recordId}/documents',      [RecordDocumentController::class, 'store'])->middleware(CheckPermission::class . ':pipeline_records.update')->name('record-documents.store');
+            Route::get('/{recordId}/document-status',  [RecordDocumentController::class, 'documentStatus'])->middleware(CheckPermission::class . ':pipelines.list')->name('record-documents.status');
             Route::post('/{recordId}/calculate-commissions', [CommissionEntryController::class, 'calculateForRecord'])->name('commission-entries.calculate');
         });
 
         // ── Custom Fields ─────────────────────────────────────────
         Route::prefix('custom-fields')->group(function () {
-            Route::get('/',     [CustomFieldController::class, 'index'])->name('custom-fields.index');
-            Route::post('/',    [CustomFieldController::class, 'store'])->name('custom-fields.store');
-            Route::get('/{id}', [CustomFieldController::class, 'show'])->name('custom-fields.show');
-            Route::put('/{id}', [CustomFieldController::class, 'update'])->name('custom-fields.update');
-            Route::delete('/{id}', [CustomFieldController::class, 'destroy'])->name('custom-fields.destroy');
+            Route::get('/',     [CustomFieldController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('custom-fields.index');
+            Route::post('/',    [CustomFieldController::class, 'store'])->middleware(CheckPermission::class . ':pipelines.manage')->name('custom-fields.store');
+            Route::get('/{id}', [CustomFieldController::class, 'show'])->middleware(CheckPermission::class . ':pipelines.list')->name('custom-fields.show');
+            Route::put('/{id}', [CustomFieldController::class, 'update'])->middleware(CheckPermission::class . ':pipelines.manage')->name('custom-fields.update');
+            Route::delete('/{id}', [CustomFieldController::class, 'destroy'])->middleware(CheckPermission::class . ':pipelines.manage')->name('custom-fields.destroy');
         });
 
         // ── Document Checklists ───────────────────────────────
@@ -424,7 +439,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/document-checklist-items/{id}', [DocumentChecklistItemController::class, 'destroy'])->name('document-checklist-items.destroy');
 
         // ── Record Documents (standalone) ───────────────────────
-        Route::delete('/record-documents/{id}', [RecordDocumentController::class, 'destroy'])->name('record-documents.destroy');
+        Route::delete('/record-documents/{id}', [RecordDocumentController::class, 'destroy'])->middleware(CheckPermission::class . ':pipeline_records.delete')->name('record-documents.destroy');
+
+        // ── Commission Settings Options ───────────────────
+        Route::get("commission-settings/options", [CommissionSettingsController::class, "options"])->name("commission-settings.options");
 
         // ── Commission Plans ───────────────────────────────
         Route::prefix('commission-plans')->group(function () {
@@ -521,6 +539,32 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/commission-entries/{id}/post-to-finance', [FinanceTransactionController::class, 'postCommissionEntry'])->name('finance.post-commission');
         Route::post('/invoices/{id}/post-to-finance',           [FinanceTransactionController::class, 'postInvoice'])->name('finance.post-invoice');
         Route::post('/payments/{id}/post-to-finance',           [FinanceTransactionController::class, 'postPayment'])->name('finance.post-payment');
+
+        // ── Approval Workflows (admin CRUD) ──────────────────
+        Route::prefix('approval-workflows')->middleware(CheckPermission::class . ':approvals.manage')->group(function () {
+            Route::get('/',     [ApprovalWorkflowController::class, 'index'])->name('approval-workflows.index');
+            Route::post('/',    [ApprovalWorkflowController::class, 'store'])->name('approval-workflows.store');
+            Route::get('/{id}', [ApprovalWorkflowController::class, 'show'])->name('approval-workflows.show');
+            Route::put('/{id}', [ApprovalWorkflowController::class, 'update'])->name('approval-workflows.update');
+            Route::delete('/{id}', [ApprovalWorkflowController::class, 'destroy'])->name('approval-workflows.destroy');
+
+            // Nested steps
+            Route::post('/{workflowId}/steps', [ApprovalWorkflowController::class, 'addStep'])->name('approval-workflow-steps.store');
+        });
+
+        // ── Approval Workflow Steps (standalone update/delete) ─
+        Route::put('/approval-workflow-steps/{id}',    [ApprovalWorkflowController::class, 'updateStep'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-workflow-steps.update');
+        Route::delete('/approval-workflow-steps/{id}', [ApprovalWorkflowController::class, 'deleteStep'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-workflow-steps.destroy');
+
+        // ── Approval Requests (lifecycle) ────────────────────
+        Route::prefix('approvals')->group(function () {
+            Route::get('/inbox', [ApprovalController::class, 'inbox'])->middleware(CheckPermission::class . ':approvals.list')->name('approvals.inbox');
+            Route::get('/',      [ApprovalController::class, 'index'])->middleware(CheckPermission::class . ':approvals.list')->name('approvals.index');
+            Route::get('/{id}',  [ApprovalController::class, 'show'])->middleware(CheckPermission::class . ':approvals.show')->name('approvals.show');
+            Route::post('/',     [ApprovalController::class, 'store'])->middleware(CheckPermission::class . ':approvals.request')->name('approvals.store');
+            Route::post('/{id}/decide', [ApprovalController::class, 'decide'])->middleware(CheckPermission::class . ':approvals.decide')->name('approvals.decide');
+            Route::post('/{id}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
+        });
     });
 });
 
@@ -596,6 +640,10 @@ Route::prefix('platform')->middleware(['auth:sanctum', 'throttle:admin', SuperAd
 
     // System Health
     Route::get('/system-health', [PlatformSystemHealthController::class, 'health'])->name('platform.health');
+
+    // AI Usage (Step 59.1)
+    Route::get('/ai-usage',            [PlatformAiUsageController::class, 'summary'])->name('platform.ai-usage');
+    Route::get('/ai-usage/workspaces', [PlatformAiUsageController::class, 'workspaces'])->name('platform.ai-usage.workspaces');
 });
 
 // ══════════════════════════════════════════════════════════════

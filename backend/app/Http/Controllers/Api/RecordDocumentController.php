@@ -8,6 +8,8 @@ use App\Models\DocumentChecklistItem;
 use App\Models\PipelineRecord;
 use App\Models\RecordDocument;
 use App\Models\WorkspaceMembership;
+use App\Services\PipelineAuditService;
+use App\Services\PipelineRecordScope;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,12 +17,17 @@ use Illuminate\Support\Facades\Storage;
 
 class RecordDocumentController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(string $recordId): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        PipelineRecord::where('workspace_id', $wsId)->findOrFail($recordId);
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
+
+        $query = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($query, $membership);
+        }
+        $query->findOrFail($recordId);
 
         $docs = RecordDocument::where('pipeline_record_id', $recordId)
             ->where('workspace_id', $wsId)
@@ -35,7 +42,13 @@ class RecordDocumentController extends Controller
     {
         $ctx = app(WorkspaceContextManager::class);
         $wsId = $ctx->workspaceId();
-        $record = PipelineRecord::where('workspace_id', $wsId)->findOrFail($recordId);
+        $membership = $ctx->membership();
+
+        $query = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($query, $membership);
+        }
+        $record = $query->findOrFail($recordId);
 
         // Resolve membership for uploader
         $user = $request->user();
@@ -120,13 +133,25 @@ class RecordDocumentController extends Controller
 
         $doc->load(['checklistItem:id,title,is_required', 'uploadedByMembership.user:id,full_name']);
 
+        PipelineAuditService::log($wsId, 'created', 'record_document', $doc->id, null, [
+            'title' => $doc->title, 'pipeline_record_id' => $recordId,
+            'original_filename' => $doc->original_filename, 'status' => $doc->status,
+        ]);
+
         return response()->json(['data' => $this->fmt($doc)], 201);
     }
 
     public function documentStatus(string $recordId): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $record = PipelineRecord::where('workspace_id', $wsId)->findOrFail($recordId);
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
+
+        $query = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($query, $membership);
+        }
+        $record = $query->findOrFail($recordId);
 
         // Get applicable checklists (pipeline-level, stage-level, or global)
         $checklists = DocumentChecklist::where('workspace_id', $wsId)
@@ -200,9 +225,13 @@ class RecordDocumentController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $doc = RecordDocument::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
+
+        PipelineAuditService::log($ctx->workspaceId(), 'deleted', 'record_document', $doc->id, [
+            'title' => $doc->title, 'pipeline_record_id' => $doc->pipeline_record_id,
+            'original_filename' => $doc->original_filename,
+        ]);
 
         // Delete file if exists
         if ($doc->file_path && Storage::disk('local')->exists($doc->file_path)) {
@@ -236,18 +265,5 @@ class RecordDocumentController extends Controller
             'uploaded_at'                 => $d->uploaded_at?->toIso8601String(),
             'created_at'                  => $d->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

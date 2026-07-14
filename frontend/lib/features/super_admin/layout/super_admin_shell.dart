@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
 import '../../../core/state/app_state.dart';
+import '../../ai_chat/ai_chat_state.dart';
 
 /// Navigation items for the Super Admin sidebar.
 class _SaNavItem {
@@ -27,8 +28,9 @@ const _saNavItems = <_SaNavItem>[
   _SaNavItem('plt_codes',      'plt_codes',           Icons.qr_code_2_outlined,        '/platform/codes'),
   _SaNavItem('plt_cards',      'plt_print_cards',     Icons.credit_card_outlined,      '/platform/cards'),
   _SaNavItem('plt_plans',      'sa_nav_plans',        Icons.card_membership_outlined,  '/platform/plans'),
-  _SaNavItem('plt_health',     'sa_nav_health',       Icons.monitor_heart_outlined,    '/platform/health'),
+  _SaNavItem('plt_modules',    'sa_nav_modules',      Icons.extension_outlined,        '/platform/modules'),
   _SaNavItem('plt_usage',      'sa_nav_usage',        Icons.auto_awesome_outlined,     '/platform/usage'),
+  _SaNavItem('plt_health',     'sa_nav_health',       Icons.monitor_heart_outlined,    '/platform/health'),
 ];
 
 class SuperAdminShell extends StatefulWidget {
@@ -267,6 +269,10 @@ class _Sidebar extends StatelessWidget {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
+    // Clear AI chat state first
+    try {
+      context.read<AiChatState>().resetForLogout();
+    } catch (_) {}
     final app = context.read<AppState>();
     try {
       await app.signOutReal();

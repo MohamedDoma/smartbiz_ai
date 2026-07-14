@@ -97,4 +97,10 @@ class PipelineService {
   }
 
   Future<void> deleteRecord(String id) async => await _c.delete('/pipeline-records/$id');
+
+  // ── Assignable Members ──────────────────────────────────
+  Future<List<AssignableMember>> listAssignableMembers() async {
+    final r = await _c.get('/pipeline-records/assignable-members');
+    return (r.data['data'] as List).map((e) => AssignableMember.fromJson(e as Map<String, dynamic>)).toList();
+  }
 }

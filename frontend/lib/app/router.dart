@@ -20,6 +20,7 @@ import '../shared/layout/app_shell.dart';
 import '../shared/widgets/deferred_route_loader.dart';
 import '../features/dashboard/dynamic_dashboard_state.dart';
 import '../core/modules/blueprint_navigation_coordinator.dart';
+import '../core/modules/blueprint_navigation_controller.dart';
 import '../core/pages/dynamic_page_route_resolver.dart';
 import '../core/pages/dynamic_page_route_scope.dart';
 
@@ -55,6 +56,7 @@ import '../features/documents/screens/document_checklists_screen.dart' deferred 
 import '../features/documents/screens/record_documents_screen.dart' deferred as rec_docs;
 import '../features/commissions/screens/commission_settings_screen.dart' deferred as comm_settings;
 import '../features/commissions/screens/commission_entries_screen.dart' deferred as comm_entries;
+import '../features/approvals/screens/approval_inbox_screen.dart' deferred as appr_inbox;
 import '../features/duplicates/screens/duplicate_rules_screen.dart' deferred as dup_rules;
 import '../features/duplicates/screens/duplicate_matches_screen.dart' deferred as dup_matches;
 import '../features/ownership/screens/ownership_screen.dart' deferred as own_screen;
@@ -78,20 +80,18 @@ import '../core/modules/blueprint_landing_route_resolver.dart';
 import '../core/modules/module_route_guard.dart';
 import '../core/modules/workspace_module_state.dart';
 import '../features/super_admin/layout/super_admin_shell.dart' deferred as sa_shell;
-import '../features/super_admin/screens/super_admin_dashboard_screen.dart' deferred as sa_dash;
-import '../features/super_admin/screens/super_admin_tenants_screen.dart' deferred as sa_tenants;
-import '../features/super_admin/screens/super_admin_tenant_detail_screen.dart' deferred as sa_tenant_detail;
-import '../features/super_admin/screens/super_admin_plans_screen.dart' deferred as sa_plans;
-import '../features/super_admin/screens/super_admin_modules_screen.dart' deferred as sa_modules;
-import '../features/super_admin/screens/super_admin_usage_screen.dart' deferred as sa_usage;
-import '../features/super_admin/screens/super_admin_health_screen.dart' deferred as sa_health;
 import '../features/platform/screens/platform_dashboard_screen.dart' deferred as plt_dash;
 import '../features/platform/screens/platform_workspaces_screen.dart' deferred as plt_ws;
 import '../features/platform/screens/platform_users_screen.dart' deferred as plt_users;
 import '../features/platform/screens/activation_campaigns_screen.dart' deferred as plt_camps;
 import '../features/platform/screens/activation_codes_screen.dart' deferred as plt_codes;
 import '../features/platform/screens/activation_cards_print_screen.dart' deferred as plt_cards;
+import '../features/platform/screens/platform_plans_screen.dart' deferred as plt_plans;
+import '../features/platform/screens/platform_modules_screen.dart' deferred as plt_mods;
+import '../features/platform/screens/platform_usage_screen.dart' deferred as plt_usage;
+import '../features/platform/screens/platform_health_screen.dart' deferred as plt_health;
 import '../features/auth/screens/activation_code_screen.dart' deferred as act_code;
+// ai_chat_59 import removed — /ai redirects to /ai-chat (consolidation Step 59.1.1)
 
 GoRouter buildAppRouter(AppState appState) {
   return GoRouter(
@@ -130,7 +130,14 @@ GoRouter buildAppRouter(AppState appState) {
         return null;
       }
 
-      // ── 2. Unauthenticated gate — everything else requires auth ──
+      // ── 2. Session not yet initialized (page reload) — go to splash ──
+      // On web reload, auth state is lost. Splash will call loadCurrentSession()
+      // to try restoring from the stored token before routing.
+      if (!isAuthenticated && !appState.isSessionInitialized && !isPublicRoute && !isRoot) {
+        return guard('/splash');
+      }
+
+      // ── 3. Unauthenticated gate — everything else requires auth ──
       if (!isAuthenticated && !isRoot) {
         return guard('/login');
       }
@@ -176,9 +183,17 @@ GoRouter buildAppRouter(AppState appState) {
         try {
           final moduleState = context.read<WorkspaceModuleState>();
           final enabledIds = moduleState.enabledModuleIds.toSet();
+          // Read effective permissions for the navigation permission gate.
+          Set<String> perms = const {};
+          try {
+            perms = context.read<BlueprintNavigationController>().effectivePermissions;
+          } catch (_) {
+            // Controller not yet mounted — allow module-enabled check only.
+          }
           final decision = ModuleRouteGuard.evaluate(
             location: state.matchedLocation,
             enabledModules: enabledIds,
+            effectivePermissions: perms,
           );
           if (!decision.allowed) {
             // Read the configured landing route from the dashboard state.
@@ -204,6 +219,19 @@ GoRouter buildAppRouter(AppState appState) {
           // WorkspaceModuleState not yet available in the widget tree
           // (e.g. during initial boot). Allow the route to proceed;
           // the coordinator will sync once providers are mounted.
+        }
+
+        // ── Permission-based route guards ────────────────────
+        // Some sub-routes require specific permissions beyond module
+        // enablement. Block and redirect if the user lacks them.
+        try {
+          final perms = context.read<BlueprintNavigationController>().effectivePermissions;
+          if (state.matchedLocation == '/commissions/settings' &&
+              !perms.contains('commissions.settings.view')) {
+            return guard('/commissions');
+          }
+        } catch (_) {
+          // Controller not yet mounted — allow through.
         }
       }
 
@@ -274,6 +302,10 @@ GoRouter buildAppRouter(AppState appState) {
               _syncIndex(context, 1);
               return const NoTransitionPage(child: AiChatScreen());
             },
+          ),
+          GoRoute(
+            path: '/ai',
+            redirect: (_, __) => '/ai-chat',
           ),
 
           // ── Deferred routes ───────────────────────────
@@ -570,6 +602,14 @@ GoRouter buildAppRouter(AppState appState) {
             ),
           ),
 
+          // ── Approvals ─────────────────────────────────
+          GoRoute(
+            path: '/approvals',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: appr_inbox.loadLibrary, builder: () => appr_inbox.ApprovalInboxScreen()),
+            ),
+          ),
+
           // ── Duplicates & Ownership ───────────────────
           GoRoute(
             path: '/duplicates/rules',
@@ -591,6 +631,10 @@ GoRouter buildAppRouter(AppState appState) {
           ),
 
           // ── Reports ─────────────────────────────────
+          GoRoute(
+            path: '/reports',
+            redirect: (_, __) => '/reports/templates',
+          ),
           GoRoute(
             path: '/reports/templates',
             pageBuilder: (context, state) => NoTransitionPage(
@@ -651,47 +695,7 @@ GoRouter buildAppRouter(AppState appState) {
           builder: () => sa_shell.SuperAdminShell(child: child),
         ),
         routes: [
-          GoRoute(
-            path: '/super-admin',
-            pageBuilder: (context, state) => NoTransitionPage(
-              child: DeferredRouteLoader(loader: sa_dash.loadLibrary, builder: () => sa_dash.SuperAdminDashboardScreen()),
-            ),
-            routes: [
-              GoRoute(
-                path: 'tenants',
-                pageBuilder: (_, __) => NoTransitionPage(
-                  child: DeferredRouteLoader(loader: sa_tenants.loadLibrary, builder: () => sa_tenants.SuperAdminTenantsScreen()),
-                ),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    pageBuilder: (context, state) {
-                      final id = state.pathParameters['id'] ?? '';
-                      return NoTransitionPage(
-                        child: DeferredRouteLoader(
-                          loader: sa_tenant_detail.loadLibrary,
-                          builder: () => sa_tenant_detail.SuperAdminTenantDetailScreen(tenantId: id),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              GoRoute(path: 'plans', pageBuilder: (_, __) => NoTransitionPage(
-                child: DeferredRouteLoader(loader: sa_plans.loadLibrary, builder: () => sa_plans.SuperAdminPlansScreen()),
-              )),
-              GoRoute(path: 'modules', pageBuilder: (_, __) => NoTransitionPage(
-                child: DeferredRouteLoader(loader: sa_modules.loadLibrary, builder: () => sa_modules.SuperAdminModulesScreen()),
-              )),
-              GoRoute(path: 'usage', pageBuilder: (_, __) => NoTransitionPage(
-                child: DeferredRouteLoader(loader: sa_usage.loadLibrary, builder: () => sa_usage.SuperAdminUsageScreen()),
-              )),
-              GoRoute(path: 'health', pageBuilder: (_, __) => NoTransitionPage(
-                child: DeferredRouteLoader(loader: sa_health.loadLibrary, builder: () => sa_health.SuperAdminHealthScreen()),
-              )),
-            ],
-          ),
-          // ── Platform Admin routes (Step 58) ──────────────
+          // ── Canonical /platform/* routes ─────────────────
           GoRoute(path: '/platform', pageBuilder: (_, __) => NoTransitionPage(
             child: DeferredRouteLoader(loader: plt_dash.loadLibrary, builder: () => plt_dash.PlatformDashboardScreen()),
           ), routes: [
@@ -710,7 +714,26 @@ GoRouter buildAppRouter(AppState appState) {
             GoRoute(path: 'cards', pageBuilder: (_, __) => NoTransitionPage(
               child: DeferredRouteLoader(loader: plt_cards.loadLibrary, builder: () => plt_cards.ActivationCardsPrintScreen()),
             )),
+            GoRoute(path: 'plans', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_plans.loadLibrary, builder: () => plt_plans.PlatformPlansScreen()),
+            )),
+            GoRoute(path: 'modules', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_mods.loadLibrary, builder: () => plt_mods.PlatformModulesScreen()),
+            )),
+            GoRoute(path: 'usage', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_usage.loadLibrary, builder: () => plt_usage.PlatformUsageScreen()),
+            )),
+            GoRoute(path: 'health', pageBuilder: (_, __) => NoTransitionPage(
+              child: DeferredRouteLoader(loader: plt_health.loadLibrary, builder: () => plt_health.PlatformHealthScreen()),
+            )),
           ]),
+          // ── Old /super-admin/* redirects (bookmark compat) ──
+          GoRoute(path: '/super-admin', redirect: (_, __) => '/platform'),
+          GoRoute(path: '/super-admin/tenants', redirect: (_, __) => '/platform/workspaces'),
+          GoRoute(path: '/super-admin/plans', redirect: (_, __) => '/platform/plans'),
+          GoRoute(path: '/super-admin/modules', redirect: (_, __) => '/platform/modules'),
+          GoRoute(path: '/super-admin/usage', redirect: (_, __) => '/platform/usage'),
+          GoRoute(path: '/super-admin/health', redirect: (_, __) => '/platform/health'),
         ],
       ),
     ],

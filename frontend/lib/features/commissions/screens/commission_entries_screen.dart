@@ -1,9 +1,11 @@
 // SmartBiz AI — Commission entries screen.
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api/commission_models.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/modules/blueprint_navigation_controller.dart';
 import '../commission_state.dart';
 
 class CommissionEntriesScreen extends StatefulWidget {
@@ -31,6 +33,13 @@ class _CommissionEntriesScreenState extends State<CommissionEntriesScreen> {
             ? '${tr(context, 'comm_entries')} (${_statusLabel(context, _statusFilter!)})'
             : tr(context, 'comm_entries')),
         actions: [
+          // Settings — gated by commissions.settings.view
+          if (context.read<BlueprintNavigationController>().effectivePermissions.contains('commissions.settings.view'))
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: tr(context, 'comm_settings'),
+              onPressed: () => GoRouter.of(context).push('/commissions/settings'),
+            ),
           PopupMenuButton<String?>(
             icon: const Icon(Icons.filter_list),
             tooltip: tr(context, 'comm_trigger_status'),
@@ -75,8 +84,18 @@ class _EntryCard extends StatelessWidget {
   final CommissionState state;
   const _EntryCard({required this.entry, required this.state});
 
+  /// Check if the current user has a specific permission.
+  bool _hasPerm(BuildContext context, String key) {
+    return context.read<BlueprintNavigationController>().effectivePermissions.contains(key);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canApprove = _hasPerm(context, 'commissions.approve');
+    final canPay = _hasPerm(context, 'commissions.pay');
+    final canCancel = _hasPerm(context, 'commissions.cancel');
+    final hasAnyAction = canApprove || canPay || canCancel;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -133,27 +152,28 @@ class _EntryCard extends StatelessWidget {
           if (entry.plan != null)
             Text('${entry.plan!['name'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
 
-          // Actions
-          if (entry.status == 'pending' || entry.status == 'approved') ...[
+          // Actions — gated by permissions
+          if (hasAnyAction && (entry.status == 'pending' || entry.status == 'approved')) ...[
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              if (entry.status == 'pending')
+              if (entry.status == 'pending' && canApprove)
                 TextButton.icon(
                   icon: const Icon(Icons.check, size: 16),
                   label: Text(tr(context, 'comm_approve'), style: const TextStyle(fontSize: 12)),
                   onPressed: () => state.markApproved(entry.id),
                 ),
-              if (entry.status == 'pending' || entry.status == 'approved')
+              if ((entry.status == 'pending' || entry.status == 'approved') && canPay)
                 TextButton.icon(
                   icon: const Icon(Icons.payment, size: 16),
                   label: Text(tr(context, 'comm_mark_paid'), style: const TextStyle(fontSize: 12)),
                   onPressed: () => state.markPaid(entry.id),
                 ),
-              TextButton.icon(
-                icon: Icon(Icons.cancel_outlined, size: 16, color: Colors.red[300]),
-                label: Text(tr(context, 'comm_cancel'), style: TextStyle(fontSize: 12, color: Colors.red[300])),
-                onPressed: () => state.cancelEntry(entry.id),
-              ),
+              if (canCancel)
+                TextButton.icon(
+                  icon: Icon(Icons.cancel_outlined, size: 16, color: Colors.red[300]),
+                  label: Text(tr(context, 'comm_cancel'), style: TextStyle(fontSize: 12, color: Colors.red[300])),
+                  onPressed: () => state.cancelEntry(entry.id),
+                ),
             ]),
           ],
         ]),

@@ -51,3 +51,21 @@ class ValidationException extends ApiException {
 class NetworkException extends ApiException {
   const NetworkException([super.message = 'Network error. Check your connection.']);
 }
+
+/// 409 — Conflict (duplicate contact, open deal, etc.)
+class ConflictException extends ApiException {
+  /// Stable error code from the API, e.g. 'contact_duplicate'.
+  final String? errorCode;
+
+  /// Existing entity data returned for visible duplicates.
+  final Map<String, dynamic>? existing;
+
+  const ConflictException({
+    String message = 'Conflict.',
+    this.errorCode,
+    this.existing,
+  }) : super(message, statusCode: 409);
+
+  @override
+  String toString() => 'ConflictException($errorCode): $message';
+}

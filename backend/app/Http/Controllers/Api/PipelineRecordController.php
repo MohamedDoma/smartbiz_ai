@@ -9,6 +9,11 @@ use App\Models\Pipeline;
 use App\Models\PipelineRecord;
 use App\Models\PipelineStage;
 use App\Models\WorkspaceMembership;
+use App\Services\CommissionCalculationService;
+use App\Services\OpenDealGuard;
+use App\Services\PipelineAuditService;
+use App\Services\PipelineRecordScope;
+use App\Services\PermissionResolver;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,14 +21,18 @@ use Illuminate\Support\Facades\DB;
 
 class PipelineRecordController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(Request $request): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
         $query = PipelineRecord::where('workspace_id', $wsId)
             ->with(['stage:id,name,status_type', 'pipeline:id,name', 'assignedMembership.user:id,full_name', 'contact:id,name']);
+
+        if ($membership) {
+            PipelineRecordScope::apply($query, $membership);
+        }
 
         if ($request->filled('pipeline_id')) {
             $query->where('pipeline_id', $request->input('pipeline_id'));
@@ -68,22 +77,82 @@ class PipelineRecordController extends Controller
             return response()->json(['message' => 'Stage does not belong to this pipeline.'], 422);
         }
 
-        // Validate contact
+        // Validate contact — scope to user's visible customers
+        $currentMembership = $ctx->membership();
         if (! empty($validated['contact_id'])) {
-            $contactExists = \App\Models\Contact::where('workspace_id', $wsId)
-                ->where('id', $validated['contact_id'])->exists();
-            if (! $contactExists) {
-                return response()->json(['message' => 'Contact not found in workspace.'], 422);
+            $contactQuery = \App\Models\Contact::where('workspace_id', $wsId)
+                ->where('id', $validated['contact_id']);
+            if ($currentMembership) {
+                \App\Services\ContactScope::apply($contactQuery, $currentMembership);
+            }
+            if (! $contactQuery->exists()) {
+                return response()->json(['message' => 'Contact not found or not accessible.'], 422);
+            }
+        } elseif ($pipeline->entity_type === 'deal') {
+            return response()->json(['message' => 'A customer is required for deal records.'], 422);
+        }
+
+        // ── Open deal duplicate guard ────────────────────────────
+        if ($pipeline->entity_type === 'deal' && ! empty($validated['contact_id'])) {
+            $dealGuard = app(OpenDealGuard::class);
+            $dealCheck = $dealGuard->check(
+                $wsId,
+                $pipeline->id,
+                $validated['contact_id'],
+                $currentMembership,
+            );
+
+            if ($dealCheck['blocked']) {
+                $code = $dealCheck['code'];
+                if ($code === 'open_deal_duplicate' && $dealCheck['record']) {
+                    $r = $dealCheck['record'];
+                    return response()->json([
+                        'message'    => 'An open deal already exists for this customer in this pipeline.',
+                        'error_code' => 'open_deal_duplicate',
+                        'existing'   => [
+                            'id'    => $r->id,
+                            'title' => $r->title,
+                            'stage' => $r->stage ? ['id' => $r->stage->id, 'name' => $r->stage->name] : null,
+                        ],
+                    ], 409);
+                }
+
+                return response()->json([
+                    'message'    => 'This customer has an open deal managed by another employee. Contact your sales manager.',
+                    'error_code' => 'open_deal_exists_outside_scope',
+                ], 409);
             }
         }
 
-        // Validate assigned membership
-        if (! empty($validated['assigned_membership_id'])) {
-            $memberExists = WorkspaceMembership::where('workspace_id', $wsId)
-                ->where('id', $validated['assigned_membership_id'])
-                ->where('status', 'active')->exists();
-            if (! $memberExists) {
-                return response()->json(['message' => 'Assigned member not found.'], 422);
+        // ── Assignment logic ──────────────────────────────────────
+        $resolver = app(PermissionResolver::class);
+        $canAssign = $currentMembership
+            ? $resolver->can($currentMembership, 'pipeline_records.assign')
+            : false;
+        $canOwn = $currentMembership
+            ? $resolver->can($currentMembership, 'pipeline_records.own')
+            : false;
+
+        if ($canAssign && ! empty($validated['assigned_membership_id'])) {
+            // Manager picked an assignee — validate them.
+            $assignError = $this->validateAssignee($validated['assigned_membership_id'], $wsId);
+            if ($assignError) {
+                return response()->json(['message' => $assignError], 422);
+            }
+            $resolvedAssigneeId = $validated['assigned_membership_id'];
+        } elseif ($canAssign && empty($validated['assigned_membership_id'])) {
+            // Manager didn't pick anyone — auto-assign only if they can own.
+            if ($canOwn) {
+                $resolvedAssigneeId = $currentMembership?->id;
+            } else {
+                return response()->json(['message' => 'An assignee is required. You do not have pipeline_records.own to self-assign.'], 422);
+            }
+        } elseif (! $canAssign) {
+            // No assign permission — auto-assign to creator only if they can own.
+            if ($canOwn) {
+                $resolvedAssigneeId = $currentMembership?->id;
+            } else {
+                return response()->json(['message' => 'You are not eligible to own pipeline records.'], 403);
             }
         }
 
@@ -115,7 +184,7 @@ class PipelineRecordController extends Controller
         }
 
         try {
-            $record = DB::transaction(function () use ($validated, $wsId, $customValues, $customFields) {
+            $record = DB::transaction(function () use ($validated, $wsId, $customValues, $customFields, $ctx, $resolvedAssigneeId) {
                 $record = PipelineRecord::create([
                     'workspace_id'            => $wsId,
                     'pipeline_id'             => $validated['pipeline_id'],
@@ -123,7 +192,7 @@ class PipelineRecordController extends Controller
                     'title'                   => $validated['title'],
                     'description'             => $validated['description'] ?? null,
                     'contact_id'              => $validated['contact_id'] ?? null,
-                    'assigned_membership_id'  => $validated['assigned_membership_id'] ?? null,
+                    'assigned_membership_id'  => $resolvedAssigneeId,
                     'value_amount'            => $validated['value_amount'] ?? null,
                     'currency'                => $validated['currency'] ?? null,
                     'status'                  => 'open',
@@ -131,6 +200,12 @@ class PipelineRecordController extends Controller
                 ]);
 
                 $this->saveCustomValues($record, $customValues, $customFields, $wsId);
+
+                PipelineAuditService::log($wsId, 'created', 'pipeline_record', $record->id, null, [
+                    'title' => $record->title, 'pipeline_id' => $record->pipeline_id,
+                    'stage_id' => $record->stage_id, 'value_amount' => $record->value_amount,
+                    'assigned_membership_id' => $record->assigned_membership_id,
+                ]);
 
                 return $record;
             });
@@ -146,11 +221,18 @@ class PipelineRecordController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
-        $record = PipelineRecord::where('workspace_id', $wsId)
-            ->with(['stage:id,name,status_type', 'pipeline:id,name', 'assignedMembership.user:id,full_name', 'contact:id,name', 'customFieldValues.customField:id,field_key,label,field_type'])
-            ->findOrFail($id);
+        $query = PipelineRecord::where('workspace_id', $wsId)
+            ->with(['stage:id,name,status_type', 'pipeline:id,name', 'assignedMembership.user:id,full_name', 'contact:id,name', 'customFieldValues.customField:id,field_key,label,field_type']);
+
+        if ($membership) {
+            PipelineRecordScope::apply($query, $membership);
+        }
+
+        $record = $query->findOrFail($id);
 
         return response()->json(['data' => $this->fmt($record)]);
     }
@@ -160,7 +242,12 @@ class PipelineRecordController extends Controller
         $ctx = app(WorkspaceContextManager::class);
         $wsId = $ctx->workspaceId();
 
-        $record = PipelineRecord::where('workspace_id', $wsId)->findOrFail($id);
+        $membership = $ctx->membership();
+        $scopedQuery = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($scopedQuery, $membership);
+        }
+        $record = $scopedQuery->findOrFail($id);
 
         $validated = $request->validate([
             'title'                   => 'sometimes|required|string|max:255',
@@ -173,9 +260,25 @@ class PipelineRecordController extends Controller
             'custom_values'           => 'nullable|array',
         ]);
 
+        // Check assignment permission if changing assigned_membership_id
+        if (array_key_exists('assigned_membership_id', $validated)
+            && $validated['assigned_membership_id'] !== $record->assigned_membership_id) {
+            if (! $this->hasPermission($request, 'pipeline_records.assign')) {
+                return response()->json(['message' => 'You do not have permission to assign records.'], 403);
+            }
+            // Validate the new assignee
+            if (! empty($validated['assigned_membership_id'])) {
+                $assignError = $this->validateAssignee($validated['assigned_membership_id'], $wsId);
+                if ($assignError) {
+                    return response()->json(['message' => $assignError], 422);
+                }
+            }
+        }
+
         $customValues = $validated['custom_values'] ?? null;
         unset($validated['custom_values']);
 
+        $oldValues = $record->only(['title', 'description', 'contact_id', 'assigned_membership_id', 'value_amount', 'currency', 'expected_close_date']);
         $record->update($validated);
 
         if ($customValues !== null) {
@@ -191,6 +294,11 @@ class PipelineRecordController extends Controller
             $this->saveCustomValues($record, $customValues, $customFields, $wsId);
         }
 
+        $diff = PipelineAuditService::diff($oldValues, $record->only(array_keys($oldValues)));
+        if (!empty($diff)) {
+            PipelineAuditService::log($wsId, 'updated', 'pipeline_record', $record->id, $oldValues, $diff);
+        }
+
         $record->load(['stage:id,name,status_type', 'pipeline:id,name', 'assignedMembership.user:id,full_name', 'contact:id,name', 'customFieldValues.customField:id,field_key,label,field_type']);
 
         return response()->json(['data' => $this->fmt($record)]);
@@ -201,7 +309,12 @@ class PipelineRecordController extends Controller
         $ctx = app(WorkspaceContextManager::class);
         $wsId = $ctx->workspaceId();
 
-        $record = PipelineRecord::where('workspace_id', $wsId)->findOrFail($id);
+        $membership = $ctx->membership();
+        $scopedQuery = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($scopedQuery, $membership);
+        }
+        $record = $scopedQuery->findOrFail($id);
 
         $validated = $request->validate(['stage_id' => 'required|uuid']);
 
@@ -212,29 +325,85 @@ class PipelineRecordController extends Controller
             return response()->json(['message' => 'Stage does not belong to this pipeline.'], 422);
         }
 
-        $update = ['stage_id' => $stage->id];
+        $oldStatus  = $record->status;
+        $oldStageId = $record->stage_id;
 
-        if (in_array($stage->status_type, ['won', 'completed', 'lost', 'cancelled'], true)) {
-            $update['status'] = $stage->status_type;
-            $update['closed_at'] = now();
-        } else {
-            $update['status'] = 'open';
-            $update['closed_at'] = null;
-        }
+        // ── Atomic transition: stage move + commission calculation ────
+        // Wraps the record update and commission generation in a single
+        // DB transaction so a crash between the two cannot leave an
+        // inconsistent state.
+        $commissionResult = DB::transaction(function () use ($record, $stage, $oldStatus, $wsId, $oldStageId) {
+            $update = ['stage_id' => $stage->id];
 
-        $record->update($update);
+            if (in_array($stage->status_type, ['won', 'completed', 'lost', 'cancelled'], true)) {
+                $update['status'] = $stage->status_type;
+                $update['closed_at'] = now();
+            } else {
+                $update['status'] = 'open';
+                $update['closed_at'] = null;
+            }
+
+            $record->update($update);
+
+            PipelineAuditService::log($wsId, 'moved', 'pipeline_record', $record->id, [
+                'stage_id' => $oldStageId,
+            ], [
+                'stage_id' => $stage->id, 'status' => $record->status,
+            ]);
+
+            // ── Commission auto-trigger on any real stage transition ──
+            // Commissions are calculated whenever the record moves to a
+            // different stage. The CommissionCalculationService decides
+            // whether any rule matches the entered stage. Same-stage
+            // moves are already prevented above (422). Leaving a stage
+            // does NOT auto-cancel existing entries.
+            if ($oldStageId !== $stage->id) {
+                $commissionService = app(CommissionCalculationService::class);
+                $entries = $commissionService->calculateForRecord($record);
+
+                if (count($entries) > 0) {
+                    PipelineAuditService::log($wsId, 'commission_generated', 'pipeline_record', $record->id, null, [
+                        'entries_count' => count($entries),
+                        'total_amount'  => array_sum(array_map(fn ($e) => (float) $e->commission_amount, $entries)),
+                    ]);
+                }
+
+                return [
+                    'action'        => 'calculated',
+                    'created_count' => count($entries),
+                ];
+            }
+
+            return null;
+        });
 
         $record->load(['stage:id,name,status_type', 'pipeline:id,name']);
 
-        return response()->json(['data' => $this->fmt($record)]);
+        $response = ['data' => $this->fmt($record)];
+        if ($commissionResult !== null) {
+            $response['commission'] = $commissionResult;
+        }
+
+        return response()->json($response);
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
+        $wsId = $ctx->workspaceId();
 
-        $record = PipelineRecord::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
+        $membership = $ctx->membership();
+        $scopedQuery = PipelineRecord::where('workspace_id', $wsId);
+        if ($membership) {
+            PipelineRecordScope::apply($scopedQuery, $membership);
+        }
+        $record = $scopedQuery->findOrFail($id);
+
+        PipelineAuditService::log($wsId, 'deleted', 'pipeline_record', $record->id, [
+            'title' => $record->title, 'pipeline_id' => $record->pipeline_id,
+            'stage_id' => $record->stage_id, 'value_amount' => $record->value_amount,
+        ]);
+
         $record->delete();
 
         return response()->json(['message' => 'Record deleted.']);
@@ -331,16 +500,114 @@ class PipelineRecordController extends Controller
         }
     }
 
-    private function requireAdmin(string $wsId, Request $request): void
+
+    /**
+     * Check if the authenticated user has a specific permission in the current workspace.
+     */
+    private function hasPermission(Request $request, string $permissionKey): bool
     {
         $user = $request->user();
-        if ($user->is_super_admin) return;
+        if (! $user) return false;
+
+        $wsId = app(WorkspaceContextManager::class)->workspaceId();
         $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (! $membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $membership) return false;
+
+        return app(PermissionResolver::class)->can($membership, $permissionKey);
+    }
+
+    /**
+     * Validate that an assignee is active and eligible to own pipeline records.
+     * Requires: pipelines.list AND pipeline_records.update AND pipeline_records.own.
+     * Returns an error message string on failure, null on success.
+     */
+    private function validateAssignee(string $membershipId, string $wsId): ?string
+    {
+        $member = WorkspaceMembership::where('workspace_id', $wsId)
+            ->where('id', $membershipId)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $member) {
+            return 'Assigned member not found or inactive in this workspace.';
+        }
+
+        $resolver = app(PermissionResolver::class);
+        if (! $resolver->can($member, 'pipelines.list')
+            || ! $resolver->can($member, 'pipeline_records.update')
+            || ! $resolver->can($member, 'pipeline_records.own')) {
+            return 'The selected employee is not eligible to own pipeline records.';
+        }
+
+        return null;
+    }
+
+    /**
+     * GET /pipeline-records/assignable-members
+     *
+     * Returns active workspace members who are eligible to own pipeline records.
+     * Requires: pipelines.list AND pipeline_records.update AND pipeline_records.own.
+     * Gated by pipeline_records.assign permission.
+     *
+     * Scope:
+     * - manage_all: workspace-wide eligible salespeople
+     * - manage_team: same-team eligible salespeople only
+     * - otherwise: no list (should not reach here due to route guard)
+     */
+    public function assignableMembers(): JsonResponse
+    {
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $currentMembership = $ctx->membership();
+
+        $query = WorkspaceMembership::where('workspace_id', $wsId)
+            ->where('status', 'active');
+
+        // Scope the assignable list based on caller's visibility
+        $resolver = app(PermissionResolver::class);
+        if ($currentMembership && ! $resolver->can($currentMembership, 'pipeline_records.manage_all')) {
+            if ($resolver->can($currentMembership, 'pipeline_records.manage_team')
+                && $currentMembership->team_id !== null) {
+                $query->where('team_id', $currentMembership->team_id);
+            } else {
+                // Can only assign to self (edge case — shouldn't normally reach here)
+                $query->where('id', $currentMembership->id);
+            }
+        }
+
+        $memberships = $query->with([
+            'user:id,full_name',
+            'membershipRoles.role:id,role_key,name',
+            'department:id,name',
+            'team:id,name',
+        ])->get();
+
+        $assignable = [];
+
+        foreach ($memberships as $m) {
+            if (! $resolver->can($m, 'pipelines.list')
+                || ! $resolver->can($m, 'pipeline_records.update')
+                || ! $resolver->can($m, 'pipeline_records.own')) {
+                continue;
+            }
+
+            $roles = $m->membershipRoles;
+            $primaryMr = $roles->firstWhere('is_primary', true) ?? $roles->first();
+
+            $assignable[] = [
+                'membership_id' => $m->id,
+                'full_name'     => $m->user?->full_name,
+                'role_name'     => $primaryMr?->role?->name,
+                'role_key'      => $primaryMr?->role?->role_key,
+                'department'    => $m->department?->name,
+                'team'          => $m->team?->name,
+            ];
+        }
+
+        return response()->json(['data' => $assignable]);
     }
 }

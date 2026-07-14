@@ -38,6 +38,7 @@ const List<NavSection> appNavigation = [
     NavItem(id: 'products',   labelKey: 'nav_products',   icon: Icons.inventory_2_outlined,         route: '/products'),
     NavItem(id: 'inventory',  labelKey: 'nav_inventory',  icon: Icons.warehouse_outlined,           route: '/inventory'),
     NavItem(id: 'customers',  labelKey: 'nav_customers',  icon: Icons.people_outline,               route: '/customers'),
+    NavItem(id: 'pipelines',  labelKey: 'nav_pipelines',  icon: Icons.linear_scale_outlined,        route: '/pipelines'),
   ]),
   NavSection(titleKey: 'nav_section_finance', items: [
     NavItem(id: 'accounting', labelKey: 'nav_accounting', icon: Icons.account_balance_outlined,     route: '/accounting'),

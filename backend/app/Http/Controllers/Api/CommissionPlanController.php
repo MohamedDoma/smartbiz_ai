@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionPlan;
 use App\Models\WorkspaceMembership;
+use App\Services\PermissionResolver;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,11 +13,14 @@ use Illuminate\Support\Str;
 
 class CommissionPlanController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx  = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
+
+        $this->requirePermission($membership, 'commissions.settings.view');
+
         $plans = CommissionPlan::where('workspace_id', $wsId)
             ->withCount('rules')
             ->orderBy('sort_order')
@@ -27,8 +31,11 @@ class CommissionPlanController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
+        $ctx  = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
+
+        $this->requirePermission($membership, 'commissions.settings.manage');
 
         $v = $request->validate([
             'name'        => 'required|string|max:255',
@@ -38,7 +45,7 @@ class CommissionPlanController extends Controller
         ]);
 
         $plan = CommissionPlan::create([
-            'workspace_id' => $ctx->workspaceId(),
+            'workspace_id' => $wsId,
             'plan_key'     => Str::slug($v['name'], '_'),
             'name'         => $v['name'],
             'description'  => $v['description'] ?? null,
@@ -52,7 +59,12 @@ class CommissionPlanController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx  = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
+
+        $this->requirePermission($membership, 'commissions.settings.view');
+
         $plan = CommissionPlan::where('workspace_id', $wsId)
             ->with(['rules' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
             ->withCount('rules')
@@ -63,10 +75,13 @@ class CommissionPlanController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
+        $ctx  = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
-        $plan = CommissionPlan::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
+        $this->requirePermission($membership, 'commissions.settings.manage');
+
+        $plan = CommissionPlan::where('workspace_id', $wsId)->findOrFail($id);
 
         $v = $request->validate([
             'name'        => 'sometimes|required|string|max:255',
@@ -85,10 +100,13 @@ class CommissionPlanController extends Controller
 
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
+        $ctx  = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
-        $plan = CommissionPlan::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
+        $this->requirePermission($membership, 'commissions.settings.manage');
+
+        $plan = CommissionPlan::where('workspace_id', $wsId)->findOrFail($id);
         $plan->update(['is_active' => false]);
 
         return response()->json(['message' => 'Plan deactivated.']);
@@ -121,16 +139,26 @@ class CommissionPlanController extends Controller
         return $data;
     }
 
-    private function requireAdmin(string $wsId, Request $request): void
+    /**
+     * Require a specific permission via the PermissionResolver.
+     *
+     * Super-admins are always allowed. Regular users must have an active
+     * membership with the requested permission key.
+     */
+    private function requirePermission(?WorkspaceMembership $membership, string $permissionKey): void
     {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) abort(403, 'Not a member.');
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
+        $user = request()->user();
+        if ($user && $user->is_super_admin) {
+            return;
+        }
+
+        if (!$membership) {
+            abort(403, 'Not a workspace member.');
+        }
+
+        $resolver = app(PermissionResolver::class);
+        if (!$resolver->can($membership, $permissionKey)) {
+            abort(403, 'Insufficient permissions.');
+        }
     }
 }

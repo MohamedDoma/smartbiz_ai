@@ -1,5 +1,6 @@
 // SmartBiz AI — AI Chat widgets.
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -113,13 +114,74 @@ class _TextBubble extends StatelessWidget {
             ),
             border: isUser ? null : Border.all(color: AppColors.divider),
           ),
-          child: Text(
-            message.text,
-            style: AppTypography.bodyMedium.copyWith(
-              color: isUser ? Colors.white : AppColors.textPrimary,
-              height: 1.5,
-            ),
-          ),
+          child: isUser
+              ? Text(
+                  message.text,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: Colors.white,
+                    height: 1.5,
+                  ),
+                )
+              : MarkdownBody(
+                  data: message.text,
+                  selectable: true,
+                  shrinkWrap: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      height: 1.5,
+                    ),
+                    h1: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                      height: 1.4,
+                    ),
+                    h2: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                    h3: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                    strong: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    em: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    code: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.accent,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      backgroundColor: AppColors.primarySurface,
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    listBullet: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      height: 1.5,
+                    ),
+                    listIndent: 16,
+                    blockSpacing: 8,
+                    pPadding: EdgeInsets.zero,
+                    h1Padding: const EdgeInsets.only(bottom: 4),
+                    h2Padding: const EdgeInsets.only(bottom: 4),
+                    h3Padding: const EdgeInsets.only(bottom: 4),
+                  ),
+                  onTapLink: (text, href, title) {
+                    // Do not open external links for security
+                  },
+                ),
         ),
         if (message.quickReplies != null && message.quickReplies!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.sm),

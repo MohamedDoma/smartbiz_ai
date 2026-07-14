@@ -4,102 +4,152 @@ namespace App\Services;
 
 use App\Models\CommissionEntry;
 use App\Models\CommissionRule;
+use App\Models\Pipeline;
 use App\Models\PipelineRecord;
 use App\Models\WorkspaceMembership;
+use Illuminate\Support\Facades\DB;
 
 class CommissionCalculationService
 {
     /**
      * Calculate commissions for a pipeline record.
-     * Returns array of created CommissionEntry models (skips duplicates).
+     *
+     * Enforces canonical eligibility centrally so every caller (auto-trigger
+     * from PipelineRecordController::move() and the manual calculation
+     * endpoint) receives the same protection:
+     *
+     *  - Pipeline entity_type = 'deal'
+     *  - Assigned membership exists and is active
+     *  - Deal value > 0
+     *  - Active commission rules with exact pipeline_id + stage_id match
+     *
+     * Wrapped in a DB transaction with row-level locking to guarantee
+     * idempotency. The DB unique constraint
+     * `comm_entry_rule_record_recipient_unique` acts as a final safety net
+     * via firstOrCreate; no QueryException is caught inside the transaction.
+     *
+     * @return CommissionEntry[] Created entries (empty when ineligible or already calculated)
      */
     public function calculateForRecord(PipelineRecord $record): array
     {
-        $wsId = $record->workspace_id;
-        $baseAmount = (float) $record->value_amount;
+        return DB::transaction(function () use ($record) {
+            // ── Row lock — serialise concurrent commission attempts ───
+            $locked = PipelineRecord::where('id', $record->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($baseAmount <= 0) {
-            return [];
-        }
+            if (!$locked) {
+                return [];
+            }
 
-        // Find active rules that match this record
-        $rules = CommissionRule::where('workspace_id', $wsId)
-            ->where('is_active', true)
-            ->whereHas('plan', fn ($q) => $q->where('is_active', true))
-            ->where(fn ($q) => $q->whereNull('pipeline_id')->orWhere('pipeline_id', $record->pipeline_id))
-            ->where(fn ($q) => $q->whereNull('stage_id')->orWhere('stage_id', $record->stage_id))
-            ->get();
+            // Use the locked (freshest) values for all subsequent checks
+            $wsId       = $locked->workspace_id;
+            $baseAmount = (float) $locked->value_amount;
 
-        // Load assigned membership with relations for resolution
-        $assignedMembership = null;
-        if ($record->assigned_membership_id) {
+            // ── Canonical eligibility checks ─────────────────────────
+
+            // 1. Pipeline must belong to this workspace, be active, and entity_type = 'deal'
+            $pipeline = Pipeline::where('id', $locked->pipeline_id)
+                ->where('workspace_id', $wsId)
+                ->where('is_active', true)
+                ->where('entity_type', 'deal')
+                ->first();
+            if (!$pipeline) {
+                return [];
+            }
+
+            // 2. Deal value must be greater than zero
+            if ($baseAmount <= 0) {
+                return [];
+            }
+
+            // 3. Assigned membership must exist and be active
+            if (!$locked->assigned_membership_id) {
+                return [];
+            }
+
             $assignedMembership = WorkspaceMembership::with(['membershipRoles.role', 'department', 'team'])
-                ->find($record->assigned_membership_id);
-        }
+                ->where('id', $locked->assigned_membership_id)
+                ->where('workspace_id', $wsId)
+                ->where('status', 'active')
+                ->first();
 
-        $entries = [];
-
-        foreach ($rules as $rule) {
-            if (!$this->matchesTrigger($rule, $record)) {
-                continue;
-            }
-            if (!$this->matchesValueRange($rule, $baseAmount)) {
-                continue;
-            }
-            if (!$this->matchesFilters($rule, $assignedMembership)) {
-                continue;
+            if (!$assignedMembership) {
+                return [];
             }
 
-            $recipientId = $this->resolveRecipient($rule, $record, $assignedMembership);
-            if (!$recipientId) {
-                continue;
+            // ── Find matching active rules by exact pipeline_id + stage_id ──
+            // The configured stage_id is the source of truth for triggering.
+            // Legacy rules with NULL stage_id are skipped until explicitly
+            // saved with a stage by the user.
+            $rules = CommissionRule::where('workspace_id', $wsId)
+                ->where('is_active', true)
+                ->whereNotNull('stage_id')
+                ->where('pipeline_id', $locked->pipeline_id)
+                ->where('stage_id', $locked->stage_id)
+                ->whereHas('plan', fn ($q) => $q->where('is_active', true))
+                ->get();
+
+            $entries = [];
+
+            foreach ($rules as $rule) {
+                if (!$this->matchesValueRange($rule, $baseAmount)) {
+                    continue;
+                }
+                if (!$this->matchesFilters($rule, $assignedMembership)) {
+                    continue;
+                }
+
+                $recipientId = $this->resolveRecipient($rule, $locked, $assignedMembership);
+                if (!$recipientId) {
+                    continue;
+                }
+
+                // Validate recipient is an active member in the same workspace
+                if (!$this->validateRecipient($recipientId, $wsId)) {
+                    continue;
+                }
+
+                $commissionAmount = $this->calculateAmount($rule, $baseAmount);
+                $currency = $locked->currency ?? $rule->currency ?? 'LYD';
+
+                // Idempotent insert — the unique constraint
+                // (commission_rule_id, pipeline_record_id, recipient_membership_id)
+                // prevents duplicates. firstOrCreate is safe in PostgreSQL —
+                // it does not abort the transaction on conflict.
+                $entry = CommissionEntry::firstOrCreate(
+                    [
+                        'commission_rule_id'      => $rule->id,
+                        'pipeline_record_id'      => $locked->id,
+                        'recipient_membership_id' => $recipientId,
+                    ],
+                    [
+                        'workspace_id'            => $wsId,
+                        'commission_plan_id'      => $rule->commission_plan_id,
+                        'source_membership_id'    => $locked->assigned_membership_id !== $recipientId
+                            ? $locked->assigned_membership_id : null,
+                        'base_amount'             => $baseAmount,
+                        'commission_amount'       => $commissionAmount,
+                        'currency'                => $currency,
+                        'calculation_type'        => $rule->calculation_type,
+                        'percentage_rate'         => $rule->percentage_rate,
+                        'fixed_amount'            => $rule->calculation_type === 'fixed_amount' ? $rule->fixed_amount : null,
+                        'status'                  => 'pending',
+                        'calculated_at'           => now(),
+                    ]
+                );
+
+                // Only report entries that were actually created (not pre-existing)
+                if ($entry->wasRecentlyCreated) {
+                    $entries[] = $entry;
+                }
             }
 
-            // Duplicate check
-            $exists = CommissionEntry::where('commission_rule_id', $rule->id)
-                ->where('pipeline_record_id', $record->id)
-                ->where('recipient_membership_id', $recipientId)
-                ->exists();
-            if ($exists) {
-                continue;
-            }
-
-            $commissionAmount = $this->calculateAmount($rule, $baseAmount);
-            $currency = $record->currency ?? $rule->currency ?? 'LYD';
-
-            $entry = CommissionEntry::create([
-                'workspace_id'            => $wsId,
-                'commission_plan_id'      => $rule->commission_plan_id,
-                'commission_rule_id'      => $rule->id,
-                'pipeline_record_id'      => $record->id,
-                'recipient_membership_id' => $recipientId,
-                'source_membership_id'    => $record->assigned_membership_id !== $recipientId
-                    ? $record->assigned_membership_id : null,
-                'base_amount'             => $baseAmount,
-                'commission_amount'       => $commissionAmount,
-                'currency'                => $currency,
-                'calculation_type'        => $rule->calculation_type,
-                'percentage_rate'         => $rule->percentage_rate,
-                'fixed_amount'            => $rule->calculation_type === 'fixed_amount' ? $rule->fixed_amount : null,
-                'status'                  => 'pending',
-                'calculated_at'           => now(),
-            ]);
-
-            $entries[] = $entry;
-        }
-
-        return $entries;
+            return $entries;
+        });
     }
 
-    private function matchesTrigger(CommissionRule $rule, PipelineRecord $record): bool
-    {
-        return match ($rule->trigger_status) {
-            'won'       => $record->status === 'won',
-            'completed' => $record->status === 'completed',
-            'open'      => true, // open allows any status
-            default     => false,
-        };
-    }
+    // ── Private helpers ───────────────────────────────────────
 
     private function matchesValueRange(CommissionRule $rule, float $baseAmount): bool
     {
@@ -154,6 +204,19 @@ class CommissionCalculationService
         if (!$member || !$member->department_id) return null;
         $dept = $member->department;
         return $dept?->manager_membership_id ?? null;
+    }
+
+    /**
+     * Validate that a resolved recipient membership belongs to the given
+     * workspace and is active. Prevents cross-workspace commission entries
+     * when a manager reference points outside the workspace.
+     */
+    private function validateRecipient(string $recipientId, string $wsId): bool
+    {
+        return WorkspaceMembership::where('id', $recipientId)
+            ->where('workspace_id', $wsId)
+            ->where('status', 'active')
+            ->exists();
     }
 
     private function calculateAmount(CommissionRule $rule, float $baseAmount): float

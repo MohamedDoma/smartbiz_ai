@@ -185,6 +185,19 @@ class ApiClient {
       return ValidationException(message: message, errors: errors);
     }
 
+    // 409 — Conflict (duplicate contact, open deal, etc.)
+    if (statusCode == 409) {
+      final errorCode = data is Map ? data['error_code'] as String? : null;
+      final existing = data is Map && data['existing'] is Map
+          ? Map<String, dynamic>.from(data['existing'] as Map)
+          : null;
+      return ConflictException(
+        message: message,
+        errorCode: errorCode,
+        existing: existing,
+      );
+    }
+
     // Everything else
     return ApiException(message, statusCode: statusCode);
   }

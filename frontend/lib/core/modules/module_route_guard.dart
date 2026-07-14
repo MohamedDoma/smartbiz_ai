@@ -107,17 +107,23 @@ class ModuleRouteGuard {
 
   // ── Public API ───────────────────────────────────────────
 
-  /// Evaluates whether [location] is allowed given [enabledModules].
+  /// Evaluates whether [location] is allowed given [enabledModules]
+  /// and [effectivePermissions].
   ///
   /// Returns a [ModuleRouteGuardDecision] indicating whether the route
   /// is allowed, and if not, which module owns it and where to redirect.
   ///
-  /// Routes not owned by any module are always allowed.
-  /// Dashboard and settings are always allowed when enabled (they are
-  /// system-required and always present in [enabledModules]).
+  /// Enforcement layers (evaluated in order):
+  ///   1. Routes not owned by any module → always allowed.
+  ///   2. Module must be in [enabledModules].
+  ///   3. If the module declares [navigationPermissionKeys], the user
+  ///      must hold at least one (OR semantics). If the set is empty,
+  ///      the module is accessible to all authenticated users (e.g.
+  ///      Dashboard, AI Chat).
   static ModuleRouteGuardDecision evaluate({
     required String location,
     required Set<ErpModuleId> enabledModules,
+    Set<String> effectivePermissions = const {},
     String fallbackRoute = '/dashboard',
   }) {
     final normalizedPath = _normalizeLocation(location);
@@ -132,18 +138,33 @@ class ModuleRouteGuard {
       );
     }
 
-    // Module is enabled → allowed.
-    if (enabledModules.contains(ownerModuleId)) {
-      return ModuleRouteGuardDecision.allow(
-        'Module ${ownerModuleId.name} is enabled',
+    // Module must be enabled.
+    if (!enabledModules.contains(ownerModuleId)) {
+      return ModuleRouteGuardDecision.block(
+        moduleId: ownerModuleId,
+        redirectRoute: fallbackRoute,
+        reason: 'Module ${ownerModuleId.name} is not enabled',
       );
     }
 
-    // Module is disabled → blocked.
-    return ModuleRouteGuardDecision.block(
-      moduleId: ownerModuleId,
-      redirectRoute: fallbackRoute,
-      reason: 'Module ${ownerModuleId.name} is not enabled',
+    // Permission gate: check navigationPermissionKeys (same logic as
+    // ModuleNavigationResolver._passesPermissionCheck).
+    final def = ErpModuleRegistry.tryGet(ownerModuleId);
+    if (def != null && def.navigationPermissionKeys.isNotEmpty) {
+      final hasPermission = def.navigationPermissionKeys
+          .any((p) => effectivePermissions.contains(p));
+      if (!hasPermission) {
+        return ModuleRouteGuardDecision.block(
+          moduleId: ownerModuleId,
+          redirectRoute: fallbackRoute,
+          reason:
+              'User lacks navigation permission for ${ownerModuleId.name}',
+        );
+      }
+    }
+
+    return ModuleRouteGuardDecision.allow(
+      'Module ${ownerModuleId.name} is enabled and permitted',
     );
   }
 

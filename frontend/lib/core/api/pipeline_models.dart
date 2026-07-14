@@ -180,7 +180,7 @@ class PipelineRecord {
       description: j['description'] as String?,
       contact: j['contact'] != null ? PipelineRecordRef.fromJson(j['contact'] as Map<String, dynamic>) : null,
       assignedTo: j['assigned_to'] != null ? PipelineRecordAssignee.fromJson(j['assigned_to'] as Map<String, dynamic>) : null,
-      valueAmount: (j['value_amount'] as num?)?.toDouble(),
+      valueAmount: _parseDouble(j['value_amount']),
       currency: j['currency'] as String?,
       status: j['status'] as String? ?? 'open',
       expectedCloseDate: j['expected_close_date'] as String?,
@@ -358,6 +358,49 @@ class PipelineRecordCustomValue {
         fieldType: j['field_type'] as String?,
         value: j['value'],
       );
+}
+
+// ═══════════════════════════════════════════════════════
+//  Assignable Member (for assignment selector)
+// ═══════════════════════════════════════════════════════
+
+class AssignableMember {
+  final String membershipId;
+  final String fullName;
+  final String? roleName;
+  final String? roleKey;
+  final String? department;
+  final String? team;
+
+  const AssignableMember({
+    required this.membershipId,
+    required this.fullName,
+    this.roleName,
+    this.roleKey,
+    this.department,
+    this.team,
+  });
+
+  factory AssignableMember.fromJson(Map<String, dynamic> j) => AssignableMember(
+        membershipId: j['membership_id'] as String,
+        fullName: j['full_name'] as String? ?? '',
+        roleName: j['role_name'] as String?,
+        roleKey: j['role_key'] as String?,
+        department: j['department'] as String?,
+        team: j['team'] as String?,
+      );
+}
+
+/// Parse a value that may arrive as a [num] or a [String] (e.g. PostgreSQL
+/// decimal columns serialised by Laravel). Returns null for null/empty/invalid.
+double? _parseDouble(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toDouble();
+  if (v is String) {
+    if (v.isEmpty) return null;
+    return double.tryParse(v);
+  }
+  return null;
 }
 
 const kFieldTypes = ['text', 'textarea', 'number', 'date', 'boolean', 'select', 'multi_select', 'currency'];

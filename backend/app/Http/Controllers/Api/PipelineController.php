@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pipeline;
-use App\Models\WorkspaceMembership;
+use App\Services\PipelineAuditService;
+use App\Services\PipelineRecordScope;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,14 +13,18 @@ use Illuminate\Support\Str;
 
 class PipelineController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
         $pipelines = Pipeline::where('workspace_id', $wsId)
-            ->withCount(['stages', 'records'])
+            ->withCount(['stages', 'records' => function ($q) use ($membership) {
+                if ($membership) {
+                    PipelineRecordScope::apply($q, $membership);
+                }
+            }])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -32,7 +37,6 @@ class PipelineController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -51,15 +55,25 @@ class PipelineController extends Controller
             'sort_order'   => $validated['sort_order'] ?? 0,
         ]);
 
+        PipelineAuditService::log($ctx->workspaceId(), 'created', 'pipeline', $pipeline->id, null, [
+            'name' => $pipeline->name, 'entity_type' => $pipeline->entity_type,
+        ]);
+
         return response()->json(['data' => $this->formatPipeline($pipeline)], 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
         $pipeline = Pipeline::where('workspace_id', $wsId)
-            ->withCount(['stages', 'records'])
+            ->withCount(['stages', 'records' => function ($q) use ($membership) {
+                if ($membership) {
+                    PipelineRecordScope::apply($q, $membership);
+                }
+            }])
             ->findOrFail($id);
 
         $pipeline->load(['stages', 'customFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')]);
@@ -70,7 +84,6 @@ class PipelineController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $pipeline = Pipeline::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
@@ -86,7 +99,12 @@ class PipelineController extends Controller
             $validated['pipeline_key'] = Str::slug($validated['name'], '_');
         }
 
+        $oldValues = $pipeline->only(['name', 'description', 'entity_type', 'is_active', 'sort_order']);
         $pipeline->update($validated);
+        $diff = PipelineAuditService::diff($oldValues, $pipeline->only(array_keys($oldValues)));
+        if (!empty($diff)) {
+            PipelineAuditService::log($ctx->workspaceId(), 'updated', 'pipeline', $pipeline->id, $oldValues, $diff);
+        }
 
         return response()->json(['data' => $this->formatPipeline($pipeline->fresh())]);
     }
@@ -94,10 +112,13 @@ class PipelineController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $pipeline = Pipeline::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
         $pipeline->update(['is_active' => false]);
+
+        PipelineAuditService::log($ctx->workspaceId(), 'deleted', 'pipeline', $pipeline->id, [
+            'name' => $pipeline->name,
+        ]);
 
         return response()->json(['message' => 'Pipeline deactivated.']);
     }
@@ -130,20 +151,5 @@ class PipelineController extends Controller
                 : null,
             'created_at' => $p->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (! $membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) {
-            abort(403, 'Insufficient permissions.');
-        }
     }
 }

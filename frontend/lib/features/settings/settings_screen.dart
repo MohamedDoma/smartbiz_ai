@@ -56,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             _Card(children: [
               _DropdownTile<AppRole>(
-                icon: Icons.badge_outlined, title: tr(context, 'settings_role'), subtitle: appState.currentRole.label(appState.uiLanguage),
+                icon: Icons.badge_outlined, title: tr(context, 'settings_role'), subtitle: appState.displayRoleName(appState.uiLanguage),
                 value: appState.currentRole, items: AppRole.values.map((r) => DropdownMenuItem(value: r, child: Text(r.label(appState.uiLanguage)))).toList(),
                 onChanged: (v) { if (v != null) appState.setRole(v); },
               ),

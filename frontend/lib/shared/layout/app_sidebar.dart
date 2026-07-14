@@ -99,7 +99,7 @@ class AppSidebar extends StatelessWidget {
                   children: [
                     Text(tr(context, 'app_name'), style: AppTypography.headingSmall, overflow: TextOverflow.ellipsis),
                     Text(
-                      context.read<AppState>().currentRole.label(context.read<AppState>().uiLanguage),
+                      context.read<AppState>().displayRoleName(context.read<AppState>().uiLanguage),
                       style: AppTypography.caption.copyWith(color: AppColors.accent, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),

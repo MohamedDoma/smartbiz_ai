@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../core/state/app_state.dart';
 import '../../core/l10n/app_localizations.dart';
 import '../../core/modules/workspace_module_state.dart';
+import '../../core/modules/erp_module_models.dart';
 import '../../core/modules/workspace_blueprint_profile_resolver.dart';
 import '../employees/roles_state.dart';
 import '../employees/org_state.dart';
@@ -113,6 +114,23 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
       } else {
         moduleState.reconcileFrontendBlueprintProfile(profile.modules);
       }
+
+      // ── Backend enabled_modules bridge ─────────────────────
+      // The backend session carries the workspace's enabled_modules
+      // from business template feature flags. Map these backend keys
+      // to ErpModuleId values and reconcile them into module state
+      // so that modules like pipelines (enabled via 'leads' or
+      // 'vehicle_sales' feature flags) are correctly activated.
+      final session = appState.lastSession;
+      if (session?.activeWorkspace != null) {
+        final backendModules = session!.activeWorkspace!.enabledModules;
+        if (backendModules.isNotEmpty) {
+          final mappedIds = _mapBackendModuleKeys(backendModules);
+          if (mappedIds.isNotEmpty) {
+            moduleState.reconcileFrontendBlueprintProfile(mappedIds);
+          }
+        }
+      }
     }
 
     // Enabled modules: use WorkspaceModuleState as the single source of
@@ -144,6 +162,50 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
     super.dispose();
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Backend feature key → ErpModuleId mapping
+  // ═══════════════════════════════════════════════════════════
+
+  /// Maps backend workspace feature flag keys to ErpModuleId values.
+  ///
+  /// Backend keys come from business_template_modules.module_key and are
+  /// stored as workspace_feature_flags. These don't always match the
+  /// ErpModuleId enum names, so we maintain a manual alias map for
+  /// known mismatches.
+  static Set<ErpModuleId> _mapBackendModuleKeys(List<String> keys) {
+    final result = <ErpModuleId>{};
+    for (final key in keys) {
+      final mapped = _backendKeyToModuleId(key);
+      if (mapped != null) result.add(mapped);
+    }
+    return result;
+  }
+
+  /// Maps a single backend feature key to an ErpModuleId.
+  /// Returns null for unrecognized keys (industry-specific modules
+  /// without frontend implementations).
+  static ErpModuleId? _backendKeyToModuleId(String key) {
+    // Direct enum name match (most common case).
+    for (final id in ErpModuleId.values) {
+      if (id.name == key) return id;
+    }
+    // Backend-specific aliases that don't match enum names.
+    return switch (key) {
+      'ai'            => ErpModuleId.aiChat,
+      'finance'       => ErpModuleId.accounting,
+      'leads'         => ErpModuleId.pipelines, // leads/CRM feature → pipelines module
+      'vehicle_sales' => ErpModuleId.pipelines, // vehicle sales pipeline
+      'spare_parts'   => ErpModuleId.products,  // spare parts → products
+      'jobs'          => ErpModuleId.serviceJobs,
+      'menu'          => ErpModuleId.menuManagement,
+      'tables'        => ErpModuleId.restaurantTables,
+      'orders'        => ErpModuleId.pos,       // order-taking → POS
+      'vehicles'      => null,                  // no frontend implementation yet
+      'parts_inventory' => ErpModuleId.inventory,
+      _               => null,                  // unknown key — skip silently
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     // ── Narrow AppState selectors ─────────────────────────
@@ -160,7 +222,7 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
     // ── Derive display values ─────────────────────────────
     final wsName = context.select<AppState, String>((s) => s.currentWorkspace.name);
     final roleName = context.select<AppState, String>(
-      (s) => s.currentRole.label(s.uiLanguage),
+      (s) => s.displayRoleName(s.uiLanguage),
     );
 
     // ── Loading state (first frame only) ──────────────────

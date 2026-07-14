@@ -20,6 +20,7 @@ class Customer {
   DateTime? lastActivity;
   String preferredLang; // 'en' or 'ar'
   String? assignedEmployeeId;
+  String? assignedToName;
 
   Customer({
     required this.id,
@@ -37,6 +38,7 @@ class Customer {
     this.lastActivity,
     this.preferredLang = 'en',
     this.assignedEmployeeId,
+    this.assignedToName,
   });
 }
 

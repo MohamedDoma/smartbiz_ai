@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Services\PermissionCatalog;
 
 /**
  * Seeds deterministic certification data for RBAC, isolation, and functional tests.
@@ -152,26 +153,8 @@ class CertificationSeeder extends Seeder
 
     private function seedRoles(): void
     {
-        $allPerms = [
-            'contacts.list','contacts.show','contacts.create','contacts.update','contacts.delete',
-            'categories.list','categories.show','categories.create','categories.update','categories.delete',
-            'products.list','products.show','products.create','products.update','products.delete',
-            'invoices.list','invoices.show','invoices.create','invoices.update',
-            'accounts.list','accounts.show','accounts.create','accounts.update','accounts.delete',
-            'orders.list','orders.show','orders.create','orders.update',
-            'journal_entries.list','journal_entries.show','journal_entries.create','journal_entries.update',
-            'warehouses.list','warehouses.show','warehouses.create','warehouses.update','warehouses.delete',
-            'payments.list','payments.show','payments.create',
-            'inventory.list','inventory.show','inventory.create',
-            'reservations.list','reservations.show','reservations.create','reservations.update',
-            'bom.list','bom.show','bom.create','bom.update','bom.delete',
-            'production.list','production.show','production.create','production.update',
-            'recurring.list','recurring.show','recurring.create','recurring.update','recurring.delete',
-            'notifications.list','notifications.update',
-            'audit.list','audit.show',
-            'reports.view',
-            'discovery.manage',
-        ];
+        // Derived from the canonical PermissionCatalog — prevents test-vs-production drift.
+        $allPerms = PermissionCatalog::allKeys();
 
         $readOnly = array_filter($allPerms, fn ($p) =>
             str_ends_with($p, '.list') || str_ends_with($p, '.show') || $p === 'reports.view'
@@ -202,6 +185,7 @@ class CertificationSeeder extends Seeder
             'orders.list','orders.show','orders.create','orders.update',
             'payments.list','payments.show',
             'notifications.list','notifications.update',
+            'pipelines.list',
         ];
 
         $managerPerms = array_values(array_diff($allPerms, [

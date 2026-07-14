@@ -46,15 +46,18 @@ class PipelineState extends ChangeNotifier {
   }
 
   Future<void> _loadStages(String pid) async {
-    try { _stages = await _svc.listStages(pid); } catch (_) {}
+    try { _stages = await _svc.listStages(pid); }
+    catch (e) { _error ??= e.toString(); }
   }
 
   Future<void> _loadCustomFields(String pid) async {
-    try { _customFields = await _svc.listCustomFields(pipelineId: pid); } catch (_) {}
+    try { _customFields = await _svc.listCustomFields(pipelineId: pid); }
+    catch (e) { _error ??= e.toString(); }
   }
 
   Future<void> _loadRecords(String pid) async {
-    try { _records = await _svc.listRecords(pipelineId: pid); } catch (_) {}
+    try { _records = await _svc.listRecords(pipelineId: pid); }
+    catch (e) { _error ??= e.toString(); }
   }
 
   // ── CRUD wrappers ───────────────────────────────────────
@@ -105,6 +108,24 @@ class PipelineState extends ChangeNotifier {
     } catch (e) { _error = e.toString(); notifyListeners(); return null; }
   }
 
+  Future<PipelineRecord?> updateRecord(String recordId, Map<String, dynamic> data) async {
+    try {
+      final updated = await _svc.updateRecord(recordId, data);
+      _records = _records.map((r) => r.id == recordId ? updated : r).toList();
+      notifyListeners();
+      return updated;
+    } catch (e) { _error = e.toString(); notifyListeners(); return null; }
+  }
+
+  Future<bool> deleteRecord(String recordId) async {
+    try {
+      await _svc.deleteRecord(recordId);
+      _records = _records.where((r) => r.id != recordId).toList();
+      notifyListeners();
+      return true;
+    } catch (e) { _error = e.toString(); notifyListeners(); return false; }
+  }
+
   Future<void> refresh() async {
     if (_active != null) {
       await selectPipeline(_active!);
@@ -113,4 +134,27 @@ class PipelineState extends ChangeNotifier {
 
   List<PipelineRecord> recordsForStage(String stageId) =>
       _records.where((r) => r.stageId == stageId).toList();
+
+  // ── Assignable Members ─────────────────────────────────
+
+  List<AssignableMember> _assignableMembers = [];
+  bool _assignableLoading = false;
+  String? _assignableError;
+
+  List<AssignableMember> get assignableMembers => _assignableMembers;
+  bool get assignableLoading => _assignableLoading;
+  String? get assignableError => _assignableError;
+
+  Future<void> loadAssignableMembers() async {
+    _assignableLoading = true;
+    _assignableError = null;
+    notifyListeners();
+    try {
+      _assignableMembers = await _svc.listAssignableMembers();
+    } catch (e) {
+      _assignableError = e.toString();
+    }
+    _assignableLoading = false;
+    notifyListeners();
+  }
 }

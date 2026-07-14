@@ -46,7 +46,11 @@ import 'core/api/report_service.dart';
 import 'features/reports/report_state.dart';
 import 'core/api/finance_service.dart';
 import 'core/api/platform_service.dart';
+import 'core/api/ai_service.dart';
 import 'features/platform/platform_state.dart';
+import 'features/ai/ai_state.dart';
+import 'core/api/approval_service.dart';
+import 'features/approvals/approval_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,7 +68,10 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppState()),
         ChangeNotifierProvider(create: (_) => ShellState()),
         ChangeNotifierProvider(create: (_) => OnboardingState()),
-        ChangeNotifierProvider(create: (_) => AiChatState()),
+        ChangeNotifierProxyProvider<AppState, AiChatState>(
+          create: (ctx) => AiChatState(AiService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+        ),
         // Heavy feature providers — lazy: created on first access only
         ChangeNotifierProvider(create: (_) => AdvisorState(), lazy: true),
         ChangeNotifierProxyProvider<AppState, InvoicesState>(
@@ -84,6 +91,11 @@ class SmartBizApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => EmployeesState(), lazy: true),
         ChangeNotifierProvider(create: (_) => SettingsState(), lazy: true),
+        ProxyProvider<AppState, ContactService>(
+          create: (ctx) => ContactService(ctx.read<AppState>().apiClient),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProxyProvider<AppState, CustomersState>(
           create: (ctx) => CustomersState(ContactService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
@@ -129,6 +141,11 @@ class SmartBizApp extends StatelessWidget {
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
+        ChangeNotifierProxyProvider<AppState, ApprovalState>(
+          create: (ctx) => ApprovalState(ApprovalService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProxyProvider<AppState, OwnershipState>(
           create: (ctx) => OwnershipState(OwnershipService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
@@ -149,6 +166,11 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BlueprintNavigationController(), lazy: true),
         ChangeNotifierProxyProvider<AppState, PlatformState>(
           create: (ctx) => PlatformState(PlatformService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, AiState>(
+          create: (ctx) => AiState(AiService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),

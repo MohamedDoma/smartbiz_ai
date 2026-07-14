@@ -59,6 +59,7 @@ class DynamicDashboardScreen extends StatelessWidget {
                 // ── Workspace Branding ─────────────────────
                 WorkspaceBrandingCard(
                   workspaceName: workspaceName,
+                  roleName: roleName,
                   template: configuration.template,
                 ),
                 const SizedBox(height: AppSpacing.lg),

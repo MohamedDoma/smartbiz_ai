@@ -24,6 +24,12 @@ class ContactResource extends JsonResource
             'address'    => $this->address,
             'tax_number' => $this->tax_number,
             'balance'    => $this->balance,
+            'assigned_to' => $this->assigned_membership_id ? [
+                'membership_id' => $this->assigned_membership_id,
+                'full_name'     => $this->relationLoaded('assignedMembership')
+                    ? $this->assignedMembership?->user?->full_name
+                    : null,
+            ] : null,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -13,6 +13,7 @@ class ApiContact {
   final String? address;
   final String? taxNumber;
   final double balance;
+  final ApiContactAssignee? assignedTo;
   final String? createdAt;
   final String? updatedAt;
 
@@ -25,6 +26,7 @@ class ApiContact {
     this.address,
     this.taxNumber,
     this.balance = 0,
+    this.assignedTo,
     this.createdAt,
     this.updatedAt,
   });
@@ -38,6 +40,9 @@ class ApiContact {
         address: json['address'] as String?,
         taxNumber: json['tax_number'] as String?,
         balance: _toDouble(json['balance']),
+        assignedTo: json['assigned_to'] != null
+            ? ApiContactAssignee.fromJson(json['assigned_to'] as Map<String, dynamic>)
+            : null,
         createdAt: json['created_at'] as String?,
         updatedAt: json['updated_at'] as String?,
       );
@@ -47,6 +52,17 @@ class ApiContact {
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString()) ?? 0;
   }
+}
+
+/// Assignee info embedded in a contact response.
+class ApiContactAssignee {
+  final String membershipId;
+  final String? fullName;
+  const ApiContactAssignee({required this.membershipId, this.fullName});
+  factory ApiContactAssignee.fromJson(Map<String, dynamic> j) => ApiContactAssignee(
+        membershipId: j['membership_id'] as String? ?? '',
+        fullName: j['full_name'] as String?,
+      );
 }
 
 /// Paginated list result from GET /api/contacts.
@@ -89,6 +105,7 @@ class ContactPayload {
   final String? email;
   final String? address;
   final String? taxNumber;
+  final String? assignedMembershipId;
 
   const ContactPayload({
     required this.name,
@@ -97,6 +114,7 @@ class ContactPayload {
     this.email,
     this.address,
     this.taxNumber,
+    this.assignedMembershipId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -106,5 +124,6 @@ class ContactPayload {
         if (email != null && email!.isNotEmpty) 'email': email,
         if (address != null && address!.isNotEmpty) 'address': address,
         if (taxNumber != null && taxNumber!.isNotEmpty) 'tax_number': taxNumber,
+        if (assignedMembershipId != null) 'assigned_membership_id': assignedMembershipId,
       };
 }

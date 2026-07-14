@@ -8,6 +8,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/state/app_state.dart';
 import '../../core/responsive.dart';
+import '../../features/ai_chat/ai_chat_state.dart';
 
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -131,6 +132,12 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
+    // Clear AI chat state first — before auth state is cleared
+    try {
+      context.read<AiChatState>().resetForLogout();
+    } catch (_) {
+      // AiChatState might not be mounted yet
+    }
     final app = context.read<AppState>();
     try {
       await app.signOutReal();

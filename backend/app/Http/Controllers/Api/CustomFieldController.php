@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CustomField;
 use App\Models\Pipeline;
-use App\Models\WorkspaceMembership;
+use App\Services\PipelineAuditService;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
 
 class CustomFieldController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
-
     public function index(Request $request): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
@@ -36,7 +34,6 @@ class CustomFieldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $validated = $request->validate([
             'pipeline_id' => 'nullable|uuid',
@@ -82,6 +79,11 @@ class CustomFieldController extends Controller
             'sort_order'   => $validated['sort_order'] ?? 0,
         ]);
 
+        PipelineAuditService::log($ctx->workspaceId(), 'created', 'custom_field', $field->id, null, [
+            'label' => $field->label, 'field_type' => $field->field_type,
+            'pipeline_id' => $field->pipeline_id,
+        ]);
+
         return response()->json(['data' => $this->fmt($field)], 201);
     }
 
@@ -95,7 +97,6 @@ class CustomFieldController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $field = CustomField::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $validated = $request->validate([
@@ -111,17 +112,26 @@ class CustomFieldController extends Controller
             $validated['field_key'] = Str::slug($validated['label'], '_');
         }
 
+        $oldValues = $field->only(['label', 'field_type', 'options', 'is_required', 'is_active', 'sort_order']);
         $field->update($validated);
+        $diff = PipelineAuditService::diff($oldValues, $field->only(array_keys($oldValues)));
+        if (!empty($diff)) {
+            PipelineAuditService::log($ctx->workspaceId(), 'updated', 'custom_field', $field->id, $oldValues, $diff);
+        }
         return response()->json(['data' => $this->fmt($field->fresh())]);
     }
 
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $field = CustomField::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $field->update(['is_active' => false]);
+
+        PipelineAuditService::log($ctx->workspaceId(), 'deleted', 'custom_field', $field->id, [
+            'label' => $field->label, 'field_type' => $field->field_type,
+        ]);
+
         return response()->json(['message' => 'Custom field deactivated.']);
     }
 
@@ -141,18 +151,5 @@ class CustomFieldController extends Controller
             'sort_order'  => $f->sort_order,
             'created_at'  => $f->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (! $membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }
