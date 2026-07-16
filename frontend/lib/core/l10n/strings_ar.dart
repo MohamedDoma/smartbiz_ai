@@ -38,7 +38,8 @@ const Map<String, String> arStrings = {
   'dash_greeting': 'صباح الخير 👋',
   'dash_ai_active': 'AI نشط',
   'dash_ai_summary_title': 'ملخص AI للأعمال',
-  'dash_ai_summary_body': 'أداء عملك تحسّن بنسبة 12% هذا الأسبوع. 3 فواتير متأخرة تحتاج انتباهك، و4 منتجات مخزونها منخفض. لدي توصيات جديدة جاهزة.',
+  'dash_ai_summary_body':
+      'أداء عملك تحسّن بنسبة 12% هذا الأسبوع. 3 فواتير متأخرة تحتاج انتباهك، و4 منتجات مخزونها منخفض. لدي توصيات جديدة جاهزة.',
   'dash_ask_ai': 'اسأل AI عن عملك ←',
   'dash_view_all': 'عرض الكل',
 
@@ -60,13 +61,17 @@ const Map<String, String> arStrings = {
 
   // Recommendations
   'dash_rec_low_stock_title': 'تحذير مخزون منخفض',
-  'dash_rec_low_stock_desc': '4 منتجات أقل من الحد الأدنى. أعد الطلب قريباً لتجنب النفاد.',
+  'dash_rec_low_stock_desc':
+      '4 منتجات أقل من الحد الأدنى. أعد الطلب قريباً لتجنب النفاد.',
   'dash_rec_overdue_title': 'فواتير متأخرة',
-  'dash_rec_overdue_desc': '3 فواتير متأخرة بإجمالي \$4,250. أرسل تذكيرات لتحسين التدفق النقدي.',
+  'dash_rec_overdue_desc':
+      '3 فواتير متأخرة بإجمالي \$4,250. أرسل تذكيرات لتحسين التدفق النقدي.',
   'dash_rec_revenue_title': 'تنبيه اتجاه الإيرادات',
-  'dash_rec_revenue_desc': 'انخفضت مبيعات الأربعاء 15% مقارنة بالأسبوع الماضي. فكّر في عرض ترويجي.',
+  'dash_rec_revenue_desc':
+      'انخفضت مبيعات الأربعاء 15% مقارنة بالأسبوع الماضي. فكّر في عرض ترويجي.',
   'dash_rec_auto_title': 'تفعيل إعادة الطلب التلقائي',
-  'dash_rec_auto_desc': 'أتمتة أوامر الشراء للمنتجات الأكثر مبيعاً لتوفير الوقت.',
+  'dash_rec_auto_desc':
+      'أتمتة أوامر الشراء للمنتجات الأكثر مبيعاً لتوفير الوقت.',
   'dash_impact_high': 'عالي',
   'dash_impact_medium': 'متوسط',
   'dash_impact_low': 'منخفض',
@@ -157,17 +162,22 @@ const Map<String, String> arStrings = {
   'rd_announcements': 'الإعلانات',
   'rd_no_announcements': 'لا توجد إعلانات حالياً.',
   'rd_cashier_ai_title': 'مساعد AI للمبيعات',
-  'rd_cashier_ai_body': 'اليوم أنجزت 12 فاتورة بإجمالي \$2,480. ساعة الذروة كانت 2-3 مساءً. فكّر في تقديم اقتراحات بيع إضافية.',
+  'rd_cashier_ai_body':
+      'اليوم أنجزت 12 فاتورة بإجمالي \$2,480. ساعة الذروة كانت 2-3 مساءً. فكّر في تقديم اقتراحات بيع إضافية.',
   'rd_warehouse_ai_title': 'توقعات AI للمخزون',
-  'rd_warehouse_ai_body': '3 منتجات أقل من الحد الأدنى. من المتوقع نفاد Smart Sensor X خلال يومين بناءً على سرعة المبيعات.',
+  'rd_warehouse_ai_body':
+      '3 منتجات أقل من الحد الأدنى. من المتوقع نفاد Smart Sensor X خلال يومين بناءً على سرعة المبيعات.',
   'rd_accountant_ai_title': 'رؤى AI المالية',
-  'rd_accountant_ai_body': 'الإيرادات ارتفعت 12% عن الشهر الماضي. 3 فواتير متأخرة بإجمالي \$4,250. فكّر في إرسال تذكيرات دفع تلقائية.',
+  'rd_accountant_ai_body':
+      'الإيرادات ارتفعت 12% عن الشهر الماضي. 3 فواتير متأخرة بإجمالي \$4,250. فكّر في إرسال تذكيرات دفع تلقائية.',
   'rd_employee_ai_title': 'مساعد AI',
-  'rd_employee_ai_body': 'يمكنني مساعدتك في مهامك اليومية والإجابة عن أسئلتك حول سياسات الشركة والمساعدة في التوثيق.',
+  'rd_employee_ai_body':
+      'يمكنني مساعدتك في مهامك اليومية والإجابة عن أسئلتك حول سياسات الشركة والمساعدة في التوثيق.',
 
   // ── AI Chat ──────────────────────────────────────────────
   'ai_title': 'مساعد سمارت بيز AI',
-  'ai_subtitle': 'اسألني أي شيء عن عملك.\nيمكنني قراءة البيانات وإنشاء السجلات واقتراح التحسينات.',
+  'ai_subtitle':
+      'اسألني أي شيء عن عملك.\nيمكنني قراءة البيانات وإنشاء السجلات واقتراح التحسينات.',
   'ai_input_hint': 'اسأل سمارت بيز AI...',
   'ai_suggest_revenue': 'عرض الإيرادات',
   'ai_suggest_overdue': 'فواتير متأخرة',
@@ -178,7 +188,8 @@ const Map<String, String> arStrings = {
   'chat_header_title': 'سمارت بيز AI',
   'chat_credits': 'رصيد',
   'chat_input_hint': 'اسأل AI أي شيء...',
-  'chat_empty_subtitle': 'يمكنني إنشاء فواتير، إضافة منتجات، فحص المخزون، وتحليل عملك.\nجرّب أحد الاقتراحات أدناه.',
+  'chat_empty_subtitle':
+      'يمكنني إنشاء فواتير، إضافة منتجات، فحص المخزون، وتحليل عملك.\nجرّب أحد الاقتراحات أدناه.',
 
   // Chat suggestions
   'chat_suggest_invoice': 'إنشاء فاتورة',
@@ -199,7 +210,8 @@ const Map<String, String> arStrings = {
   'chat_action_success_detail': 'تم إنشاء السجل وحفظه في النظام.',
 
   // Chat drafts
-  'chat_draft_invoice_text': 'سأنشئ مسودة فاتورة لك. يرجى مراجعة التفاصيل أدناه:',
+  'chat_draft_invoice_text':
+      'سأنشئ مسودة فاتورة لك. يرجى مراجعة التفاصيل أدناه:',
   'chat_draft_invoice_title': 'مسودة فاتورة',
   'chat_draft_contact_text': 'سأنشئ سجل عميل جديد. يرجى المراجعة:',
   'chat_draft_contact_title': 'عميل جديد',
@@ -223,17 +235,20 @@ const Map<String, String> arStrings = {
   // Chat insights
   'chat_insight': 'ملخص الأعمال',
   'chat_insight_revenue_title': 'تحليل الإيرادات',
-  'chat_insight_revenue_body': 'إيراداتك الشهرية \$34,250، بزيادة 12% عن الشهر الماضي.\n\nالأفضل أداءً: حبوب القهوة (+24%)، الشاي الممتاز (+18%).\nأبطأ يوم: الأربعاء (أقل من المتوسط بـ 15%).\n\nفكّر في عرض ترويجي منتصف الأسبوع لتعزيز مبيعات الأربعاء.',
+  'chat_insight_revenue_body':
+      'إيراداتك الشهرية \$34,250، بزيادة 12% عن الشهر الماضي.\n\nالأفضل أداءً: حبوب القهوة (+24%)، الشاي الممتاز (+18%).\nأبطأ يوم: الأربعاء (أقل من المتوسط بـ 15%).\n\nفكّر في عرض ترويجي منتصف الأسبوع لتعزيز مبيعات الأربعاء.',
 
   // Chat recommendations
   'chat_rec_stock_title': 'تنبيه مخزون منخفض',
   'chat_rec_stock_desc': '4 منتجات أقل من الحد الأدنى',
-  'chat_rec_stock_body': 'وجدت 4 منتجات مخزونها منخفض. حبوب القهوة والشاي الممتاز يحتاجان إعادة طلب عاجلة لتجنب النفاد هذا الأسبوع.',
+  'chat_rec_stock_body':
+      'وجدت 4 منتجات مخزونها منخفض. حبوب القهوة والشاي الممتاز يحتاجان إعادة طلب عاجلة لتجنب النفاد هذا الأسبوع.',
   'chat_qr_view_inventory': 'عرض المخزون',
   'chat_qr_reorder': 'إعادة طلب تلقائي',
 
   // Default response
-  'chat_default_response': 'فهمت! يمكنني مساعدتك بالفواتير والمنتجات والعملاء والتقارير والمزيد.\n\nجرّب أن تطلب مني:\n• إنشاء فاتورة\n• فحص المخزون\n• عرض تقرير الإيرادات\n• إضافة عميل جديد',
+  'chat_default_response':
+      'فهمت! يمكنني مساعدتك بالفواتير والمنتجات والعملاء والتقارير والمزيد.\n\nجرّب أن تطلب مني:\n• إنشاء فاتورة\n• فحص المخزون\n• عرض تقرير الإيرادات\n• إضافة عميل جديد',
 
   // ── AI Advisor ────────────────────────────────────────────
   'adv_title': 'مستشار AI',
@@ -267,28 +282,36 @@ const Map<String, String> arStrings = {
   // Recommendations
   'adv_rec_low_stock_title': 'تحذير مخزون منخفض',
   'adv_rec_low_stock_desc': '4 منتجات أقل من الحد الأدنى للمخزون.',
-  'adv_rec_low_stock_detail': 'حبوب القهوة والشاي الممتاز والسكر والأكواب الورقية منخفضة. أعد الطلب خلال 48 ساعة لتجنب النفاد.',
+  'adv_rec_low_stock_detail':
+      'حبوب القهوة والشاي الممتاز والسكر والأكواب الورقية منخفضة. أعد الطلب خلال 48 ساعة لتجنب النفاد.',
   'adv_rec_overdue_title': 'فواتير متأخرة',
   'adv_rec_overdue_desc': '3 فواتير متأخرة بإجمالي \$4,250.',
-  'adv_rec_overdue_detail': 'أرسل تذكيرات دفع لأحمد للتجارة ومجموعة سارة وشركة خالد لتحسين التدفق النقدي.',
+  'adv_rec_overdue_detail':
+      'أرسل تذكيرات دفع لأحمد للتجارة ومجموعة سارة وشركة خالد لتحسين التدفق النقدي.',
   'adv_rec_revenue_title': 'انخفاض إيرادات أيام الأربعاء',
   'adv_rec_revenue_desc': 'انخفضت مبيعات الأربعاء 15% مقارنة بالشهر الماضي.',
-  'adv_rec_revenue_detail': 'فكّر في عرض ترويجي منتصف الأسبوع أو أسعار خاصة لتعزيز المبيعات في الأيام الأبطأ.',
+  'adv_rec_revenue_detail':
+      'فكّر في عرض ترويجي منتصف الأسبوع أو أسعار خاصة لتعزيز المبيعات في الأيام الأبطأ.',
   'adv_rec_reorder_title': 'تفعيل إعادة الطلب التلقائي',
   'adv_rec_reorder_desc': 'أتمتة أوامر الشراء لأفضل 10 منتجات.',
-  'adv_rec_reorder_detail': 'إعداد إعادة الطلب التلقائي للمنتجات الأكثر مبيعاً يمكن أن يوفر 3+ ساعات أسبوعياً من الشراء اليدوي.',
+  'adv_rec_reorder_detail':
+      'إعداد إعادة الطلب التلقائي للمنتجات الأكثر مبيعاً يمكن أن يوفر 3+ ساعات أسبوعياً من الشراء اليدوي.',
   'adv_rec_pricing_title': 'فرصة تحسين الأسعار',
   'adv_rec_pricing_desc': '5 منتجات قد تكون أسعارها أقل من السوق.',
-  'adv_rec_pricing_detail': 'بناءً على تحليل المنافسين، يمكن لتعديل الأسعار زيادة الهوامش بنسبة 8% دون تأثير كبير على الطلب.',
+  'adv_rec_pricing_detail':
+      'بناءً على تحليل المنافسين، يمكن لتعديل الأسعار زيادة الهوامش بنسبة 8% دون تأثير كبير على الطلب.',
   'adv_rec_cashflow_title': 'تنبيه توقعات التدفق النقدي',
   'adv_rec_cashflow_desc': 'تدفق نقدي ضيق متوقع خلال أسبوعين.',
-  'adv_rec_cashflow_detail': 'بناءً على المستحقات الحالية والنفقات القادمة، فكّر في تسريع التحصيل أو تعديل المشتريات.',
+  'adv_rec_cashflow_detail':
+      'بناءً على المستحقات الحالية والنفقات القادمة، فكّر في تسريع التحصيل أو تعديل المشتريات.',
   'adv_rec_module_title': 'تفعيل وحدة الموارد البشرية',
   'adv_rec_module_desc': 'فريقك يكبر. فكّر في تفعيل ميزات الموارد البشرية.',
-  'adv_rec_module_detail': 'مع 12+ موظف، يمكن لوحدة الموارد البشرية المساعدة في إدارة الحضور والرواتب وتتبع الأداء.',
+  'adv_rec_module_detail':
+      'مع 12+ موظف، يمكن لوحدة الموارد البشرية المساعدة في إدارة الحضور والرواتب وتتبع الأداء.',
   'adv_rec_topsel_title': 'تقرير الأكثر مبيعاً',
   'adv_rec_topsel_desc': 'أفضل 5 منتجات تحقق 60% من الإيرادات.',
-  'adv_rec_topsel_detail': 'ركّز جهود التسويق والمخزون على حبوب القهوة والشاي الممتاز والمعجنات والعصير والساندويتشات.',
+  'adv_rec_topsel_detail':
+      'ركّز جهود التسويق والمخزون على حبوب القهوة والشاي الممتاز والمعجنات والعصير والساندويتشات.',
 
   // Empty
   'adv_empty_title': 'لا توصيات هنا',
@@ -405,7 +428,8 @@ const Map<String, String> arStrings = {
   'prod_edit': 'تعديل المنتج',
   'prod_delete': 'حذف',
   'prod_delete_title': 'حذف المنتج',
-  'prod_delete_confirm': 'هل أنت متأكد من حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.',
+  'prod_delete_confirm':
+      'هل أنت متأكد من حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.',
   'prod_deleted': 'تم حذف المنتج.',
   'prod_validation_required': 'اسم المنتج والسعر مطلوبان.',
   'retry': 'إعادة المحاولة',
@@ -454,7 +478,8 @@ const Map<String, String> arStrings = {
   'emp_role': 'الدور',
   'emp_ai_access': 'صلاحية AI',
   'emp_lang_pref': 'لغة الواجهة',
-  'emp_lang_note': 'لغة الواجهة خاصة بكل موظف. لغة المستندات تبقى على مستوى مساحة العمل.',
+  'emp_lang_note':
+      'لغة الواجهة خاصة بكل موظف. لغة المستندات تبقى على مستوى مساحة العمل.',
   'emp_send_invite': 'إرسال الدعوة',
   'emp_last_active': 'آخر نشاط',
   'emp_permissions': 'الصلاحيات',
@@ -483,11 +508,16 @@ const Map<String, String> arStrings = {
   'role_warehouse': 'مستودع',
   'role_accountant': 'محاسب',
   'role_employee': 'موظف',
-  'role_owner_desc': 'صلاحية كاملة للنظام. يدير جميع الوحدات والمستخدمين والفوترة وإعدادات AI.',
-  'role_cashier_desc': 'يتعامل مع المبيعات والعملاء. ينشئ الفواتير ويستقبل المدفوعات.',
-  'role_warehouse_desc': 'يدير المنتجات والمخزون. يعدّل المخزون ويستقبل البضائع.',
-  'role_accountant_desc': 'يشرف على المالية والمصروفات والتقارير. يطّلع على الفواتير للمراجعة.',
-  'role_employee_desc': 'صلاحية أساسية للوحة التحكم ومحادثة AI. محدود بالمهام المعيّنة.',
+  'role_owner_desc':
+      'صلاحية كاملة للنظام. يدير جميع الوحدات والمستخدمين والفوترة وإعدادات AI.',
+  'role_cashier_desc':
+      'يتعامل مع المبيعات والعملاء. ينشئ الفواتير ويستقبل المدفوعات.',
+  'role_warehouse_desc':
+      'يدير المنتجات والمخزون. يعدّل المخزون ويستقبل البضائع.',
+  'role_accountant_desc':
+      'يشرف على المالية والمصروفات والتقارير. يطّلع على الفواتير للمراجعة.',
+  'role_employee_desc':
+      'صلاحية أساسية للوحة التحكم ومحادثة AI. محدود بالمهام المعيّنة.',
 
   // Permissions
   'perm_full_access': 'صلاحية كاملة',
@@ -576,7 +606,8 @@ const Map<String, String> arStrings = {
   'cust_edit': 'تعديل العميل',
   'cust_delete': 'حذف',
   'cust_delete_title': 'حذف العميل',
-  'cust_delete_confirm': 'هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.',
+  'cust_delete_confirm':
+      'هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذا الإجراء.',
   'cust_deleted': 'تم حذف العميل.',
   'cust_name_required': 'اسم العميل مطلوب.',
   'cust_saved': 'تم حفظ العميل.',
@@ -601,7 +632,8 @@ const Map<String, String> arStrings = {
   'stk_cancel': 'إلغاء',
   'stk_movements': 'الحركات',
   'stk_adjust': 'تعديل المخزون',
-  'stk_ai_placeholder': 'ستتوفر توقعات AI للمخزون واقتراحات إعادة الطلب بعد ربط الخادم.',
+  'stk_ai_placeholder':
+      'ستتوفر توقعات AI للمخزون واقتراحات إعادة الطلب بعد ربط الخادم.',
   'stk_mv_subtitle': 'جميع حركات المخزون عبر منتجاتك.',
   'stk_no_movements': 'لا توجد حركات مخزون مسجلة.',
   'stk_mv_sale': 'بيع',
@@ -633,7 +665,6 @@ const Map<String, String> arStrings = {
   'stk_unit_cost': 'تكلفة الوحدة',
   'stk_optional': 'اختياري',
 
-
   // ── Settings Hub ──────────────────────────────────────────
   'set_subtitle': 'إدارة مساحة العمل والهوية البصرية والاشتراك.',
   'set_workspace': 'مساحة العمل',
@@ -650,7 +681,8 @@ const Map<String, String> arStrings = {
   'ws_industry': 'القطاع / نوع النشاط',
   'ws_timezone': 'المنطقة الزمنية',
   'ws_currency': 'العملة',
-  'ws_lang_note': 'لغة واجهة الموظف خاصة بكل مستخدم. لغة المستندات (الفواتير، التقارير) تُحدد على مستوى مساحة العمل.',
+  'ws_lang_note':
+      'لغة واجهة الموظف خاصة بكل مستخدم. لغة المستندات (الفواتير، التقارير) تُحدد على مستوى مساحة العمل.',
 
   // Branding
   'brand_primary': 'اللون الأساسي',
@@ -710,7 +742,8 @@ const Map<String, String> arStrings = {
   'fb_logo_coming': 'رفع الشعار سيكون متاحاً بعد ربط التخزين بالخادم.',
   'fb_billing_coming': 'إجراءات الفوترة ستُربط بنظام الدفع في مرحلة التكامل.',
   'fb_current_plan': 'هذه خطتك الحالية.',
-  'fb_local_only': 'التغييرات محفوظة محلياً. المزامنة مع الخادم ستتوفر في مرحلة التكامل.',
+  'fb_local_only':
+      'التغييرات محفوظة محلياً. المزامنة مع الخادم ستتوفر في مرحلة التكامل.',
   'brand_preview_note': 'المعاينة توضح كيف ستبدو هويتك البصرية في التطبيق.',
 
   // ── Placeholder / Empty states ───────────────────────────
@@ -793,7 +826,8 @@ const Map<String, String> arStrings = {
 
   // ── Onboarding ───────────────────────────────────────────
   'onboard_welcome_title': 'مرحباً بك في سمارت بيز AI',
-  'onboard_welcome_subtitle': 'لنبني نظام تشغيل أعمالك المخصص.\nمدعوم بالذكاء الاصطناعي، مصمم حسب احتياجاتك.',
+  'onboard_welcome_subtitle':
+      'لنبني نظام تشغيل أعمالك المخصص.\nمدعوم بالذكاء الاصطناعي، مصمم حسب احتياجاتك.',
   'onboard_start': 'ابدأ الإعداد',
   'onboard_discovery_title': 'اكتشاف الأعمال',
   'onboard_input_hint': 'صِف عملك...',
@@ -803,13 +837,20 @@ const Map<String, String> arStrings = {
   'onboard_thinking': 'جاري التفكير...',
 
   // ── Discovery AI conversation ────────────────────────────
-  'disc_welcome': 'مرحباً بك في سمارت بيز AI! أنا هنا لمساعدتك في إعداد نظام تشغيل أعمالك.\n\nسأطرح عليك بعض الأسئلة لفهم عملك، ثم سأنشئ نظام ERP مخصص يناسب احتياجاتك.\n\nلنبدأ — ما اسم شركتك؟',
-  'disc_q1_business_type': 'اسم رائع! أخبرني الآن — ما نوع عملك؟\n\nمثال: متجر تجزئة، مطعم، بيع بالجملة، خدمات، تصنيع، إلخ.',
-  'disc_q2_operations': 'فهمت! دعني أفهم عملياتك بشكل أفضل.\n\nكم عدد الموظفين لديك، وما هي الأدوار الرئيسية؟',
-  'disc_q3_products': 'ممتاز. ما المنتجات أو الخدمات التي تقدمها؟\n\nصف ما تبيعه أو الخدمات التي تقدمها.',
-  'disc_q4_finance': 'لنتحدث الآن عن سير العمل المالي.\n\nهل تصدر فواتير حالياً؟ تتبع المصروفات؟ تقبل الدفع الإلكتروني؟',
-  'disc_q5_special': 'رائع، لدي صورة واضحة عن عملك الآن.\n\nهل لديك متطلبات خاصة؟ أي شيء محدد تريد أن يتعامل معه النظام؟',
-  'disc_q6_ready': 'ممتاز! لدي الآن كل ما أحتاجه لإنشاء مخطط ERP المخصص لك.\n\nسيتضمن نظامك وحدات للمبيعات والمخزون والمحاسبة والمزيد — كلها مصممة لعملك.\n\nانقر على "عرض المخطط" لمراجعة ما أعددته لك.',
+  'disc_welcome':
+      'مرحباً بك في سمارت بيز AI! أنا هنا لمساعدتك في إعداد نظام تشغيل أعمالك.\n\nسأطرح عليك بعض الأسئلة لفهم عملك، ثم سأنشئ نظام ERP مخصص يناسب احتياجاتك.\n\nلنبدأ — ما اسم شركتك؟',
+  'disc_q1_business_type':
+      'اسم رائع! أخبرني الآن — ما نوع عملك؟\n\nمثال: متجر تجزئة، مطعم، بيع بالجملة، خدمات، تصنيع، إلخ.',
+  'disc_q2_operations':
+      'فهمت! دعني أفهم عملياتك بشكل أفضل.\n\nكم عدد الموظفين لديك، وما هي الأدوار الرئيسية؟',
+  'disc_q3_products':
+      'ممتاز. ما المنتجات أو الخدمات التي تقدمها؟\n\nصف ما تبيعه أو الخدمات التي تقدمها.',
+  'disc_q4_finance':
+      'لنتحدث الآن عن سير العمل المالي.\n\nهل تصدر فواتير حالياً؟ تتبع المصروفات؟ تقبل الدفع الإلكتروني؟',
+  'disc_q5_special':
+      'رائع، لدي صورة واضحة عن عملك الآن.\n\nهل لديك متطلبات خاصة؟ أي شيء محدد تريد أن يتعامل معه النظام؟',
+  'disc_q6_ready':
+      'ممتاز! لدي الآن كل ما أحتاجه لإنشاء مخطط ERP المخصص لك.\n\nسيتضمن نظامك وحدات للمبيعات والمخزون والمحاسبة والمزيد — كلها مصممة لعملك.\n\nانقر على "عرض المخطط" لمراجعة ما أعددته لك.',
 
   // ── Discovery quick replies ──────────────────────────────
   'disc_qr_retail': 'متجر تجزئة',
@@ -966,7 +1007,8 @@ const Map<String, String> arStrings = {
   'org_team_saved': 'تم حفظ الفريق.',
   'org_leader_assigned': 'تم تعيين القائد.',
   'org_teams_disabled': 'الفرق معطلة',
-  'org_teams_disabled_hint': 'انتقل إلى وضع "أقسام + فرق" في إعدادات التنظيم لتفعيل الفرق.',
+  'org_teams_disabled_hint':
+      'انتقل إلى وضع "أقسام + فرق" في إعدادات التنظيم لتفعيل الفرق.',
   'org_change_mode': 'تغيير النمط',
   'org_dept_mgr': 'مدير القسم',
   'org_team_lead': 'قائد الفريق',
@@ -995,7 +1037,8 @@ const Map<String, String> arStrings = {
   'asgn_extra_roles': 'أدوار إضافية',
   'asgn_extra_hint': 'اختر أدوار إضافية للمسؤوليات المختلطة.',
   'asgn_effective': 'الصلاحيات الفعلية',
-  'asgn_eff_hint': 'مجمعة من الدور الأساسي + الأدوار الإضافية. الصلاحيات الخطرة مميزة.',
+  'asgn_eff_hint':
+      'مجمعة من الدور الأساسي + الأدوار الإضافية. الصلاحيات الخطرة مميزة.',
   'asgn_no_perms': 'لا توجد صلاحيات معينة.',
   'asgn_saved': 'تم حفظ التعيين.',
   'asgn_edit': 'تعديل التعيين',
@@ -1027,13 +1070,15 @@ const Map<String, String> arStrings = {
   'cr_dashboard_type': 'نوع لوحة التحكم',
   'cr_ai_access': 'مستوى وصول AI',
   'cr_permissions': 'صلاحيات الوحدات',
-  'cr_perm_hint': 'تبديل الصلاحيات لكل وحدة. استخدم "الكل" أو "مسح" للإعداد السريع.',
+  'cr_perm_hint':
+      'تبديل الصلاحيات لكل وحدة. استخدم "الكل" أو "مسح" للإعداد السريع.',
   'cr_all': 'الكل',
   'cr_clear': 'مسح',
   'cr_save_role': 'إنشاء الدور',
   'cr_name_required': 'اسم الدور مطلوب.',
   'cr_created': 'تم إنشاء الدور المخصص بنجاح.',
-  'cr_system_readonly': 'الأدوار النظامية للقراءة فقط. قم بالتكرار لإنشاء نسخة قابلة للتخصيص.',
+  'cr_system_readonly':
+      'الأدوار النظامية للقراءة فقط. قم بالتكرار لإنشاء نسخة قابلة للتخصيص.',
   'cr_perms_active': 'صلاحيات نشطة',
   'cr_total_perms': 'إجمالي الصلاحيات',
   'cr_save_changes': 'حفظ التغييرات',
@@ -1113,7 +1158,8 @@ const Map<String, String> arStrings = {
 
   // ── Dynamic Screen ────────────────────────────────────────
   'dyn_dash_empty_title': 'لا توجد عناصر',
-  'dyn_dash_empty_desc': 'لا تتوفر أدوات لدورك وصلاحياتك الحالية. تواصل مع المسؤول أو جرّب محادثة AI.',
+  'dyn_dash_empty_desc':
+      'لا تتوفر أدوات لدورك وصلاحياتك الحالية. تواصل مع المسؤول أو جرّب محادثة AI.',
   'dyn_dash_invalid_route': 'هذا الإجراء غير متاح حالياً.',
 
   // ── Quick Action Labels ───────────────────────────────────
@@ -1140,7 +1186,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Executive ──────────────────────────────
   'dw_ai_business_insight': 'رؤية AI للأعمال',
-  'dw_ai_business_insight_body': 'أداء أعمالك تحسّن بنسبة 12% هذا الأسبوع. 3 فواتير متأخرة تحتاج متابعة، و4 منتجات مخزونها منخفض.',
+  'dw_ai_business_insight_body':
+      'أداء أعمالك تحسّن بنسبة 12% هذا الأسبوع. 3 فواتير متأخرة تحتاج متابعة، و4 منتجات مخزونها منخفض.',
   'dw_revenue': 'الإيرادات',
   'dw_profit': 'صافي الربح',
   'dw_receivables': 'المستحقات',
@@ -1167,7 +1214,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Sales ──────────────────────────────────
   'dw_ai_sales_insight': 'رؤية AI للمبيعات',
-  'dw_ai_sales_insight_body': 'أنجزت 12 فاتورة اليوم بإجمالي \$2,480. ساعة الذروة كانت 2-3 مساءً. فكّر في اقتراحات بيع إضافية.',
+  'dw_ai_sales_insight_body':
+      'أنجزت 12 فاتورة اليوم بإجمالي \$2,480. ساعة الذروة كانت 2-3 مساءً. فكّر في اقتراحات بيع إضافية.',
   'dw_today_sales': 'مبيعات اليوم',
   'dw_invoices_today': 'فواتير اليوم',
   'dw_pending_invoices': 'فواتير معلقة',
@@ -1183,7 +1231,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Finance ────────────────────────────────
   'dw_ai_finance_insight': 'رؤية AI المالية',
-  'dw_ai_finance_insight_body': 'الإيرادات ارتفعت 12% مقارنة بالشهر الماضي. 3 فواتير متأخرة بإجمالي \$4,250. فكّر في إرسال تذكيرات دفع.',
+  'dw_ai_finance_insight_body':
+      'الإيرادات ارتفعت 12% مقارنة بالشهر الماضي. 3 فواتير متأخرة بإجمالي \$4,250. فكّر في إرسال تذكيرات دفع.',
   'dw_expenses': 'المصروفات',
   'dw_finance_summary': 'الملخص المالي',
   'dw_finance_summary_row1': 'التدفق النقدي: إيجابي',
@@ -1196,7 +1245,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Inventory ──────────────────────────────
   'dw_ai_inventory_insight': 'رؤية AI للمخزون',
-  'dw_ai_inventory_insight_body': '3 منتجات أقل من الحد الأدنى. يُتوقع نفاد المستشعر الذكي خلال يومين بناءً على سرعة البيع الحالية.',
+  'dw_ai_inventory_insight_body':
+      '3 منتجات أقل من الحد الأدنى. يُتوقع نفاد المستشعر الذكي خلال يومين بناءً على سرعة البيع الحالية.',
   'dw_total_products': 'إجمالي المنتجات',
   'dw_low_stock': 'مخزون منخفض',
   'dw_movements_today': 'حركات اليوم',
@@ -1212,7 +1262,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: HR ─────────────────────────────────────
   'dw_ai_hr_insight': 'رؤية AI للموارد البشرية',
-  'dw_ai_hr_insight_body': 'انضم 3 موظفين جدد هذا الشهر. إنتاجية الفريق مستقرة. فكّر في جدولة مراجعات أداء الربع الثاني.',
+  'dw_ai_hr_insight_body':
+      'انضم 3 موظفين جدد هذا الشهر. إنتاجية الفريق مستقرة. فكّر في جدولة مراجعات أداء الربع الثاني.',
   'dw_employee_count': 'إجمالي الموظفين',
   'dw_new_employees': 'موظفون جدد',
   'dw_active_roles': 'الأدوار النشطة',
@@ -1227,7 +1278,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Projects ───────────────────────────────
   'dw_ai_project_insight': 'رؤية AI للمشاريع',
-  'dw_ai_project_insight_body': '5 مشاريع نشطة. 2 على المسار، و1 معرّض لتجاوز الموعد النهائي. فكّر في إعادة توزيع الموارد.',
+  'dw_ai_project_insight_body':
+      '5 مشاريع نشطة. 2 على المسار، و1 معرّض لتجاوز الموعد النهائي. فكّر في إعادة توزيع الموارد.',
   'dw_active_projects': 'المشاريع النشطة',
   'dw_delayed_tasks': 'مهام متأخرة',
   'dw_upcoming_deadlines': 'مواعيد قادمة',
@@ -1242,7 +1294,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Operations ─────────────────────────────
   'dw_ai_ops_insight': 'رؤية AI للعمليات',
-  'dw_ai_ops_insight_body': 'جميع الأنظمة تعمل. موافقتان معلقتان. إنتاجية المستودع ارتفعت 8% هذا الأسبوع.',
+  'dw_ai_ops_insight_body':
+      'جميع الأنظمة تعمل. موافقتان معلقتان. إنتاجية المستودع ارتفعت 8% هذا الأسبوع.',
   'dw_operational_alerts': 'تنبيهات تشغيلية',
   'dw_approvals': 'الموافقات المعلقة',
   'dw_approvals_item1': 'أمر شراء #PO-015',
@@ -1252,7 +1305,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Support ────────────────────────────────
   'dw_ai_support_insight': 'رؤية AI للدعم',
-  'dw_ai_support_insight_body': '8 تذاكر مفتوحة، 3 عالية الأولوية. متوسط وقت الاستجابة 2.5 ساعة. فكّر في توجيه الفائض لعملاء أقدم.',
+  'dw_ai_support_insight_body':
+      '8 تذاكر مفتوحة، 3 عالية الأولوية. متوسط وقت الاستجابة 2.5 ساعة. فكّر في توجيه الفائض لعملاء أقدم.',
   'dw_support_queue': 'قائمة انتظار الدعم',
   'dw_support_queue_row1': 'تذاكر مفتوحة: 8',
   'dw_support_queue_row2': 'أولوية عالية: 3',
@@ -1262,7 +1316,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Service ────────────────────────────────
   'dw_ai_service_insight': 'رؤية AI للخدمات',
-  'dw_ai_service_insight_body': '6 مهام مُعيّنة اليوم، 2 عاجلة. نسبة الإنجاز في الوقت المحدد 94%. أداء ممتاز هذا الأسبوع.',
+  'dw_ai_service_insight_body':
+      '6 مهام مُعيّنة اليوم، 2 عاجلة. نسبة الإنجاز في الوقت المحدد 94%. أداء ممتاز هذا الأسبوع.',
   'dw_today_schedule': 'جدول اليوم',
   'dw_today_schedule_row1': 'مُجدول: 6 مهام',
   'dw_today_schedule_row2': 'قيد التنفيذ: 2',
@@ -1276,7 +1331,8 @@ const Map<String, String> arStrings = {
 
   // ── Widget Titles: Basic Employee ─────────────────────────
   'dw_ai_assistant': 'مساعد AI',
-  'dw_ai_assistant_body': 'يمكنني مساعدتك في مهامك اليومية، والإجابة عن سياسات الشركة، والمساعدة في التوثيق.',
+  'dw_ai_assistant_body':
+      'يمكنني مساعدتك في مهامك اليومية، والإجابة عن سياسات الشركة، والمساعدة في التوثيق.',
   'dw_my_tasks': 'مهامي',
   'dw_my_tasks_item1': 'إكمال قائمة التأهيل',
   'dw_my_tasks_item2': 'تقديم التقرير الأسبوعي',
@@ -1309,11 +1365,14 @@ const Map<String, String> arStrings = {
   'dc_reset_defaults': 'إعادة التعيين للافتراضي',
   'dc_ai_placeholder': 'دع الذكاء الاصطناعي يضبط لوحة المعلومات — قريباً.',
   'dc_advanced_options': 'خيارات متقدمة للوحة المعلومات',
-  'dc_advanced_hint': 'تحكم دقيق في العناصر والإجراءات المعروضة على لوحة المعلومات.',
+  'dc_advanced_hint':
+      'تحكم دقيق في العناصر والإجراءات المعروضة على لوحة المعلومات.',
   'dc_widget_vis': 'عرض العناصر',
-  'dc_widget_vis_hint': 'تفعيل أو تعطيل عناصر محددة لهذا الدور. متاح بعد ربط الخادم.',
+  'dc_widget_vis_hint':
+      'تفعيل أو تعطيل عناصر محددة لهذا الدور. متاح بعد ربط الخادم.',
   'dc_action_vis': 'عرض الإجراءات السريعة',
-  'dc_action_vis_hint': 'تفعيل أو تعطيل إجراءات سريعة محددة لهذا الدور. متاح بعد ربط الخادم.',
+  'dc_action_vis_hint':
+      'تفعيل أو تعطيل إجراءات سريعة محددة لهذا الدور. متاح بعد ربط الخادم.',
 
   // ── Preview labels ────────────────────────────────────────
   'dp_visible_widgets': 'العناصر المرئية',
@@ -1334,58 +1393,95 @@ const Map<String, String> arStrings = {
   // ═══════════════════════════════════════════════════════════
 
   // ── Module Names ──────────────────────────────────────────
-  'emod_dashboard': 'لوحة المعلومات', 'emod_aiChat': 'محادثة ذكية', 'emod_aiAdvisor': 'مستشار ذكي',
+  'emod_dashboard': 'لوحة المعلومات',
+  'emod_aiChat': 'محادثة ذكية',
+  'emod_aiAdvisor': 'مستشار ذكي',
   'emod_notifications': 'الإشعارات', 'emod_settings': 'الإعدادات',
-  'emod_customers': 'العملاء', 'emod_leads': 'العملاء المحتملين', 'emod_opportunities': 'الفرص',
-  'emod_quotations': 'عروض الأسعار', 'emod_invoices': 'الفواتير', 'emod_payments': 'المدفوعات',
+  'emod_customers': 'العملاء',
+  'emod_leads': 'العملاء المحتملين',
+  'emod_opportunities': 'الفرص',
+  'emod_quotations': 'عروض الأسعار',
+  'emod_invoices': 'الفواتير',
+  'emod_payments': 'المدفوعات',
   'emod_pos': 'نقطة البيع', 'emod_recurringBilling': 'الفوترة المتكررة',
   'emod_pipelines': 'خطوط المبيعات', 'emod_commissions': 'العمولات',
-  'emod_products': 'المنتجات', 'emod_inventory': 'المخزون', 'emod_warehouses': 'المستودعات',
+  'emod_products': 'المنتجات',
+  'emod_inventory': 'المخزون',
+  'emod_warehouses': 'المستودعات',
   'emod_warehouseTransfers': 'تحويلات المستودعات', 'emod_suppliers': 'الموردون',
   'emod_procurement': 'المشتريات', 'emod_purchaseOrders': 'أوامر الشراء',
-  'emod_accounting': 'المحاسبة', 'emod_expenses': 'المصروفات', 'emod_reports': 'التقارير',
+  'emod_accounting': 'المحاسبة',
+  'emod_expenses': 'المصروفات',
+  'emod_reports': 'التقارير',
   'emod_assets': 'الأصول', 'emod_budgets': 'الميزانيات',
-  'emod_employees': 'الموظفون', 'emod_roles': 'الأدوار', 'emod_departments': 'الأقسام',
+  'emod_employees': 'الموظفون',
+  'emod_roles': 'الأدوار',
+  'emod_departments': 'الأقسام',
   'emod_teams': 'الفرق', 'emod_attendance': 'الحضور', 'emod_leave': 'الإجازات',
   'emod_payroll': 'الرواتب',
-  'emod_projects': 'المشاريع', 'emod_tasks': 'المهام', 'emod_timesheets': 'سجل الوقت',
+  'emod_projects': 'المشاريع',
+  'emod_tasks': 'المهام',
+  'emod_timesheets': 'سجل الوقت',
   'emod_bookings': 'الحجوزات', 'emod_appointments': 'المواعيد',
   'emod_serviceJobs': 'مهام الخدمة', 'emod_support': 'الدعم',
-  'emod_restaurantTables': 'طاولات المطعم', 'emod_restaurantOrders': 'طلبات المطعم',
+  'emod_restaurantTables': 'طاولات المطعم',
+  'emod_restaurantOrders': 'طلبات المطعم',
   'emod_kitchenDisplay': 'شاشة المطبخ', 'emod_menuManagement': 'إدارة القائمة',
   'emod_ingredients': 'المكونات', 'emod_manufacturing': 'التصنيع',
   'emod_bom': 'قائمة المواد', 'emod_productionOrders': 'أوامر الإنتاج',
-  'emod_delivery': 'التوصيل', 'emod_fleet': 'الأسطول', 'emod_branches': 'الفروع',
+  'emod_delivery': 'التوصيل',
+  'emod_fleet': 'الأسطول',
+  'emod_branches': 'الفروع',
 
   // ── Module Descriptions ───────────────────────────────────
-  'emod_dashboard_desc': 'نظرة عامة ومؤشرات الأداء', 'emod_aiChat_desc': 'مساعد ذكي',
-  'emod_aiAdvisor_desc': 'توصيات استراتيجية', 'emod_notifications_desc': 'التنبيهات والإشعارات',
+  'emod_dashboard_desc': 'نظرة عامة ومؤشرات الأداء',
+  'emod_aiChat_desc': 'مساعد ذكي',
+  'emod_aiAdvisor_desc': 'توصيات استراتيجية',
+  'emod_notifications_desc': 'التنبيهات والإشعارات',
   'emod_settings_desc': 'إعدادات مساحة العمل',
-  'emod_customers_desc': 'إدارة علاقات العملاء', 'emod_leads_desc': 'تتبع العملاء المحتملين',
-  'emod_opportunities_desc': 'إدارة خط المبيعات', 'emod_quotations_desc': 'عروض الأسعار والمقترحات',
-  'emod_invoices_desc': 'إنشاء وتتبع الفواتير', 'emod_payments_desc': 'معالجة المدفوعات',
-  'emod_pos_desc': 'نقطة بيع في المتجر', 'emod_recurringBilling_desc': 'فواتير متكررة تلقائية',
-  'emod_pipelines_desc': 'إدارة خطوط المبيعات والصفقات', 'emod_commissions_desc': 'خطط وقواعد وسجلات العمولات',
-  'emod_products_desc': 'إدارة كتالوج المنتجات', 'emod_inventory_desc': 'مستويات وحركات المخزون',
-  'emod_warehouses_desc': 'إدارة مستودعات متعددة', 'emod_warehouseTransfers_desc': 'تحويلات بين المستودعات',
-  'emod_suppliers_desc': 'دليل الموردين', 'emod_procurement_desc': 'إدارة عمليات الشراء',
+  'emod_customers_desc': 'إدارة علاقات العملاء',
+  'emod_leads_desc': 'تتبع العملاء المحتملين',
+  'emod_opportunities_desc': 'إدارة خط المبيعات',
+  'emod_quotations_desc': 'عروض الأسعار والمقترحات',
+  'emod_invoices_desc': 'إنشاء وتتبع الفواتير',
+  'emod_payments_desc': 'معالجة المدفوعات',
+  'emod_pos_desc': 'نقطة بيع في المتجر',
+  'emod_recurringBilling_desc': 'فواتير متكررة تلقائية',
+  'emod_pipelines_desc': 'إدارة خطوط المبيعات والصفقات',
+  'emod_commissions_desc': 'خطط وقواعد وسجلات العمولات',
+  'emod_products_desc': 'إدارة كتالوج المنتجات',
+  'emod_inventory_desc': 'مستويات وحركات المخزون',
+  'emod_warehouses_desc': 'إدارة مستودعات متعددة',
+  'emod_warehouseTransfers_desc': 'تحويلات بين المستودعات',
+  'emod_suppliers_desc': 'دليل الموردين',
+  'emod_procurement_desc': 'إدارة عمليات الشراء',
   'emod_purchaseOrders_desc': 'تتبع أوامر الشراء',
-  'emod_accounting_desc': 'المحاسبة المالية', 'emod_expenses_desc': 'تتبع المصروفات واعتمادها',
-  'emod_reports_desc': 'تحليلات وتقارير الأعمال', 'emod_assets_desc': 'إدارة الأصول الثابتة',
+  'emod_accounting_desc': 'المحاسبة المالية',
+  'emod_expenses_desc': 'تتبع المصروفات واعتمادها',
+  'emod_reports_desc': 'تحليلات وتقارير الأعمال',
+  'emod_assets_desc': 'إدارة الأصول الثابتة',
   'emod_budgets_desc': 'تخطيط وتتبع الميزانية',
-  'emod_employees_desc': 'دليل وإدارة الموظفين', 'emod_roles_desc': 'إدارة الأدوار والصلاحيات',
+  'emod_employees_desc': 'دليل وإدارة الموظفين',
+  'emod_roles_desc': 'إدارة الأدوار والصلاحيات',
   'emod_departments_desc': 'هيكل الأقسام', 'emod_teams_desc': 'تنظيم الفرق',
-  'emod_attendance_desc': 'تتبع الحضور', 'emod_leave_desc': 'طلبات واعتماد الإجازات',
+  'emod_attendance_desc': 'تتبع الحضور',
+  'emod_leave_desc': 'طلبات واعتماد الإجازات',
   'emod_payroll_desc': 'معالجة الرواتب',
   'emod_projects_desc': 'إدارة المشاريع', 'emod_tasks_desc': 'تتبع المهام',
   'emod_timesheets_desc': 'تسجيل الوقت', 'emod_bookings_desc': 'إدارة الحجوزات',
-  'emod_appointments_desc': 'جدولة المواعيد', 'emod_serviceJobs_desc': 'إدارة خدمة الميدان',
+  'emod_appointments_desc': 'جدولة المواعيد',
+  'emod_serviceJobs_desc': 'إدارة خدمة الميدان',
   'emod_support_desc': 'تذاكر دعم العملاء',
-  'emod_restaurantTables_desc': 'تخطيط وحالة الطاولات', 'emod_restaurantOrders_desc': 'إدارة الطلبات',
-  'emod_kitchenDisplay_desc': 'عرض طلبات المطبخ', 'emod_menuManagement_desc': 'بناء القائمة',
-  'emod_ingredients_desc': 'تتبع المكونات', 'emod_manufacturing_desc': 'إدارة الإنتاج',
-  'emod_bom_desc': 'قائمة المواد', 'emod_productionOrders_desc': 'تتبع أوامر الإنتاج',
-  'emod_delivery_desc': 'إدارة التوصيل', 'emod_fleet_desc': 'إدارة أسطول المركبات',
+  'emod_restaurantTables_desc': 'تخطيط وحالة الطاولات',
+  'emod_restaurantOrders_desc': 'إدارة الطلبات',
+  'emod_kitchenDisplay_desc': 'عرض طلبات المطبخ',
+  'emod_menuManagement_desc': 'بناء القائمة',
+  'emod_ingredients_desc': 'تتبع المكونات',
+  'emod_manufacturing_desc': 'إدارة الإنتاج',
+  'emod_bom_desc': 'قائمة المواد',
+  'emod_productionOrders_desc': 'تتبع أوامر الإنتاج',
+  'emod_delivery_desc': 'إدارة التوصيل',
+  'emod_fleet_desc': 'إدارة أسطول المركبات',
   'emod_branches_desc': 'عمليات الفروع المتعددة',
 
   // ── Categories ────────────────────────────────────────────
@@ -1406,7 +1502,8 @@ const Map<String, String> arStrings = {
   'mvis_advancedOnly': 'متقدم فقط', 'mvis_hiddenUnlessEnabled': 'عند الطلب',
 
   // ── Blueprint Sources ─────────────────────────────────────
-  'msrc_aiRecommended': 'موصى به من الذكاء الاصطناعي', 'msrc_ownerSelected': 'اختيار المالك',
+  'msrc_aiRecommended': 'موصى به من الذكاء الاصطناعي',
+  'msrc_ownerSelected': 'اختيار المالك',
   'msrc_systemRequired': 'مطلوب من النظام', 'msrc_dependency': 'تبعية',
   'msrc_manuallyDisabled': 'معطل يدوياً',
 
@@ -1429,7 +1526,8 @@ const Map<String, String> arStrings = {
   'ws_setup_modules_count': '{count} وحدة مفعّلة',
   'ws_setup_mode_basic': 'الوضع الأساسي',
   'ws_setup_mode_advanced': 'الوضع المتقدم',
-  'ws_setup_ai_pending': 'تكامل المخطط الذكي قيد الإعداد — يتم استخدام الملف التجريبي',
+  'ws_setup_ai_pending':
+      'تكامل المخطط الذكي قيد الإعداد — يتم استخدام الملف التجريبي',
 
   // ── Workspace Branding Card ────────────────────────────────
   'ws_brand_default_name': 'مساحة عمل SmartBiz',
@@ -1497,11 +1595,14 @@ const Map<String, String> arStrings = {
   'gps_empty_title': 'لا شيء هنا بعد',
   'gps_empty_message': 'هذا القسم فارغ. سيظهر المحتوى عند توفر البيانات.',
   'gps_disabled_title': 'الوحدة معطّلة',
-  'gps_disabled_message': 'هذه الوحدة غير مفعّلة في مساحة عملك. تواصل مع المسؤول.',
+  'gps_disabled_message':
+      'هذه الوحدة غير مفعّلة في مساحة عملك. تواصل مع المسؤول.',
   'gps_coming_soon_title': 'قريباً',
-  'gps_coming_soon_message': 'هذه الميزة قيد التطوير وستكون متاحة في تحديث قادم.',
+  'gps_coming_soon_message':
+      'هذه الميزة قيد التطوير وستكون متاحة في تحديث قادم.',
   'gps_no_permission_title': 'الوصول مقيّد',
-  'gps_no_permission_message': 'ليس لديك صلاحية لعرض هذه الصفحة. تواصل مع المسؤول.',
+  'gps_no_permission_message':
+      'ليس لديك صلاحية لعرض هذه الصفحة. تواصل مع المسؤول.',
   'gps_not_found_title': 'الصفحة غير موجودة',
   'gps_not_found_message': 'الصفحة التي تبحث عنها غير موجودة أو تم نقلها.',
 
@@ -1709,7 +1810,8 @@ const Map<String, String> arStrings = {
 
   // ── Plans Screen ───────────────────────────────────────
   'sap_title': 'الباقات والاشتراكات',
-  'sap_subtitle': 'إدارة مستويات الباقات والتسعير والحدود واشتراكات المستأجرين.',
+  'sap_subtitle':
+      'إدارة مستويات الباقات والتسعير والحدود واشتراكات المستأجرين.',
   'sap_total_plans': 'إجمالي الباقات',
   'sap_active_subs': 'اشتراكات نشطة',
   'sap_trial_tenants': 'مستأجرون تجريبيون',
@@ -1814,7 +1916,8 @@ const Map<String, String> arStrings = {
 
   // ── Super Admin AI Usage ──────────────────────────────
   'sau_title': 'استخدام الذكاء الاصطناعي والفوترة',
-  'sau_subtitle': 'مراقبة استهلاك الذكاء الاصطناعي والفوترة عبر جميع مساحات العمل',
+  'sau_subtitle':
+      'مراقبة استهلاك الذكاء الاصطناعي والفوترة عبر جميع مساحات العمل',
   'sau_total_requests': 'إجمالي طلبات AI',
   'sau_credits_used': 'الرصيد المستخدم',
   'sau_active_ws': 'مساحات AI نشطة',
@@ -1893,7 +1996,8 @@ const Map<String, String> arStrings = {
   'mock_as_employee_sub': 'وصول محدود، دور ووحدات محددة',
   'mock_as_admin': 'متابعة كمسؤول المنصة',
   'mock_as_admin_sub': 'إدارة المنصة، المستأجرين، الباقات، الصحة',
-  'mock_session_note': 'جلسة تجريبية فقط — سيتم إضافة تسجيل الدخول والتسجيل لاحقاً.',
+  'mock_session_note':
+      'جلسة تجريبية فقط — سيتم إضافة تسجيل الدخول والتسجيل لاحقاً.',
 
   // ── Auth Screens ──────────────────────────────────────
   'auth_login_title': 'مرحباً بعودتك',
@@ -1919,10 +2023,12 @@ const Map<String, String> arStrings = {
   'auth_forgot_sub': 'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين',
   'auth_send_reset': 'إرسال رابط التعيين',
   'auth_reset_sent': 'تم إرسال رابط التعيين (تجريبي)',
-  'auth_reset_confirm': 'إذا كان هناك حساب بهذا البريد، فقد تم إرسال رابط إعادة التعيين.',
+  'auth_reset_confirm':
+      'إذا كان هناك حساب بهذا البريد، فقد تم إرسال رابط إعادة التعيين.',
   'auth_back_login': 'العودة لتسجيل الدخول',
   'auth_fields_required': 'يرجى إدخال البريد الإلكتروني وكلمة المرور.',
-  'auth_network_error': 'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.',
+  'auth_network_error':
+      'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.',
   'auth_unexpected_error': 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.',
 
   // ── Splash ────────────────────────────────────────────
@@ -2071,9 +2177,11 @@ const Map<String, String> arStrings = {
   'pip_customer_name_required': 'اسم العميل مطلوب.',
   'pip_dup_contact_visible': 'هذا العميل مسجل بالفعل.',
   'pip_dup_contact_use_existing': 'استخدام العميل الموجود',
-  'pip_dup_contact_outside_scope': 'هذا العميل مسجل بالفعل ومُعيّن لموظف آخر. تواصل مع مدير المبيعات.',
+  'pip_dup_contact_outside_scope':
+      'هذا العميل مسجل بالفعل ومُعيّن لموظف آخر. تواصل مع مدير المبيعات.',
   'pip_dup_deal_visible': 'يوجد بالفعل صفقة مفتوحة لهذا العميل في خط المبيعات.',
-  'pip_dup_deal_outside_scope': 'يوجد لهذا العميل صفقة مفتوحة يديرها موظف آخر. تواصل مع مدير المبيعات.',
+  'pip_dup_deal_outside_scope':
+      'يوجد لهذا العميل صفقة مفتوحة يديرها موظف آخر. تواصل مع مدير المبيعات.',
 
   // ── Step 53 Document Checklists ────────────────────────
   'doc_checklists': 'قوائم المستندات',
@@ -2155,16 +2263,19 @@ const Map<String, String> arStrings = {
   'comm_plan_deleted': 'تم إلغاء تفعيل الخطة.',
   'comm_plan_activated': 'تم تفعيل الخطة.',
   'comm_plan_deactivated': 'تم إلغاء تفعيل الخطة.',
-  'comm_delete_plan_confirm': 'سيتم إلغاء تفعيل الخطة. سجلات العمولات الحالية لن تتأثر.',
+  'comm_delete_plan_confirm':
+      'سيتم إلغاء تفعيل الخطة. سجلات العمولات الحالية لن تتأثر.',
   'comm_edit_rule': 'تعديل القاعدة',
   'comm_delete_rule': 'حذف القاعدة',
   'comm_activate_rule': 'تفعيل القاعدة',
   'comm_deactivate_rule': 'إلغاء تفعيل القاعدة',
-  'comm_rule_updated': 'تم تحديث القاعدة. السجلات الحالية تحتفظ بقيمها الأصلية.',
+  'comm_rule_updated':
+      'تم تحديث القاعدة. السجلات الحالية تحتفظ بقيمها الأصلية.',
   'comm_rule_deleted': 'تم إلغاء تفعيل القاعدة.',
   'comm_rule_activated': 'تم تفعيل القاعدة.',
   'comm_rule_deactivated': 'تم إلغاء تفعيل القاعدة.',
-  'comm_delete_rule_confirm': 'سيتم إلغاء تفعيل القاعدة. سجلات العمولات الحالية لن تتأثر.',
+  'comm_delete_rule_confirm':
+      'سيتم إلغاء تفعيل القاعدة. سجلات العمولات الحالية لن تتأثر.',
   'comm_min_value': 'الحد الأدنى لقيمة السجل',
   'comm_max_value': 'الحد الأقصى لقيمة السجل',
   'comm_no_rules': 'لا توجد قواعد لهذه الخطة',
@@ -2177,6 +2288,9 @@ const Map<String, String> arStrings = {
   'comm_loading_stages': 'جارٍ تحميل المراحل…',
   'comm_pipeline_required': 'المسار مطلوب.',
   'comm_stage_required': 'مرحلة التنفيذ مطلوبة.',
+  'comm_workflow_pending': 'بانتظار سير عمل الموافقة',
+  'comm_workflow_pending_hint':
+      'هذه العمولة بانتظار الموافقة عبر سير العمل المُهيّأ. عرضها في صندوق الموافقات.',
   'all': 'الكل',
 
   // ── Step 55 Duplicate / Ownership ─────────────────────
@@ -2387,8 +2501,10 @@ const Map<String, String> arStrings = {
   'ai_usage_by_operation': 'الاستخدام حسب العملية',
   'ai_recent_errors': 'أحدث الأخطاء',
   'ai_no_usage_yet': 'لا يوجد استخدام AI بعد. سيظهر هنا بعد أول استخدام.',
-  'ai_no_business_data_yet': 'المساعد الذكي متاح حالياً للأسئلة العامة. ربط بيانات الأعمال (مالية، مبيعات، مخزون) سيأتي في تحديث قادم.',
-  'ai_step_59_1_note': 'Step 59.1 — أساسيات AI. البيانات تعكس الاستخدام الفعلي.',
+  'ai_no_business_data_yet':
+      'المساعد الذكي متاح حالياً للأسئلة العامة. ربط بيانات الأعمال (مالية، مبيعات، مخزون) سيأتي في تحديث قادم.',
+  'ai_step_59_1_note':
+      'Step 59.1 — أساسيات AI. البيانات تعكس الاستخدام الفعلي.',
   'ai_new_chat': 'محادثة جديدة',
 
   // ── Approval Engine ───────────────────────────────────
@@ -2412,6 +2528,37 @@ const Map<String, String> arStrings = {
   'approval_steps': 'خطوات الموافقة',
   'approval_audit_trail': 'سجل المراجعة',
   'approval_no_permission': 'ليس لديك صلاحية لعرض الموافقات.',
+  'approval_rejection_reason': 'سبب الرفض',
+  'approval_rejection_reason_hint': 'اشرح سبب رفض هذا الطلب',
+  'approval_rejection_reason_required': 'سبب الرفض مطلوب.',
+
+  // تسميات تفاصيل الطلب
+  'approval_label_entity': 'الكيان',
+  'approval_label_requester': 'مقدم الطلب',
+  'approval_label_submitted': 'تاريخ التقديم',
+
+  // تسميات أنواع الكيانات
+  'approval_entity_commission_entry': 'قيد عمولة',
+  'approval_entity_invoice': 'فاتورة',
+  'approval_entity_expense': 'مصروف',
+  'approval_entity_purchase_order': 'أمر شراء',
+
+  // خطوة في المسار
+  'approval_step_fallback': 'خطوة',
+  'approval_awaiting_decision': 'بانتظار القرار',
+  'approval_step_approved_by': 'وافق عليها',
+  'approval_step_rejected_by': 'رفضها',
+  'approval_step_skipped': 'تم تخطيها',
+
+  // سجل القرارات
+  'approval_decision_approved': 'تمت الموافقة',
+  'approval_decision_rejected': 'تم الرفض',
+
+  // تسمية التقدم
+  'approval_progress_rejected_at': 'رُفض عند الخطوة',
+  'approval_progress_of': 'من',
+  'approval_item_label': 'العنصر',
+  'approval_reason_label': 'السبب',
 
   // ── إدارة سير عمل الموافقات ──────────────────────────
   'approval_workflows': 'سير عمل الموافقات',
@@ -2430,6 +2577,56 @@ const Map<String, String> arStrings = {
   'approval_approver_type': 'نوع المعتمد',
   'approval_permission_key': 'مفتاح الصلاحية',
   'approval_allow_self_approval': 'السماح بالاعتماد الذاتي',
+  'approval_trigger_conditions': 'شروط التفعيل',
+  'approval_trigger_logic': 'المنطق',
+  'approval_trigger_logic_and': 'يجب تطابق جميع الشروط (AND)',
+  'approval_trigger_logic_or': 'أي شرط يتطابق (OR)',
+  'approval_trigger_field': 'الحقل',
+  'approval_trigger_operator': 'العامل',
+  'approval_trigger_value': 'القيمة',
+  'approval_trigger_add_condition': 'إضافة شرط',
+  'approval_trigger_no_conditions':
+      'لا توجد شروط — سير العمل ينطبق على جميع الكيانات.',
+  'approval_trigger_op_equals': 'يساوي',
+  'approval_trigger_op_not_equals': 'لا يساوي',
+  'approval_trigger_op_greater_than': 'أكبر من',
+  'approval_trigger_op_greater_than_or_equal': 'أكبر من أو يساوي',
+  'approval_trigger_op_less_than': 'أقل من',
+  'approval_trigger_op_less_than_or_equal': 'أقل من أو يساوي',
+  'approval_trigger_op_contains': 'يحتوي',
+  'approval_trigger_op_in': 'ضمن قائمة',
+  'approval_trigger_op_not_in': 'ليس ضمن قائمة',
+  'approval_trigger_op_exists': 'موجود',
+  'approval_trigger_summary': 'ينطبق عندما',
+  'approval_type_permission': 'بناءً على الصلاحية',
+  'approval_type_requester_manager': 'مدير مقدم الطلب',
+  'approval_type_specific_member': 'عضو محدد',
+  'approval_select_member': 'اختر العضو',
+  'approval_member_id': 'العضو',
+  'approval_permission_approver_hint':
+      'يتم عرض الصلاحيات القادرة على اتخاذ القرار فقط.',
+  'approval_no_members': 'لا يوجد أعضاء نشطون في مساحة العمل هذه.',
+  'approval_no_permissions': 'لا توجد صلاحيات مؤهلة للاعتماد.',
+  'approval_selector_error': 'فشل تحميل البيانات. يرجى المحاولة مرة أخرى.',
+  'approval_unknown_member': 'عضو غير معروف',
+  'approval_select_permission': 'الصلاحية المطلوبة',
+  'approval_permission_unavailable': 'صلاحية غير متوفرة',
+  'approval_permission_no_longer_selectable': '(لم تعد قابلة للاختيار)',
+  'approval_field_unavailable': 'حقل غير متاح',
+  'approval_schema_load_error': 'تعذر تحميل كتالوج الحقول. الشروط غير متاحة.',
+  'approval_trigger_invalid_number': 'أدخل رقمًا صالحًا.',
+  'approval_entity_type_loading': 'جارٍ تحميل أنواع الكيانات…',
+  'approval_entity_type_error': 'تعذر تحميل أنواع الكيانات.',
+  'approval_entity_type_empty': 'لا توجد أنواع كيانات متاحة لمساحة العمل هذه.',
+  'approval_entity_type_unavailable': 'نوع كيان غير متاح',
+  'approval_entity_type_select': 'اختر نوع الكيان',
+  'approval_entity_type_change_confirm':
+      'تغيير نوع الكيان سيمسح الشروط الحالية. هل تريد المتابعة؟',
+  'approval_trigger_op_unknown': 'عامل لم يعد متاحاً',
+  'approval_entity_loading': 'جارٍ تحميل نوع الكيان…',
+  'approval_field_loading': 'جارٍ تحميل حقول الشروط…',
+  'approval_metadata_error': 'تعذر تحميل بيانات سير العمل',
+  'approval_metadata_retry': 'إعادة المحاولة',
   'confirm_delete': 'تأكيد الحذف',
 
   // ── تسميات عامة ────────────────────────────────────
@@ -2444,4 +2641,3 @@ const Map<String, String> arStrings = {
   'emod_approvals': 'الموافقات',
   'emod_approvals_desc': 'سير عمل الموافقات متعدد الخطوات للكيانات التجارية.',
 };
-

@@ -51,6 +51,7 @@ import 'features/platform/platform_state.dart';
 import 'features/ai/ai_state.dart';
 import 'core/api/approval_service.dart';
 import 'features/approvals/approval_state.dart';
+import 'features/approvals/entity_field_catalog_state.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,23 +70,27 @@ class SmartBizApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ShellState()),
         ChangeNotifierProvider(create: (_) => OnboardingState()),
         ChangeNotifierProxyProvider<AppState, AiChatState>(
-          create: (ctx) => AiChatState(AiService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              AiChatState(AiService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
         ),
         // Heavy feature providers — lazy: created on first access only
         ChangeNotifierProvider(create: (_) => AdvisorState(), lazy: true),
         ChangeNotifierProxyProvider<AppState, InvoicesState>(
-          create: (ctx) => InvoicesState(InvoiceService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              InvoicesState(InvoiceService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, ProductsState>(
-          create: (ctx) => ProductsState(ProductService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              ProductsState(ProductService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, FinanceState>(
-          create: (ctx) => FinanceState(FinanceService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              FinanceState(FinanceService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
@@ -97,75 +102,108 @@ class SmartBizApp extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, CustomersState>(
-          create: (ctx) => CustomersState(ContactService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              CustomersState(ContactService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, InventoryState>(
           create: (ctx) {
             final client = ctx.read<AppState>().apiClient;
-            return InventoryState(WarehouseService(client), InventoryService(client));
+            return InventoryState(
+              WarehouseService(client),
+              InventoryService(client),
+            );
           },
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, PaymentsState>(
-          create: (ctx) => PaymentsState(PaymentService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              PaymentsState(PaymentService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProvider(create: (_) => RolesState(), lazy: true),
         ChangeNotifierProvider(create: (_) => OrgState(), lazy: true),
         ChangeNotifierProxyProvider<AppState, RolePermissionState>(
-          create: (ctx) => RolePermissionState(RolePermissionService(ctx.read<AppState>().apiClient)),
+          create: (ctx) => RolePermissionState(
+            RolePermissionService(ctx.read<AppState>().apiClient),
+          ),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, OrgStructureState>(
-          create: (ctx) => OrgStructureState(OrgService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              OrgStructureState(OrgService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, PipelineState>(
-          create: (ctx) => PipelineState(PipelineService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              PipelineState(PipelineService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, DocumentState>(
-          create: (ctx) => DocumentState(DocumentService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              DocumentState(DocumentService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, CommissionState>(
-          create: (ctx) => CommissionState(CommissionService(ctx.read<AppState>().apiClient)),
+          create: (ctx) => CommissionState(
+            CommissionService(ctx.read<AppState>().apiClient),
+          ),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, ApprovalState>(
-          create: (ctx) => ApprovalState(ApprovalService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              ApprovalState(ApprovalService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider<AppState, EntityFieldCatalogState>(
+          create: (ctx) => EntityFieldCatalogState(
+            ApprovalService(ctx.read<AppState>().apiClient),
+          ),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, OwnershipState>(
-          create: (ctx) => OwnershipState(OwnershipService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              OwnershipState(OwnershipService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, DuplicateState>(
-          create: (ctx) => DuplicateState(DuplicateService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              DuplicateState(DuplicateService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
         ChangeNotifierProxyProvider<AppState, ReportState>(
-          create: (ctx) => ReportState(ReportService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              ReportState(ReportService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
-        ChangeNotifierProvider(create: (_) => DynamicDashboardState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => WorkspaceModuleState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => BlueprintNavigationController(), lazy: true),
+        ChangeNotifierProvider(
+          create: (_) => DynamicDashboardState(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WorkspaceModuleState(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => BlueprintNavigationController(),
+          lazy: true,
+        ),
         ChangeNotifierProxyProvider<AppState, PlatformState>(
-          create: (ctx) => PlatformState(PlatformService(ctx.read<AppState>().apiClient)),
+          create: (ctx) =>
+              PlatformState(PlatformService(ctx.read<AppState>().apiClient)),
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
@@ -176,28 +214,35 @@ class SmartBizApp extends StatelessWidget {
         ),
       ],
       // Only rebuild the MaterialApp when locale or onboarding changes
-      child: Selector<AppState, ({AppLanguage lang, Locale locale, bool onboarded})>(
-        selector: (_, s) => (lang: s.uiLanguage, locale: s.locale, onboarded: s.isOnboardingCompleted),
-        builder: (context, sel, _) {
-          return AppLocaleProvider(
-            language: sel.lang,
-            child: MaterialApp.router(
-              title: 'SmartBiz AI',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light,
-              locale: sel.locale,
-              supportedLocales: AppLanguage.values.map((l) => l.locale),
-              localizationsDelegates: const [
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              routerConfig: buildAppRouter(context.read<AppState>()),
+      child:
+          Selector<
+            AppState,
+            ({AppLanguage lang, Locale locale, bool onboarded})
+          >(
+            selector: (_, s) => (
+              lang: s.uiLanguage,
+              locale: s.locale,
+              onboarded: s.isOnboardingCompleted,
             ),
-          );
-        },
-      ),
+            builder: (context, sel, _) {
+              return AppLocaleProvider(
+                language: sel.lang,
+                child: MaterialApp.router(
+                  title: 'SmartBiz AI',
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.light,
+                  locale: sel.locale,
+                  supportedLocales: AppLanguage.values.map((l) => l.locale),
+                  localizationsDelegates: const [
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  routerConfig: buildAppRouter(context.read<AppState>()),
+                ),
+              );
+            },
+          ),
     );
   }
 }
-

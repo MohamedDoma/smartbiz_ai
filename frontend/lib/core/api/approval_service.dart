@@ -1,6 +1,8 @@
 // SmartBiz AI — Approval Engine API service.
 import '../api/api_client.dart';
+import '../api/api_exceptions.dart';
 import '../api/approval_models.dart';
+import '../api/entity_field_catalog_models.dart';
 
 class ApprovalService {
   final ApiClient _c;
@@ -138,4 +140,55 @@ class ApprovalService {
 
   Future<void> deleteStep(String stepId) async =>
       await _c.delete('/approval-workflow-steps/$stepId');
+
+  // ── Entity Field Catalog ───────────────────────────────
+
+  /// Fetch the list of registered entity types for the active workspace.
+  ///
+  /// Calls `GET /api/approval-entity-types`.
+  /// Returns entity type descriptors with localized labels and module keys.
+  /// Only entity types whose module is enabled in the workspace are returned.
+  Future<List<ApprovalEntityTypeDescriptor>> listEntityTypes() async {
+    final r = await _c.get('/approval-entity-types');
+    final data = r.data['data'];
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map(
+          (e) => ApprovalEntityTypeDescriptor.fromJson(
+            Map<String, dynamic>.from(e),
+          ),
+        )
+        .toList();
+  }
+
+  /// Fetch the full field schema for a specific entity type.
+  ///
+  /// Calls `GET /api/approval-entity-field-catalog?entity_type=<type>`.
+  /// Returns the entity metadata plus all condition fields with their
+  /// types, operators, and options.
+  ///
+  /// Error handling:
+  ///  - 404 (entity not registered / module disabled) → returns null.
+  ///  - 422 (missing param — should not happen) → returns null.
+  ///  - Network/500/auth errors → rethrows so state can show Error + Retry.
+  Future<EntityFieldSchema?> getEntityFieldSchema(String entityType) async {
+    try {
+      final r = await _c.get(
+        '/approval-entity-field-catalog',
+        queryParameters: {'entity_type': entityType},
+      );
+      final data = r.data['data'];
+      if (data is! Map) return null;
+      return EntityFieldSchema.fromJson(Map<String, dynamic>.from(data));
+    } on ApiException catch (e) {
+      // 404 = entity type not available; 422 = missing param.
+      // Both are expected "unavailable" states — return null.
+      if (e.statusCode == 404 || e.statusCode == 422) return null;
+      // All other API errors (500, 401, etc.) must propagate.
+      rethrow;
+    }
+    // NetworkException, AuthException, etc. propagate automatically
+    // because they extend ApiException but have statusCode != 404/422.
+  }
 }

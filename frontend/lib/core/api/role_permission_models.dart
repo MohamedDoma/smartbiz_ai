@@ -6,13 +6,41 @@ class PermissionItem {
   final String label;
   final String description;
 
-  const PermissionItem({required this.key, required this.label, this.description = ''});
+  /// Whether this permission is eligible as a workflow approver key.
+  /// Only permissions flagged `usable_as_approver: true` in the backend
+  /// catalog should appear in the approval-step permission selector.
+  final bool usableAsApprover;
+
+  /// Optional locale-specific labels returned by the backend catalog
+  /// for permissions that appear in user-facing workflow UIs.
+  final String? labelEn;
+  final String? labelAr;
+
+  const PermissionItem({
+    required this.key,
+    required this.label,
+    this.description = '',
+    this.usableAsApprover = false,
+    this.labelEn,
+    this.labelAr,
+  });
 
   factory PermissionItem.fromJson(Map<String, dynamic> json) => PermissionItem(
         key: json['key'] as String? ?? '',
         label: json['label'] as String? ?? '',
         description: json['description'] as String? ?? '',
+        usableAsApprover: json['usable_as_approver'] as bool? ?? false,
+        labelEn: json['label_en'] as String?,
+        labelAr: json['label_ar'] as String?,
       );
+
+  /// Returns the best label for the given language code ('en' or 'ar'),
+  /// falling back to the default [label] field.
+  String localizedLabel(String langCode) {
+    if (langCode == 'ar') return labelAr ?? label;
+    if (langCode == 'en') return labelEn ?? label;
+    return label;
+  }
 }
 
 /// A category group of permissions.

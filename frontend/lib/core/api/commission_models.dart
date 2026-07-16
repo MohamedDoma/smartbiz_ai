@@ -256,10 +256,16 @@ class CommissionEntry {
   final double? percentageRate;
   final double? fixedAmount;
   final String status;
+  /// Non-null when a workflow governs this entry's approval lifecycle.
+  /// Value: 'workflow_pending' when an approval request is active.
+  final String? approvalStatus;
   final String? calculatedAt;
   final String? approvedAt;
   final String? paidAt;
   final String? notes;
+
+  /// Whether this entry is blocked by an active approval workflow.
+  bool get isWorkflowPending => approvalStatus == 'workflow_pending';
 
   const CommissionEntry({
     required this.id,
@@ -279,6 +285,7 @@ class CommissionEntry {
     this.percentageRate,
     this.fixedAmount,
     this.status = 'pending',
+    this.approvalStatus,
     this.calculatedAt,
     this.approvedAt,
     this.paidAt,
@@ -303,6 +310,7 @@ class CommissionEntry {
         percentageRate: parseJsonDouble(j['percentage_rate']),
         fixedAmount: parseJsonDouble(j['fixed_amount']),
         status: j['status'] as String? ?? 'pending',
+        approvalStatus: j['approval_status'] as String?,
         calculatedAt: j['calculated_at'] as String?,
         approvedAt: j['approved_at'] as String?,
         paidAt: j['paid_at'] as String?,

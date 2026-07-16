@@ -7,6 +7,7 @@ import '../../employees/models/role_models.dart';
 import '../../employees/org_state.dart';
 import '../../employees/roles_state.dart';
 import '../../../core/state/app_state.dart';
+// erp_module_registry import removed — adapter must not mock modules from registry.
 import '../models/dashboard_config_models.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -93,7 +94,7 @@ class DashboardContextAdapter {
     );
 
     // ── 6. Enabled modules ───────────────────────────────
-    final enabledModules = _resolveEnabledModules();
+    final enabledModules = _resolveEnabledModules(appState);
 
     // ── 7. Role display name ─────────────────────────────
     final roleName = rolesMap[primaryRoleId]?.name ?? orgState.roleLabel(primaryRoleId);
@@ -192,15 +193,27 @@ class DashboardContextAdapter {
   };
 
   // ═══════════════════════════════════════════════════════════
-  //  Enabled modules (mock — all enabled for now)
+  //  Enabled modules — derived from active workspace session
   // ═══════════════════════════════════════════════════════════
 
   /// Returns the set of currently enabled workspace modules.
-  /// In future, this reads from workspace blueprint/settings.
-  static Set<String> _resolveEnabledModules() => const {
-    'dashboard', 'aiChat', 'aiAdvisor',
-    'customers', 'invoices', 'products', 'inventory',
-    'accounting', 'reports', 'employees', 'roles',
-    'settings', 'billing',
-  };
+  ///
+  /// Uses only the backend session's activeWorkspace.enabledModules.
+  /// Returns an empty set when the session hasn't loaded yet (cold
+  /// start / F5 refresh). The DashboardCoordinator overrides this
+  /// with WorkspaceModuleState as the authoritative source once
+  /// the module state has been initialized.
+  static Set<String> _resolveEnabledModules(AppState appState) {
+    final session = appState.lastSession;
+    final backendModules = session?.activeWorkspace?.enabledModules;
+
+    if (backendModules == null || backendModules.isEmpty) {
+      // Session not yet available — return empty set.
+      // DashboardCoordinator will reconcile once WorkspaceModuleState loads.
+      return const {};
+    }
+
+    return Set<String>.from(backendModules);
+  }
 }
+

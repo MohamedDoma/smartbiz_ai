@@ -345,6 +345,7 @@ class ErpModuleRegistry {
       navIds: ['commissions'],
       perms: {
         'commissions.list',
+        'commissions.view_own',
         'commissions.view_all',
         'commissions.view_team',
         'commissions.calculate',
@@ -354,11 +355,7 @@ class ErpModuleRegistry {
         'commissions.settings.view',
         'commissions.settings.manage',
       },
-      navPerms: {
-        'commissions.list',
-        'commissions.view_team',
-        'commissions.view_all',
-      },
+      navPerms: {'commissions.list'},
       optDeps: {ErpModuleId.pipelines},
     ),
 
@@ -749,10 +746,7 @@ class ErpModuleRegistry {
         'approvals.cancel',
       },
       navPerms: {'approvals.list'},
-      dashTpls: {
-        DashboardTemplate.executive,
-        DashboardTemplate.operations,
-      },
+      dashTpls: {DashboardTemplate.executive, DashboardTemplate.operations},
       wIds: {'w_approval_pending'},
     ),
 

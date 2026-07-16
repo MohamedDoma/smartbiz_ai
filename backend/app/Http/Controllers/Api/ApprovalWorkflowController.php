@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalWorkflow;
 use App\Models\ApprovalWorkflowStep;
 use App\Models\WorkspaceMembership;
+use App\Services\PermissionCatalog;
 use App\Services\PermissionResolver;
+use App\Services\TriggerConditionValidator;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * ApprovalWorkflowController — CRUD for approval workflow definitions.
@@ -23,6 +26,7 @@ class ApprovalWorkflowController extends Controller
     public function __construct(
         private readonly WorkspaceContextManager $ctx,
         private readonly PermissionResolver $resolver,
+        private readonly TriggerConditionValidator $conditionValidator,
     ) {}
 
     /**
@@ -68,7 +72,11 @@ class ApprovalWorkflowController extends Controller
     /**
      * Create a new workflow with optional steps.
      *
-     * Body: { workflow_key, name, description?, entity_type, trigger_conditions?, steps[]? }
+     * Body: { name, description?, entity_type, trigger_conditions?, steps[]?, workflow_key? }
+     *
+     * workflow_key is optional.  When omitted the server generates a stable
+     * opaque key in the format `wf_<ULID>`.  Technical callers (seeders,
+     * tests) may still supply an explicit key.
      */
     public function store(Request $request): JsonResponse
     {
@@ -76,7 +84,7 @@ class ApprovalWorkflowController extends Controller
         $this->requirePermission($membership, 'approvals.manage');
 
         $request->validate([
-            'workflow_key'       => 'required|string|max:100',
+            'workflow_key'       => 'nullable|string|max:100',
             'name'               => 'required|string|max:255',
             'description'        => 'nullable|string',
             'entity_type'        => 'required|string|max:100',
@@ -90,23 +98,54 @@ class ApprovalWorkflowController extends Controller
             'steps.*.conditions'             => 'nullable|array',
         ]);
 
+        // Auto-generate workflow_key when not provided.
+        $workflowKey = $request->input('workflow_key');
+        if (empty($workflowKey) || trim($workflowKey) === '') {
+            $workflowKey = 'wf_' . Str::ulid();
+        }
+
+        // Validate trigger_conditions structure
+        $triggerConditions = $request->input('trigger_conditions');
+        $conditionErrors = $this->conditionValidator->validate($triggerConditions);
+        if ($conditionErrors) {
+            return response()->json([
+                'message' => 'Invalid trigger conditions.',
+                'errors'  => ['trigger_conditions' => $conditionErrors],
+            ], 422);
+        }
+
         $wsId = $this->ctx->workspaceId();
 
         // Check uniqueness of workflow_key per workspace
         $exists = ApprovalWorkflow::where('workspace_id', $wsId)
-            ->where('workflow_key', $request->input('workflow_key'))
+            ->where('workflow_key', $workflowKey)
             ->exists();
 
         if ($exists) {
             return response()->json([
-                'message' => "A workflow with key '{$request->input('workflow_key')}' already exists in this workspace.",
+                'message' => "A workflow with this key already exists in this workspace.",
             ], 409);
         }
 
-        $workflow = DB::transaction(function () use ($request, $wsId, $membership) {
+        // Validate inline steps' approver constraints
+        $steps = $request->input('steps', []);
+        foreach ($steps as $i => $stepData) {
+            $validationError = $this->validateApproverConstraints(
+                $stepData['approver_type'] ?? '',
+                $stepData['approver_permission_key'] ?? null,
+                $stepData['approver_membership_id'] ?? null,
+                $wsId,
+                "steps.$i",
+            );
+            if ($validationError) {
+                return $validationError;
+            }
+        }
+
+        $workflow = DB::transaction(function () use ($request, $wsId, $membership, $steps, $workflowKey) {
             $workflow = ApprovalWorkflow::create([
                 'workspace_id'       => $wsId,
-                'workflow_key'       => $request->input('workflow_key'),
+                'workflow_key'       => $workflowKey,
                 'name'               => $request->input('name'),
                 'description'        => $request->input('description'),
                 'entity_type'        => $request->input('entity_type'),
@@ -117,7 +156,6 @@ class ApprovalWorkflowController extends Controller
             ]);
 
             // Create steps if provided
-            $steps = $request->input('steps', []);
             foreach ($steps as $i => $stepData) {
                 ApprovalWorkflowStep::create([
                     'workspace_id'            => $wsId,
@@ -154,6 +192,26 @@ class ApprovalWorkflowController extends Controller
             'is_active'          => 'nullable|boolean',
             'sort_order'         => 'nullable|integer',
         ]);
+
+        // Validate trigger_conditions structure if provided
+        if ($request->has('trigger_conditions')) {
+            // Explicit null is not allowed — the DB column is NOT NULL.
+            // The store() endpoint defaults to []; on update, omit the key to preserve existing.
+            if ($request->input('trigger_conditions') === null) {
+                return response()->json([
+                    'message' => 'Invalid trigger conditions.',
+                    'errors'  => ['trigger_conditions' => ['trigger_conditions cannot be null. Send [] to clear, or omit the key to preserve existing conditions.']],
+                ], 422);
+            }
+
+            $conditionErrors = $this->conditionValidator->validate($request->input('trigger_conditions'));
+            if ($conditionErrors) {
+                return response()->json([
+                    'message' => 'Invalid trigger conditions.',
+                    'errors'  => ['trigger_conditions' => $conditionErrors],
+                ], 422);
+            }
+        }
 
         $workflow = ApprovalWorkflow::where('workspace_id', $this->ctx->workspaceId())
             ->findOrFail($id);
@@ -206,6 +264,17 @@ class ApprovalWorkflowController extends Controller
             'conditions'              => 'nullable|array',
         ]);
 
+        // Validate approver constraints
+        $validationError = $this->validateApproverConstraints(
+            $request->input('approver_type'),
+            $request->input('approver_permission_key'),
+            $request->input('approver_membership_id'),
+            $wsId,
+        );
+        if ($validationError) {
+            return $validationError;
+        }
+
         // Auto-assign step_order as max + 1
         $maxOrder = ApprovalWorkflowStep::where('workflow_id', $workflowId)->max('step_order') ?? 0;
 
@@ -246,6 +315,25 @@ class ApprovalWorkflowController extends Controller
             'conditions'              => 'nullable|array',
             'is_active'               => 'nullable|boolean',
         ]);
+
+        // Validate approver constraints when type or key/member changes
+        $effectiveType = $request->input('approver_type', $step->approver_type);
+        $effectiveKey  = $request->has('approver_permission_key')
+            ? $request->input('approver_permission_key')
+            : $step->approver_permission_key;
+        $effectiveMid  = $request->has('approver_membership_id')
+            ? $request->input('approver_membership_id')
+            : $step->approver_membership_id;
+
+        $validationError = $this->validateApproverConstraints(
+            $effectiveType,
+            $effectiveKey,
+            $effectiveMid,
+            $this->ctx->workspaceId(),
+        );
+        if ($validationError) {
+            return $validationError;
+        }
 
         $step->update($request->only([
             'name', 'step_order', 'approver_type', 'approver_permission_key',
@@ -309,6 +397,65 @@ class ApprovalWorkflowController extends Controller
             'created_at'              => $s->created_at?->toIso8601String(),
             'updated_at'              => $s->updated_at?->toIso8601String(),
         ];
+    }
+
+    // ── Approver constraint validation ──────────────────────────
+
+    /**
+     * Validate that the approver constraints are satisfied:
+     * - permission type → key must be in the approver-eligible subset.
+     * - specific_membership type → membership must exist in the workspace.
+     *
+     * Returns null on success, or a 422 JsonResponse on failure.
+     */
+    private function validateApproverConstraints(
+        string $approverType,
+        ?string $permissionKey,
+        ?string $membershipId,
+        string $workspaceId,
+        ?string $fieldPrefix = null,
+    ): ?JsonResponse {
+        $prefix = $fieldPrefix ? "{$fieldPrefix}." : '';
+
+        if ($approverType === 'permission') {
+            if (empty($permissionKey)) {
+                return response()->json([
+                    'message' => 'A permission key is required when approver type is permission.',
+                    'errors'  => ["{$prefix}approver_permission_key" => ['Permission key is required.']],
+                ], 422);
+            }
+
+            $eligible = PermissionCatalog::approverKeys();
+            if (! in_array($permissionKey, $eligible, true)) {
+                return response()->json([
+                    'message' => "The permission '{$permissionKey}' is not eligible as an approver permission.",
+                    'errors'  => ["{$prefix}approver_permission_key" => ["'{$permissionKey}' is not eligible for approval steps."]],
+                ], 422);
+            }
+        }
+
+        if ($approverType === 'specific_membership') {
+            if (empty($membershipId)) {
+                return response()->json([
+                    'message' => 'A membership ID is required when approver type is specific_membership.',
+                    'errors'  => ["{$prefix}approver_membership_id" => ['Membership ID is required.']],
+                ], 422);
+            }
+
+            $exists = WorkspaceMembership::where('workspace_id', $workspaceId)
+                ->where('id', $membershipId)
+                ->where('status', 'active')
+                ->exists();
+
+            if (! $exists) {
+                return response()->json([
+                    'message' => 'The specified member does not exist or is not active in this workspace.',
+                    'errors'  => ["{$prefix}approver_membership_id" => ['Member not found or inactive.']],
+                ], 422);
+            }
+        }
+
+        return null;
     }
 
     // ── Permission helper ──────────────────────────────────────

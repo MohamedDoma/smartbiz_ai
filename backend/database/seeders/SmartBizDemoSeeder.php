@@ -5,6 +5,7 @@ use App\Models\BusinessTemplate;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceConfiguration;
 use App\Services\BusinessTemplateApplicationService;
 use App\Services\PermissionCatalog;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,29 @@ class SmartBizDemoSeeder
     const PW = 'SmartBiz@123456';
     const WS = 'dd000000-0000-0000-0000-000000000001';
     const CUR = 'SAR';
+
+    /**
+     * Canonical enabled-module keys for the demo workspace.
+     *
+     * Sourced from the automotive_dealer BusinessTemplate module list
+     * (see BusinessTemplateSeeder). This is the single source of truth
+     * for demo workspace module enablement.
+     */
+    const DEMO_ENABLED_MODULES = [
+        'dashboard',
+        'customers',
+        'leads',
+        'vehicle_sales',
+        'spare_parts',
+        'inventory',
+        'invoices',
+        'payments',
+        'employees',
+        'reports',
+        'finance',
+        'commissions',
+        'ai',
+    ];
 
     private string $pw;
     private array $userIds = [];
@@ -56,6 +80,7 @@ class SmartBizDemoSeeder
         $this->seedFinance();
         $this->seedActivationCampaign();
         $this->applyTemplateToWorkspace();
+        $this->seedWorkspaceConfiguration();
         $this->enforceRolePermissions();
         return $this->summary();
     }
@@ -134,7 +159,7 @@ class SmartBizDemoSeeder
         $allPerms = PermissionCatalog::allKeys();
         $fin = ["accounting.view","invoices.list","invoices.show","invoices.create","invoices.update","payments.list","payments.show","payments.create","accounts.list","accounts.show","accounts.create","accounts.update","accounts.delete","journal_entries.list","journal_entries.show","journal_entries.create","journal_entries.update","recurring.list","recurring.show","recurring.create","recurring.update","recurring.delete","reports.view","notifications.list","notifications.update","commissions.list","commissions.view_all","commissions.calculate","commissions.approve","commissions.pay","commissions.cancel","commissions.settings.view","commissions.settings.manage"];
         $salesMgr = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","contacts.manage_team","contacts.assign","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipelines.manage","pipeline_records.create","pipeline_records.update","pipeline_records.delete","pipeline_records.own","pipeline_records.manage_team","pipeline_records.assign","commissions.list","commissions.view_team"];
-        $salesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list"];
+        $salesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list","commissions.view_own","approvals.request","approvals.list","approvals.show"];
         $wh = ["warehouses.list","warehouses.show","warehouses.create","warehouses.update","warehouses.delete","inventory.list","inventory.show","inventory.create","reservations.list","reservations.show","reservations.create","reservations.update","products.list","products.show","notifications.list","notifications.update"];
         $cashierP = ["pos.view","invoices.list","invoices.show","invoices.create","orders.list","orders.show","contacts.list","contacts.show","products.list","products.show","notifications.list","notifications.update"];
         $hrP = ["employees.list","departments.list","teams.list","notifications.list","notifications.update","audit.list"];
@@ -547,6 +572,41 @@ class SmartBizDemoSeeder
     }
 
     /**
+     * Create or merge the WorkspaceConfiguration for the demo workspace.
+     *
+     * Idempotent behavior:
+     *  - When no config exists: creates with canonical demo modules
+     *    and valid empty defaults for other configuration fields.
+     *  - When config already exists: merges missing canonical demo
+     *    modules into enabled_modules without removing existing ones,
+     *    and preserves all other configuration values untouched.
+     */
+    public function seedWorkspaceConfiguration(): void
+    {
+        $config = WorkspaceConfiguration::where('workspace_id', self::WS)->first();
+
+        if (! $config) {
+            WorkspaceConfiguration::create([
+                'workspace_id'    => self::WS,
+                'enabled_modules' => self::DEMO_ENABLED_MODULES,
+                'role_configs'    => [],
+                'pages'           => [],
+                'workflows'       => [],
+                'automations'     => [],
+            ]);
+            return;
+        }
+
+        // Merge: add missing canonical modules, preserve existing extras.
+        $existing = $config->enabled_modules ?? [];
+        $merged   = array_values(array_unique(array_merge($existing, self::DEMO_ENABLED_MODULES)));
+
+        if ($merged !== $existing) {
+            $config->update(['enabled_modules' => $merged]);
+        }
+    }
+
+    /**
      * Re-enforce the exact demo role permission arrays.
      *
      * The template application service merges template-role permissions into
@@ -558,7 +618,7 @@ class SmartBizDemoSeeder
     private function enforceRolePermissions(): void
     {
         $salesMgr = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","contacts.manage_team","contacts.assign","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipelines.manage","pipeline_records.create","pipeline_records.update","pipeline_records.delete","pipeline_records.own","pipeline_records.manage_team","pipeline_records.assign","commissions.list","commissions.view_team"];
-        $salesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list"];
+        $salesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.delete","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","invoices.update","orders.list","orders.show","orders.create","orders.update","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list","commissions.view_own","approvals.request","approvals.list","approvals.show"];
         $wh = ["warehouses.list","warehouses.show","warehouses.create","warehouses.update","warehouses.delete","inventory.list","inventory.show","inventory.create","reservations.list","reservations.show","reservations.create","reservations.update","products.list","products.show","notifications.list","notifications.update"];
         $cashierP = ["pos.view","invoices.list","invoices.show","invoices.create","orders.list","orders.show","contacts.list","contacts.show","products.list","products.show","notifications.list","notifications.update"];
         $hrP = ["employees.list","departments.list","teams.list","notifications.list","notifications.update","audit.list"];
@@ -567,7 +627,7 @@ class SmartBizDemoSeeder
 
         // Specialized sales agents (created by business template application):
         // Base = SALES_PERMS + pipeline perms + commissions.list
-        $specializedSalesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","orders.list","orders.show","orders.create","payments.list","payments.show","inventory.list","inventory.show","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list"];
+        $specializedSalesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","orders.list","orders.show","orders.create","payments.list","payments.show","inventory.list","inventory.show","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list","commissions.view_own","approvals.request","approvals.list","approvals.show"];
 
         // Only override roles that must NOT have finance permissions
         $overrides = [

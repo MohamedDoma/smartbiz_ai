@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
+use App\Models\CommissionEntry;
 use App\Models\WorkspaceMembership;
 use App\Services\ApprovalEngine;
 use App\Services\PermissionResolver;
@@ -52,8 +53,13 @@ class ApprovalController extends Controller
             // Use engine's pending-for-actor query
             $results = $this->engine->pendingForActor($wsId, $membership);
             return response()->json([
-                'data' => $results->map(fn ($r) => $this->fmt($r))->values()->toArray(),
+                'data' => $results->map(fn ($r) => $this->fmt($r, $membership))->values()->toArray(),
             ]);
+        }
+
+        // "all" scope requires approvals.manage — reject unauthorized access
+        if ($scope === 'all' && !$this->resolver->can($membership, 'approvals.manage')) {
+            abort(403, 'The "all" scope requires the approvals.manage permission.');
         }
 
         $q = ApprovalRequest::where('workspace_id', $wsId)
@@ -80,7 +86,7 @@ class ApprovalController extends Controller
         }
 
         return response()->json([
-            'data' => $q->get()->map(fn ($r) => $this->fmt($r))->toArray(),
+            'data' => $q->get()->map(fn ($r) => $this->fmt($r, $membership))->toArray(),
         ]);
     }
 
@@ -105,7 +111,7 @@ class ApprovalController extends Controller
             ])
             ->findOrFail($id);
 
-        return response()->json(['data' => $this->fmtDetailed($request)]);
+        return response()->json(['data' => $this->fmtDetailed($request, $membership)]);
     }
 
     /**
@@ -142,7 +148,7 @@ class ApprovalController extends Controller
                     'workflow:id,name,workflow_key,entity_type',
                     'requesterMembership.user:id,full_name',
                     'requestSteps',
-                ])),
+                ]), $membership),
             ], 201);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
@@ -161,9 +167,19 @@ class ApprovalController extends Controller
         $membership = $this->ctx->membership();
         $this->requirePermission($membership, 'approvals.decide');
 
-        $request->validate([
+        $rules = [
             'decision' => 'required|in:approved,rejected',
             'notes'    => 'nullable|string|max:2000',
+        ];
+
+        // Rejection requires a reason — prevent silent rejections
+        if ($request->input('decision') === 'rejected') {
+            $rules['notes'] = 'required|string|min:1|max:2000';
+        }
+
+        $request->validate($rules, [
+            'notes.required' => 'A rejection reason is required.',
+            'notes.min'      => 'A rejection reason is required.',
         ]);
 
         try {
@@ -181,7 +197,7 @@ class ApprovalController extends Controller
                     'requestSteps.workflowStep:id,name,step_order,approver_type,approver_permission_key',
                     'requestSteps.decidedByMembership.user:id,full_name',
                     'decisions.actorMembership.user:id,full_name',
-                ])),
+                ]), $membership),
             ]);
         } catch (\RuntimeException | \InvalidArgumentException $e) {
             $code = $e instanceof \InvalidArgumentException ? 422 : 409;
@@ -216,7 +232,7 @@ class ApprovalController extends Controller
                 $request->input('reason'),
             );
 
-            return response()->json(['data' => $this->fmt($approvalRequest)]);
+            return response()->json(['data' => $this->fmt($approvalRequest, $membership)]);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         }
@@ -238,14 +254,26 @@ class ApprovalController extends Controller
         );
 
         return response()->json([
-            'data' => $results->map(fn ($r) => $this->fmt($r))->values()->toArray(),
+            'data' => $results->map(fn ($r) => $this->fmt($r, $membership))->values()->toArray(),
         ]);
     }
 
     // ── Formatters ─────────────────────────────────────────────
 
-    private function fmt(ApprovalRequest $r): array
+    private function fmt(ApprovalRequest $r, ?WorkspaceMembership $actor = null): array
     {
+        // ── Capability flags (server-authoritative) ──────────────
+        $canDecide = false;
+        $canCancel = false;
+
+        if ($actor && $r->isPending()) {
+            $canDecide = $this->engine->canActorDecide($r, $actor);
+
+            $isRequester = $r->requester_membership_id === $actor->id;
+            $canManage   = $this->resolver->can($actor, 'approvals.manage');
+            $canCancel   = $isRequester || $canManage;
+        }
+
         return [
             'id'                       => $r->id,
             'workflow_id'              => $r->workflow_id,
@@ -258,6 +286,8 @@ class ApprovalController extends Controller
                 ] : null,
             'entity_type'              => $r->entity_type,
             'entity_id'                => $r->entity_id,
+            'subject_display_name'     => $this->resolveSubjectDisplayName($r),
+            'entity_snapshot'          => $r->entity_snapshot,
             'requester_membership_id'  => $r->requester_membership_id,
             'requester'                => $r->relationLoaded('requesterMembership') && $r->requesterMembership
                 ? [
@@ -272,14 +302,21 @@ class ApprovalController extends Controller
             'updated_at'               => $r->updated_at?->toIso8601String(),
             'steps_count'              => $r->relationLoaded('requestSteps') ? $r->requestSteps->count() : null,
             'completed_steps'          => $r->relationLoaded('requestSteps')
-                ? $r->requestSteps->whereIn('status', ['approved', 'rejected', 'skipped'])->count()
+                ? $r->requestSteps->where('status', 'approved')->count()
                 : null,
+            'rejected_at_step'         => $r->relationLoaded('requestSteps') && $r->status === 'rejected'
+                ? $r->requestSteps->where('status', 'rejected')->first()?->step_order
+                : null,
+            // ── Authorization capability flags ──────────────────
+            'can_view'                 => true,
+            'can_decide'               => $canDecide,
+            'can_cancel'               => $canCancel,
         ];
     }
 
-    private function fmtDetailed(ApprovalRequest $r): array
+    private function fmtDetailed(ApprovalRequest $r, ?WorkspaceMembership $actor = null): array
     {
-        $base = $this->fmt($r);
+        $base = $this->fmt($r, $actor);
 
         $base['entity_snapshot'] = $r->entity_snapshot;
         $base['metadata'] = $r->metadata;
@@ -329,6 +366,37 @@ class ApprovalController extends Controller
             : [];
 
         return $base;
+    }
+
+    // ── Subject display name resolver ──────────────────────────
+
+    /**
+     * Resolve a human-readable display name for the entity referenced
+     * by an approval request. Falls back gracefully to null.
+     */
+    private function resolveSubjectDisplayName(ApprovalRequest $r): ?string
+    {
+        try {
+            return match ($r->entity_type) {
+                'commission_entry' => $this->resolveCommissionSubject($r),
+                default            => $r->entity_snapshot['title']
+                                   ?? $r->entity_snapshot['name']
+                                   ?? null,
+            };
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * For commission entries, look up the pipeline record title.
+     */
+    private function resolveCommissionSubject(ApprovalRequest $r): ?string
+    {
+        $entry = CommissionEntry::with('pipelineRecord:id,title')
+            ->find($r->entity_id);
+
+        return $entry?->pipelineRecord?->title;
     }
 
     // ── Permission helper ──────────────────────────────────────

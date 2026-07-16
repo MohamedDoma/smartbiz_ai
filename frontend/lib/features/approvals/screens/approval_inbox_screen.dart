@@ -1,5 +1,6 @@
 // SmartBiz AI — Approval inbox & requests screen.
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api/approval_models.dart';
 import '../../../core/l10n/app_localizations.dart';
@@ -16,97 +17,208 @@ class ApprovalInboxScreen extends StatefulWidget {
 
 class _ApprovalInboxScreenState extends State<ApprovalInboxScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabCtrl;
-  late bool _canManage;
+  TabController? _tabCtrl;
+
+  /// Current visible tab descriptors, rebuilt when permissions change.
+  List<_TabDescriptor> _visibleTabs = const [];
 
   @override
   void initState() {
     super.initState();
-    _canManage = _hasManagePermission();
-    _tabCtrl = TabController(length: _canManage ? 4 : 3, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = context.read<ApprovalState>();
-      state.loadInbox();
-      state.loadRequests();
-    });
+    // Defer tab build to didChangeDependencies where context is safe.
   }
 
-  bool _hasManagePermission() {
-    try {
-      return context
-          .read<BlueprintNavigationController>()
-          .effectivePermissions
-          .contains('approvals.manage');
-    } catch (_) {
-      return false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _rebuildTabsIfNeeded();
+  }
+
+  /// (Re)build the visible tab list from effective permissions and recreate
+  /// the TabController when the set of visible tabs changes.
+  void _rebuildTabsIfNeeded() {
+    final perms = _effectivePermissions();
+    final newTabs = _buildVisibleTabs(perms);
+
+    // Short-circuit if tabs haven't changed.
+    if (_tabsEqual(_visibleTabs, newTabs) && _tabCtrl != null) return;
+
+    final oldIndex = _tabCtrl?.index ?? 0;
+    _tabCtrl?.dispose();
+
+    _visibleTabs = newTabs;
+    final clampedIndex = oldIndex.clamp(0, newTabs.length - 1);
+    _tabCtrl = TabController(
+      length: newTabs.length,
+      initialIndex: clampedIndex,
+      vsync: this,
+    );
+
+    // Trigger initial data loads on first build.
+    if (oldIndex == 0 && clampedIndex == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final state = context.read<ApprovalState>();
+        state.loadInbox();
+        state.loadRequests();
+      });
     }
+  }
+
+  Set<String> _effectivePermissions() {
+    try {
+      return context.read<BlueprintNavigationController>().effectivePermissions;
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Build the ordered list of tabs the current user may see.
+  static List<_TabDescriptor> _buildVisibleTabs(Set<String> perms) {
+    final tabs = <_TabDescriptor>[
+      // 1. Inbox — always visible (same as current behavior)
+      const _TabDescriptor(
+        id: 'inbox',
+        labelKey: 'approval_inbox',
+        type: _TabType.inbox,
+      ),
+      // 2. My Requests — always visible (same as current behavior)
+      const _TabDescriptor(
+        id: 'my_requests',
+        labelKey: 'approval_my_requests',
+        type: _TabType.requests,
+        scope: 'my_requests',
+      ),
+    ];
+
+    // 3. All Requests — only when approvals.manage is present
+    if (perms.contains('approvals.manage')) {
+      tabs.add(
+        const _TabDescriptor(
+          id: 'all',
+          labelKey: 'approval_all',
+          type: _TabType.requests,
+          scope: 'all',
+        ),
+      );
+    }
+
+    // 4. Workflow Management — preserve existing permission rule
+    if (perms.contains('approvals.manage')) {
+      tabs.add(
+        const _TabDescriptor(
+          id: 'workflows',
+          labelKey: 'approval_workflows',
+          type: _TabType.workflows,
+        ),
+      );
+    }
+
+    return tabs;
+  }
+
+  static bool _tabsEqual(List<_TabDescriptor> a, List<_TabDescriptor> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   @override
   void dispose() {
-    _tabCtrl.dispose();
+    _tabCtrl?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Guard: if _tabCtrl hasn't been created yet (shouldn't happen after
+    // didChangeDependencies), show a loading indicator.
+    if (_tabCtrl == null || _visibleTabs.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(tr(context, 'approvals')),
         bottom: TabBar(
           controller: _tabCtrl,
-          isScrollable: _canManage,
+          isScrollable: _visibleTabs.length > 3,
           tabs: [
-            Tab(text: tr(context, 'approval_inbox')),
-            Tab(text: tr(context, 'approval_my_requests')),
-            Tab(text: tr(context, 'approval_all')),
-            if (_canManage)
-              Tab(text: tr(context, 'approval_workflows')),
+            for (final tab in _visibleTabs)
+              Tab(text: tr(context, tab.labelKey)),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabCtrl,
-        children: [
-          _InboxTab(),
-          _RequestsTab(scope: 'my_requests'),
-          _RequestsTab(scope: 'all'),
-          if (_canManage)
-            const ApprovalWorkflowsScreen(embedded: true),
-        ],
+        children: [for (final tab in _visibleTabs) _buildTabBody(tab)],
       ),
     );
   }
+
+  Widget _buildTabBody(_TabDescriptor tab) {
+    return switch (tab.type) {
+      _TabType.inbox => _InboxTab(),
+      _TabType.requests => _RequestsTab(scope: tab.scope!),
+      _TabType.workflows => const ApprovalWorkflowsScreen(embedded: true),
+    };
+  }
+}
+
+// ── Tab descriptor ─────────────────────────────────────────
+
+enum _TabType { inbox, requests, workflows }
+
+class _TabDescriptor {
+  final String id;
+  final String labelKey;
+  final _TabType type;
+  final String? scope;
+
+  const _TabDescriptor({
+    required this.id,
+    required this.labelKey,
+    required this.type,
+    this.scope,
+  });
 }
 
 /// Inbox tab — pending requests for the current actor.
 class _InboxTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Consumer<ApprovalState>(builder: (ctx, state, _) {
-      if (state.loading && state.inbox.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (state.inbox.isEmpty) {
-        return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(tr(context, 'approval_inbox_empty'),
-                style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-          ]),
+    return Consumer<ApprovalState>(
+      builder: (ctx, state, _) {
+        if (state.loading && state.inbox.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.inbox.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  tr(context, 'approval_inbox_empty'),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                ),
+              ],
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () => state.loadInbox(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: state.inbox.length,
+            itemBuilder: (ctx, i) => _ApprovalCard(request: state.inbox[i]),
+          ),
         );
-      }
-      return RefreshIndicator(
-        onRefresh: () => state.loadInbox(),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: state.inbox.length,
-          itemBuilder: (ctx, i) =>
-              _ApprovalCard(request: state.inbox[i], showActions: true),
-        ),
-      );
-    });
+      },
+    );
   }
 }
 
@@ -134,41 +246,47 @@ class _RequestsTabState extends State<_RequestsTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<ApprovalState>(builder: (ctx, state, _) {
-      if (state.loading && state.requests.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (state.requests.isEmpty) {
-        return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.assignment_outlined, size: 64,
-                color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(tr(context, 'approval_no_requests'),
-                style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-          ]),
-        );
-      }
-      return RefreshIndicator(
-        onRefresh: () => state.loadRequests(scope: widget.scope),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: state.requests.length,
-          itemBuilder: (ctx, i) => _ApprovalCard(
-            request: state.requests[i],
-            showActions: widget.scope == 'my_requests',
+    return Consumer<ApprovalState>(
+      builder: (ctx, state, _) {
+        if (state.loading && state.requests.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.requests.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.assignment_outlined,
+                  size: 64,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  tr(context, 'approval_no_requests'),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                ),
+              ],
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () => state.loadRequests(scope: widget.scope),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: state.requests.length,
+            itemBuilder: (ctx, i) => _ApprovalCard(request: state.requests[i]),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
 /// Card for a single approval request.
 class _ApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
-  final bool showActions;
-  const _ApprovalCard({required this.request, this.showActions = false});
+  const _ApprovalCard({required this.request});
 
   @override
   Widget build(BuildContext context) {
@@ -191,87 +309,112 @@ class _ApprovalCard extends StatelessWidget {
                     child: Text(
                       request.workflowName,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 15),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   _StatusBadge(status: request.status),
                 ],
               ),
               const SizedBox(height: 6),
-              // Entity info
+              // Entity info — readable subject title with fallback chain
               Text(
-                '${request.entityType} • ${request.entityId.substring(0, 8)}…',
+                _subjectLine(context, request),
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 4),
               // Requester
-              Row(children: [
-                Icon(Icons.person_outline, size: 14,
-                    color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(request.requesterName,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-              ]),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 14, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Text(
+                    request.requesterName,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
               // Progress
               if (request.stepsCount != null && request.stepsCount! > 0) ...[
                 const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: request.progress,
-                        minHeight: 4,
-                        backgroundColor: Colors.grey[200],
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          request.status == 'rejected'
-                              ? Colors.red
-                              : AppColors.primary,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: request.progress,
+                          minHeight: 4,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            request.status == 'rejected'
+                                ? Colors.red
+                                : AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${request.completedSteps ?? 0}/${request.stepsCount}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  ),
-                ]),
+                    const SizedBox(width: 8),
+                    Text(
+                      _progressLabel(context, request),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: request.status == 'rejected'
+                            ? Colors.red[400]
+                            : Colors.grey[500],
+                        fontWeight: request.status == 'rejected'
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
               ],
-              // Actions (only for inbox items)
-              if (showActions && request.status == 'pending') ...[
+              // Decide actions — server-authoritative: only show when can_decide is true
+              if (request.canDecide) ...[
                 const SizedBox(height: 10),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton.icon(
-                    icon: Icon(Icons.close, size: 16,
-                        color: Colors.red[400]),
-                    label: Text(tr(context, 'reject'),
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.red[400])),
-                    onPressed: () =>
-                        _showDecisionDialog(context, request.id, false),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.check, size: 16),
-                    label: Text(tr(context, 'approve'),
-                        style: const TextStyle(fontSize: 12)),
-                    onPressed: () =>
-                        _showDecisionDialog(context, request.id, true),
-                  ),
-                ]),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      icon: Icon(Icons.close, size: 16, color: Colors.red[400]),
+                      label: Text(
+                        tr(context, 'reject'),
+                        style: TextStyle(fontSize: 12, color: Colors.red[400]),
+                      ),
+                      onPressed: () =>
+                          _showDecisionDialog(context, request.id, false),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.check, size: 16),
+                      label: Text(
+                        tr(context, 'approve'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      onPressed: () =>
+                          _showDecisionDialog(context, request.id, true),
+                    ),
+                  ],
+                ),
               ],
-              // Cancel (for own pending requests)
-              if (showActions && request.status == 'pending') ...[
+              // Cancel — server-authoritative: only show when can_cancel is true
+              if (request.canCancel) ...[
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    icon: Icon(Icons.cancel_outlined, size: 14,
-                        color: Colors.grey[400]),
-                    label: Text(tr(context, 'cancel'),
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[400])),
+                    icon: Icon(
+                      Icons.cancel_outlined,
+                      size: 14,
+                      color: Colors.grey[400],
+                    ),
+                    label: Text(
+                      tr(context, 'cancel'),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                    ),
                     onPressed: () => state.cancelRequest(request.id),
                   ),
                 ),
@@ -294,23 +437,40 @@ class _ApprovalCard extends StatelessWidget {
     );
   }
 
-  void _showDecisionDialog(
-      BuildContext context, String id, bool isApprove) {
+  void _showDecisionDialog(BuildContext context, String id, bool isApprove) {
     final notesCtrl = TextEditingController();
     final state = context.read<ApprovalState>();
+    final formKey = GlobalKey<FormState>();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isApprove
-            ? tr(context, 'approval_confirm_approve')
-            : tr(context, 'approval_confirm_reject')),
-        content: TextField(
-          controller: notesCtrl,
-          decoration: InputDecoration(
-            labelText: tr(context, 'notes'),
-            hintText: tr(context, 'optional'),
+        title: Text(
+          isApprove
+              ? tr(context, 'approval_confirm_approve')
+              : tr(context, 'approval_confirm_reject'),
+        ),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: notesCtrl,
+            decoration: InputDecoration(
+              labelText: isApprove
+                  ? tr(context, 'notes')
+                  : tr(context, 'approval_rejection_reason'),
+              hintText: isApprove
+                  ? tr(context, 'optional')
+                  : tr(context, 'approval_rejection_reason_hint'),
+            ),
+            maxLines: 3,
+            validator: isApprove
+                ? null
+                : (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return tr(context, 'approval_rejection_reason_required');
+                    }
+                    return null;
+                  },
           ),
-          maxLines: 3,
         ),
         actions: [
           TextButton(
@@ -322,17 +482,22 @@ class _ApprovalCard extends StatelessWidget {
                 ? null
                 : FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
+              // For rejections, validate the form (require notes)
+              if (!isApprove && !(formKey.currentState?.validate() ?? false)) {
+                return;
+              }
               Navigator.pop(ctx);
+              final notes = notesCtrl.text.trim();
               if (isApprove) {
-                await state.approve(id, notes: notesCtrl.text);
+                await state.approve(id, notes: notes.isEmpty ? null : notes);
               } else {
-                await state.reject(id, notes: notesCtrl.text);
+                await state.reject(id, notes: notes);
               }
               state.loadInbox();
             },
-            child: Text(isApprove
-                ? tr(context, 'approve')
-                : tr(context, 'reject')),
+            child: Text(
+              isApprove ? tr(context, 'approve') : tr(context, 'reject'),
+            ),
           ),
         ],
       ),
@@ -369,8 +534,7 @@ class _StatusBadge extends StatelessWidget {
 class _ApprovalDetailSheet extends StatelessWidget {
   final String requestId;
   final ApprovalState state;
-  const _ApprovalDetailSheet(
-      {required this.requestId, required this.state});
+  const _ApprovalDetailSheet({required this.requestId, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -388,8 +552,7 @@ class _ApprovalDetailSheet extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
             if (req == null) {
-              return Center(
-                  child: Text(tr(context, 'approval_not_found')));
+              return Center(child: Text(tr(context, 'approval_not_found')));
             }
             return ListView(
               controller: scrollCtrl,
@@ -398,7 +561,8 @@ class _ApprovalDetailSheet extends StatelessWidget {
                 // Handle bar
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
@@ -407,33 +571,64 @@ class _ApprovalDetailSheet extends StatelessWidget {
                   ),
                 ),
                 // Title
-                Row(children: [
-                  Expanded(
-                    child: Text(req.workflowName,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        req.workflowName,
                         style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700)),
-                  ),
-                  _StatusBadge(status: req.status),
-                ]),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    _StatusBadge(status: req.status),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                _infoRow(Icons.category, 'Entity', req.entityType),
-                _infoRow(Icons.person, 'Requester', req.requesterName),
+                _infoRow(
+                  Icons.category,
+                  tr(context, 'approval_label_entity'),
+                  _entityTypeLabel(context, req.entityType),
+                ),
+                if (req.displayTitle != null && req.displayTitle!.isNotEmpty)
+                  _infoRow(
+                    Icons.label_outline,
+                    tr(context, 'approval_item_label'),
+                    req.displayTitle!,
+                  ),
+                _infoRow(
+                  Icons.person,
+                  tr(context, 'approval_label_requester'),
+                  req.requesterName,
+                ),
                 if (req.createdAt != null)
-                  _infoRow(Icons.access_time, 'Submitted',
-                      req.createdAt!.substring(0, 10)),
+                  _infoRow(
+                    Icons.access_time,
+                    tr(context, 'approval_label_submitted'),
+                    _formatDate(context, req.createdAt!),
+                  ),
                 const Divider(height: 24),
                 // Steps timeline
-                Text(tr(context, 'approval_steps'),
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(
+                  tr(context, 'approval_steps'),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ...req.steps.map((s) => _StepTile(step: s)),
                 // Decisions audit trail
                 if (req.decisions.isNotEmpty) ...[
                   const Divider(height: 24),
-                  Text(tr(context, 'approval_audit_trail'),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(
+                    tr(context, 'approval_audit_trail'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   ...req.decisions.map((d) => _DecisionTile(decision: d)),
                 ],
@@ -448,15 +643,17 @@ class _ApprovalDetailSheet extends StatelessWidget {
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(children: [
-        Icon(icon, size: 16, color: Colors.grey[500]),
-        const SizedBox(width: 8),
-        Text('$label: ', style: TextStyle(
-            fontSize: 13, color: Colors.grey[600])),
-        Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 13)),
-        ),
-      ]),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[500]),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
     );
   }
 }
@@ -474,37 +671,58 @@ class _StepTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 14,
         backgroundColor: _stepColor(step.status).withValues(alpha: 0.15),
-        child: Icon(_stepIcon(step.status), size: 16,
-            color: _stepColor(step.status)),
+        child: Icon(
+          _stepIcon(step.status),
+          size: 16,
+          color: _stepColor(step.status),
+        ),
       ),
-      title: Text(step.stepName ?? 'Step ${step.stepOrder}',
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(
+        step.stepName ??
+            '${tr(context, 'approval_step_fallback')} ${step.stepOrder}',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
       subtitle: Text(
-        step.status == 'pending'
-            ? 'Awaiting decision'
-            : '${step.status} by ${step.decidedByName}',
+        _stepSubtitle(context, step),
         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
       ),
       trailing: step.decidedAt != null
-          ? Text(step.decidedAt!.substring(0, 10),
-              style: TextStyle(fontSize: 10, color: Colors.grey[400]))
+          ? Text(
+              _formatDate(context, step.decidedAt!),
+              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            )
           : null,
     );
   }
 
+  String _stepSubtitle(BuildContext context, ApprovalRequestStepDetail s) {
+    switch (s.status) {
+      case 'pending':
+        return tr(context, 'approval_awaiting_decision');
+      case 'approved':
+        return '${tr(context, 'approval_step_approved_by')} ${s.decidedByName}';
+      case 'rejected':
+        return '${tr(context, 'approval_step_rejected_by')} ${s.decidedByName}';
+      case 'skipped':
+        return tr(context, 'approval_step_skipped');
+      default:
+        return s.status;
+    }
+  }
+
   Color _stepColor(String s) => switch (s) {
-        'approved' => Colors.green,
-        'rejected' => Colors.red,
-        'skipped' => Colors.grey,
-        _ => Colors.orange,
-      };
+    'approved' => Colors.green,
+    'rejected' => Colors.red,
+    'skipped' => Colors.grey,
+    _ => Colors.orange,
+  };
 
   IconData _stepIcon(String s) => switch (s) {
-        'approved' => Icons.check_circle,
-        'rejected' => Icons.cancel,
-        'skipped' => Icons.skip_next,
-        _ => Icons.hourglass_empty,
-      };
+    'approved' => Icons.check_circle,
+    'rejected' => Icons.cancel,
+    'skipped' => Icons.skip_next,
+    _ => Icons.hourglass_empty,
+  };
 }
 
 /// Decision audit trail tile.
@@ -514,6 +732,9 @@ class _DecisionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final decisionLabel = decision.decision == 'approved'
+        ? tr(context, 'approval_decision_approved')
+        : tr(context, 'approval_decision_rejected');
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
@@ -522,21 +743,23 @@ class _DecisionTile extends StatelessWidget {
             ? Icons.thumb_up_alt
             : Icons.thumb_down_alt,
         size: 18,
-        color: decision.decision == 'approved'
-            ? Colors.green
-            : Colors.red,
+        color: decision.decision == 'approved' ? Colors.green : Colors.red,
       ),
       title: Text(
-        '${decision.actorName} — ${decision.decision}',
+        '${decision.actorName} — $decisionLabel',
         style: const TextStyle(fontSize: 13),
       ),
       subtitle: decision.notes != null
-          ? Text(decision.notes!,
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]))
+          ? Text(
+              '${tr(context, 'approval_reason_label')}: ${decision.notes!}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            )
           : null,
       trailing: decision.createdAt != null
-          ? Text(decision.createdAt!.substring(0, 10),
-              style: TextStyle(fontSize: 10, color: Colors.grey[400]))
+          ? Text(
+              _formatDate(context, decision.createdAt!),
+              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            )
           : null,
     );
   }
@@ -545,17 +768,65 @@ class _DecisionTile extends StatelessWidget {
 // ── Helpers ──────────────────────────────────────────────
 
 String _statusLabel(BuildContext context, String s) => switch (s) {
-      'pending' => tr(context, 'approval_pending'),
-      'approved' => tr(context, 'approved'),
-      'rejected' => tr(context, 'rejected'),
-      'cancelled' => tr(context, 'cancelled'),
-      _ => s,
-    };
+  'pending' => tr(context, 'approval_pending'),
+  'approved' => tr(context, 'approved'),
+  'rejected' => tr(context, 'rejected'),
+  'cancelled' => tr(context, 'cancelled'),
+  _ => s,
+};
 
 Color _statusColor(String s) => switch (s) {
-      'pending' => Colors.orange,
-      'approved' => Colors.green,
-      'rejected' => Colors.red,
-      'cancelled' => Colors.grey,
-      _ => Colors.grey,
-    };
+  'pending' => Colors.orange,
+  'approved' => Colors.green,
+  'rejected' => Colors.red,
+  'cancelled' => Colors.grey,
+  _ => Colors.grey,
+};
+
+/// Map raw entity_type to a human-readable localized label.
+String _entityTypeLabel(BuildContext context, String entityType) {
+  final key = 'approval_entity_$entityType';
+  final label = tr(context, key);
+  // tr() returns '[$key]' for missing keys — fall back to formatted type.
+  if (label.startsWith('[') && label.endsWith(']')) {
+    return entityType.replaceAll('_', ' ');
+  }
+  return label;
+}
+
+/// Readable subject line for approval cards.
+/// Priority: displayTitle → entity type label + shortened UUID.
+String _subjectLine(BuildContext context, ApprovalRequest req) {
+  final title = req.displayTitle;
+  final entityLabel = _entityTypeLabel(context, req.entityType);
+  if (title != null && title.isNotEmpty) {
+    return '${tr(context, 'approval_item_label')}: $title';
+  }
+  return '$entityLabel • ${req.entityId.substring(0, 8)}…';
+}
+
+/// Localized progress label for an approval request.
+String _progressLabel(BuildContext context, ApprovalRequest req) {
+  final total = req.stepsCount ?? req.steps.length;
+  final of = tr(context, 'approval_progress_of');
+  if (req.status == 'rejected' && req.rejectedAtStep != null) {
+    return '${tr(context, 'approval_progress_rejected_at')} ${req.rejectedAtStep} $of $total';
+  }
+  if (req.status == 'approved') {
+    return '$total $of $total';
+  }
+  return '${req.completedSteps ?? 0} $of $total';
+}
+
+/// Format an ISO-8601 date string to a locale-aware display format.
+/// e.g. "15 Jul 2026" (en) or "15 يوليو 2026" (ar).
+String _formatDate(BuildContext context, String isoDate) {
+  try {
+    final dt = DateTime.parse(isoDate);
+    final locale = Localizations.localeOf(context).languageCode;
+    return DateFormat.yMMMd(locale).format(dt);
+  } catch (_) {
+    // Graceful fallback to the raw first 10 chars.
+    return isoDate.length >= 10 ? isoDate.substring(0, 10) : isoDate;
+  }
+}

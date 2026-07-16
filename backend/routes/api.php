@@ -61,6 +61,7 @@ use App\Http\Controllers\Api\PlatformActivationCampaignController;
 use App\Http\Controllers\Api\PlatformActivationCodeController;
 use App\Http\Controllers\Api\PlatformSystemHealthController;
 use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\ApprovalEntityFieldCatalogController;
 use App\Http\Controllers\Api\ApprovalWorkflowController;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SetWorkspaceContext;
@@ -555,6 +556,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // ── Approval Workflow Steps (standalone update/delete) ─
         Route::put('/approval-workflow-steps/{id}',    [ApprovalWorkflowController::class, 'updateStep'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-workflow-steps.update');
         Route::delete('/approval-workflow-steps/{id}', [ApprovalWorkflowController::class, 'deleteStep'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-workflow-steps.destroy');
+
+        // ── Approval Entity Field Catalog (condition builder schema) ─
+        Route::get('/approval-entity-field-catalog', [ApprovalEntityFieldCatalogController::class, 'index'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-entity-field-catalog.index');
+
+        // ── Approval Entity Types (discovery endpoint for condition builder) ─
+        Route::get('/approval-entity-types', [ApprovalEntityFieldCatalogController::class, 'entityTypes'])->middleware(CheckPermission::class . ':approvals.manage')->name('approval-entity-types.index');
 
         // ── Approval Requests (lifecycle) ────────────────────
         Route::prefix('approvals')->group(function () {

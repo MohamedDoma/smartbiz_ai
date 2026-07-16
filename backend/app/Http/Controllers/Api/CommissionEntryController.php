@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\NoMatchingApprovalWorkflowException;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalRequest;
-use App\Models\ApprovalWorkflow;
 use App\Models\CommissionEntry;
 use App\Models\PipelineRecord;
 use App\Models\WorkspaceMembership;
 use App\Services\ApprovalEngine;
 use App\Services\ApprovalTriggerEvaluator;
 use App\Services\CommissionCalculationService;
+use App\Services\CommissionEntryConditionSchemaProvider;
 use App\Services\PermissionResolver;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
@@ -137,29 +138,86 @@ class CommissionEntryController extends Controller
 
         $this->requirePermission($membership, 'commissions.approve');
 
+        $relations = [
+            'plan:id,name',
+            'pipelineRecord:id,title,value_amount,currency',
+            'recipientMembership.user:id,full_name',
+            'sourceMembership.user:id,full_name',
+        ];
+
         $entry = CommissionEntry::where('workspace_id', $wsId)->findOrFail($id);
 
+        // ── Already finalized (approved/paid/cancelled) → idempotent return ──
         if ($entry->status !== 'pending') {
-            return response()->json(['message' => "Cannot approve entry with status '{$entry->status}'."], 409);
-        }
-
-        // If an approval workflow request exists, it must be resolved first
-        $activeApproval = ApprovalRequest::where('workspace_id', $wsId)
-            ->where('entity_type', 'commission_entry')
-            ->where('entity_id', $entry->id)
-            ->where('status', 'pending')
-            ->first();
-
-        if ($activeApproval) {
             return response()->json([
-                'message' => 'This commission entry has a pending approval request. It must be approved through the approval workflow first.',
-                'approval_request_id' => $activeApproval->id,
-            ], 409);
+                'data'              => $this->fmt($entry->load($relations)),
+                'approval_required' => false,
+            ]);
         }
 
-        $entry->update(['status' => 'approved', 'approved_at' => now()]);
-        return response()->json(['data' => $this->fmt($entry->fresh())]);
+        // ── Check for existing approval request ─────────────────────
+        $engine = app(ApprovalEngine::class);
+        $existing = $engine->latestRequest($wsId, 'commission_entry', $entry->id);
+
+        // Already approved via workflow → return finalized commission
+        if ($existing && $existing->status === 'approved') {
+            // Ensure the commission reflects the finalized state
+            $entry->refresh();
+            return response()->json([
+                'data'              => $this->fmt($entry->load($relations)),
+                'approval_required' => false,
+            ]);
+        }
+
+        // Already has a pending request → idempotent reuse (no duplicate)
+        if ($existing && $existing->status === 'pending') {
+            return response()->json([
+                'data'                => $this->fmt($entry->load($relations)),
+                'approval_required'   => true,
+                'approval_request_id' => $existing->id,
+            ]);
+        }
+
+        // ── Try to submit via ApprovalEngine ────────────────────────
+        // The engine resolves matching workflows internally.
+        // If no workflow exists, it throws — meaning no approval is needed
+        // and the commission can be approved directly.
+        $provider = app(CommissionEntryConditionSchemaProvider::class);
+        $snapshot = array_merge($provider->evaluationData($entry), [
+            'commission_entry_id' => $entry->id,
+            'recipient_id'        => $entry->recipient_membership_id,
+        ]);
+
+        try {
+            $approvalRequest = $engine->submit(
+                $wsId,
+                'commission_entry',
+                $entry->id,
+                $membership,
+                $snapshot,
+                ['trigger' => 'manual', 'action' => 'commission.approve'],
+            );
+
+            // Workflow matched → commission stays pending, return request info
+            return response()->json([
+                'data'                => $this->fmt($entry->load($relations)),
+                'approval_required'   => true,
+                'approval_request_id' => $approvalRequest->id,
+            ], 201);
+
+        } catch (NoMatchingApprovalWorkflowException) {
+            // ── SAFE: No active workflow for commission_entry → direct approval allowed ──
+            // This is the ONLY exception type that permits direct approval.
+            // All other failures (DB errors, duplicate requests, workflow misconfiguration)
+            // propagate as 500s — the commission stays pending.
+            $entry->update(['status' => 'approved', 'approved_at' => now()]);
+            return response()->json([
+                'data'              => $this->fmt($entry->fresh()->load($relations)),
+                'approval_required' => false,
+            ]);
+        }
     }
+
 
     public function markPaid(Request $request, string $id): JsonResponse
     {
@@ -175,7 +233,12 @@ class CommissionEntryController extends Controller
         }
 
         $entry->update(['status' => 'paid', 'paid_at' => now()]);
-        return response()->json(['data' => $this->fmt($entry->fresh())]);
+        return response()->json(['data' => $this->fmt($entry->fresh()->load([
+            'plan:id,name',
+            'pipelineRecord:id,title,value_amount,currency',
+            'recipientMembership.user:id,full_name',
+            'sourceMembership.user:id,full_name',
+        ]))]);
     }
 
     public function cancel(Request $request, string $id): JsonResponse
@@ -192,7 +255,12 @@ class CommissionEntryController extends Controller
         }
 
         $entry->update(['status' => 'cancelled']);
-        return response()->json(['data' => $this->fmt($entry->fresh())]);
+        return response()->json(['data' => $this->fmt($entry->fresh()->load([
+            'plan:id,name',
+            'pipelineRecord:id,title,value_amount,currency',
+            'recipientMembership.user:id,full_name',
+            'sourceMembership.user:id,full_name',
+        ]))]);
     }
 
     /**
@@ -201,7 +269,8 @@ class CommissionEntryController extends Controller
      * Uses the dedicated commission permission hierarchy:
      * - commissions.view_all → all workspace entries
      * - commissions.view_team → entries for recipients in same team
-     * - otherwise → only entries where the user is the recipient
+     * - commissions.view_own → only entries where the user is the recipient
+     * - none of the above → 403
      */
     private function applyVisibilityScope($query, WorkspaceMembership $membership): void
     {
@@ -231,8 +300,14 @@ class CommissionEntryController extends Controller
             return;
         }
 
-        // Level 3: own commissions only
-        $query->where('recipient_membership_id', $membership->id);
+        // Level 3: view_own sees only own commissions
+        if ($resolver->can($membership, 'commissions.view_own')) {
+            $query->where('recipient_membership_id', $membership->id);
+            return;
+        }
+
+        // No valid scope permission → return empty result (no rows match impossible ID)
+        $query->whereRaw('1 = 0');
     }
 
     /**
@@ -243,9 +318,9 @@ class CommissionEntryController extends Controller
      * data meets the workflow's trigger_conditions (canonical JSON format).
      * If so, submits the request through the ApprovalEngine.
      *
-     * Entity data uses generic field names matching the workflow conditions:
-     *  - 'amount'   maps to commission_amount (canonical condition field)
-     *  - 'currency' maps to currency
+     * Entity data is extracted via CommissionEntryConditionSchemaProvider::evaluationData()
+     * — the SINGLE SOURCE OF TRUTH for field mapping. This ensures the runtime
+     * evaluation data and the catalog schema can never drift.
      */
     private function autoSubmitApprovalIfRequired(
         string $workspaceId,
@@ -256,16 +331,11 @@ class CommissionEntryController extends Controller
             return null;
         }
 
-        // Build entity data for condition evaluation.
-        // Field names must match the workflow trigger_conditions field values.
-        // The canonical condition uses "amount" (not "commission_amount").
-        $entityData = [
-            'amount'            => (float) $entry->commission_amount,
-            'base_amount'       => (float) $entry->base_amount,
-            'currency'          => $entry->currency,
-            'calculation_type'  => $entry->calculation_type,
-            'percentage_rate'   => $entry->percentage_rate,
-        ];
+        // Build entity data for condition evaluation via the shared provider.
+        // This is the ONLY place entity data mapping should happen — never
+        // hand-build the array here or in markApproved.
+        $provider = app(CommissionEntryConditionSchemaProvider::class);
+        $entityData = $provider->evaluationData($entry);
 
         // Let the evaluator determine if a workflow triggers
         $evaluator = app(ApprovalTriggerEvaluator::class);
@@ -281,16 +351,11 @@ class CommissionEntryController extends Controller
             return null;
         }
 
-        // Build snapshot for audit trail (full entity context)
-        $snapshot = [
+        // Build snapshot for audit trail: shared evaluation data + audit-only fields
+        $snapshot = array_merge($entityData, [
             'commission_entry_id' => $entry->id,
-            'amount'              => $entry->commission_amount,
-            'base_amount'         => $entry->base_amount,
-            'currency'            => $entry->currency,
-            'calculation_type'    => $entry->calculation_type,
-            'percentage_rate'     => $entry->percentage_rate,
             'recipient_id'        => $entry->recipient_membership_id,
-        ];
+        ]);
 
         try {
             return $engine->submit(
@@ -301,14 +366,33 @@ class CommissionEntryController extends Controller
                 $snapshot,
                 ['trigger' => 'auto', 'workflow_key' => $workflow->workflow_key],
             );
+        } catch (NoMatchingApprovalWorkflowException) {
+            // Workflow was deleted between evaluator check and submit — skip
+            return null;
         } catch (\RuntimeException) {
-            // Workflow might not have active steps — gracefully skip
+            // Workflow has no active steps or duplicate request — gracefully skip
             return null;
         }
     }
 
     private function fmt(CommissionEntry $e): array
     {
+        // Determine if there's a pending approval request for this entry.
+        // This allows the frontend to show workflow-pending state and hide
+        // the direct approve button when a workflow is active.
+        $approvalStatus = null;
+        if ($e->status === 'pending') {
+            $pendingApproval = ApprovalRequest::where('workspace_id', $e->workspace_id)
+                ->where('entity_type', 'commission_entry')
+                ->where('entity_id', $e->id)
+                ->where('status', 'pending')
+                ->first();
+
+            $approvalStatus = $pendingApproval
+                ? 'workflow_pending'
+                : null;
+        }
+
         return [
             'id'                      => $e->id,
             'commission_plan_id'      => $e->commission_plan_id,
@@ -337,6 +421,7 @@ class CommissionEntryController extends Controller
             'percentage_rate'         => $e->percentage_rate,
             'fixed_amount'            => $e->fixed_amount,
             'status'                  => $e->status,
+            'approval_status'         => $approvalStatus,
             'calculated_at'           => $e->calculated_at?->toIso8601String(),
             'approved_at'             => $e->approved_at?->toIso8601String(),
             'paid_at'                 => $e->paid_at?->toIso8601String(),

@@ -117,6 +117,7 @@ class BusinessTemplateSeeder extends Seeder
             ['module_key' => 'employees',    'name' => 'Employees & HR'],
             ['module_key' => 'reports',      'name' => 'Reports & Analytics'],
             ['module_key' => 'finance',      'name' => 'Finance & Accounting'],
+            ['module_key' => 'commissions',  'name' => 'Commissions'],
             ['module_key' => 'ai',           'name' => 'AI Assistant'],
         ];
         $this->seedModules($t, $modules);

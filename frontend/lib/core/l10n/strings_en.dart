@@ -38,7 +38,8 @@ const Map<String, String> enStrings = {
   'dash_greeting': 'Good morning 👋',
   'dash_ai_active': 'AI Active',
   'dash_ai_summary_title': 'AI Business Insight',
-  'dash_ai_summary_body': 'Your business performed 12% better this week. 3 overdue invoices need attention, and 4 products are running low on stock. I have new recommendations ready.',
+  'dash_ai_summary_body':
+      'Your business performed 12% better this week. 3 overdue invoices need attention, and 4 products are running low on stock. I have new recommendations ready.',
   'dash_ask_ai': 'Ask AI about your business →',
   'dash_view_all': 'View All',
 
@@ -60,13 +61,17 @@ const Map<String, String> enStrings = {
 
   // Recommendations
   'dash_rec_low_stock_title': 'Low Stock Warning',
-  'dash_rec_low_stock_desc': '4 products are below minimum stock level. Reorder soon to avoid stockouts.',
+  'dash_rec_low_stock_desc':
+      '4 products are below minimum stock level. Reorder soon to avoid stockouts.',
   'dash_rec_overdue_title': 'Overdue Invoices',
-  'dash_rec_overdue_desc': '3 invoices past due totaling \$4,250. Send reminders to improve cash flow.',
+  'dash_rec_overdue_desc':
+      '3 invoices past due totaling \$4,250. Send reminders to improve cash flow.',
   'dash_rec_revenue_title': 'Revenue Trend Alert',
-  'dash_rec_revenue_desc': 'Wednesday sales dropped 15% vs last week. Consider a promotion.',
+  'dash_rec_revenue_desc':
+      'Wednesday sales dropped 15% vs last week. Consider a promotion.',
   'dash_rec_auto_title': 'Enable Auto-Reorder',
-  'dash_rec_auto_desc': 'Automate purchase orders for frequently sold items to save time.',
+  'dash_rec_auto_desc':
+      'Automate purchase orders for frequently sold items to save time.',
   'dash_impact_high': 'High',
   'dash_impact_medium': 'Medium',
   'dash_impact_low': 'Low',
@@ -157,17 +162,22 @@ const Map<String, String> enStrings = {
   'rd_announcements': 'Announcements',
   'rd_no_announcements': 'No announcements at this time.',
   'rd_cashier_ai_title': 'AI Sales Assistant',
-  'rd_cashier_ai_body': 'Today you processed 12 invoices totaling \$2,480. Peak hour was 2-3 PM. Consider offering upsell suggestions during checkout.',
+  'rd_cashier_ai_body':
+      'Today you processed 12 invoices totaling \$2,480. Peak hour was 2-3 PM. Consider offering upsell suggestions during checkout.',
   'rd_warehouse_ai_title': 'AI Inventory Forecast',
-  'rd_warehouse_ai_body': '3 products are below minimum stock. Smart Sensor X is predicted to run out in 2 days based on current sales velocity.',
+  'rd_warehouse_ai_body':
+      '3 products are below minimum stock. Smart Sensor X is predicted to run out in 2 days based on current sales velocity.',
   'rd_accountant_ai_title': 'AI Financial Insight',
-  'rd_accountant_ai_body': 'Revenue is up 12% month-over-month. 3 overdue invoices total \$4,250. Consider sending automated payment reminders.',
+  'rd_accountant_ai_body':
+      'Revenue is up 12% month-over-month. 3 overdue invoices total \$4,250. Consider sending automated payment reminders.',
   'rd_employee_ai_title': 'AI Assistant',
-  'rd_employee_ai_body': 'I can help you with your daily tasks, answer questions about company policies, and assist with documentation.',
+  'rd_employee_ai_body':
+      'I can help you with your daily tasks, answer questions about company policies, and assist with documentation.',
 
   // ── AI Chat ──────────────────────────────────────────────
   'ai_title': 'SmartBiz AI Assistant',
-  'ai_subtitle': 'Ask me anything about your business.\nI can read data, create records, and suggest improvements.',
+  'ai_subtitle':
+      'Ask me anything about your business.\nI can read data, create records, and suggest improvements.',
   'ai_input_hint': 'Ask SmartBiz AI...',
   'ai_suggest_revenue': 'Show revenue',
   'ai_suggest_overdue': 'Overdue invoices',
@@ -178,7 +188,8 @@ const Map<String, String> enStrings = {
   'chat_header_title': 'SmartBiz AI',
   'chat_credits': 'credits',
   'chat_input_hint': 'Ask AI anything...',
-  'chat_empty_subtitle': 'I can create invoices, add products, check inventory, and analyze your business.\nTry one of the suggestions below.',
+  'chat_empty_subtitle':
+      'I can create invoices, add products, check inventory, and analyze your business.\nTry one of the suggestions below.',
 
   // Chat suggestions
   'chat_suggest_invoice': 'Create an invoice',
@@ -196,14 +207,18 @@ const Map<String, String> enStrings = {
   'chat_confirmed': 'Confirmed',
   'chat_cancelled': 'Cancelled',
   'chat_action_success': 'Action completed successfully',
-  'chat_action_success_detail': 'The record has been created and saved to the system.',
+  'chat_action_success_detail':
+      'The record has been created and saved to the system.',
 
   // Chat drafts
-  'chat_draft_invoice_text': 'I\'ll create a draft invoice for you. Please review the details below:',
+  'chat_draft_invoice_text':
+      'I\'ll create a draft invoice for you. Please review the details below:',
   'chat_draft_invoice_title': 'Draft Invoice',
-  'chat_draft_contact_text': 'I\'ll create a new customer record. Please review:',
+  'chat_draft_contact_text':
+      'I\'ll create a new customer record. Please review:',
   'chat_draft_contact_title': 'New Customer',
-  'chat_draft_product_text': 'I\'ll add this product to your inventory. Please review:',
+  'chat_draft_product_text':
+      'I\'ll add this product to your inventory. Please review:',
   'chat_draft_product_title': 'New Product',
 
   // Chat fields
@@ -223,17 +238,20 @@ const Map<String, String> enStrings = {
   // Chat insights
   'chat_insight': 'Business Insight',
   'chat_insight_revenue_title': 'Revenue Analysis',
-  'chat_insight_revenue_body': 'Your monthly revenue is \$34,250, up 12% from last month.\n\nTop performers: Coffee Beans (+24%), Premium Tea (+18%).\nSlowest day: Wednesday (15% below average).\n\nConsider a mid-week promotion to boost Wednesday sales.',
+  'chat_insight_revenue_body':
+      'Your monthly revenue is \$34,250, up 12% from last month.\n\nTop performers: Coffee Beans (+24%), Premium Tea (+18%).\nSlowest day: Wednesday (15% below average).\n\nConsider a mid-week promotion to boost Wednesday sales.',
 
   // Chat recommendations
   'chat_rec_stock_title': 'Low Stock Alert',
   'chat_rec_stock_desc': '4 products below minimum stock level',
-  'chat_rec_stock_body': 'I found 4 products running low on stock. Coffee Beans and Premium Tea need urgent reorder to avoid stockouts this week.',
+  'chat_rec_stock_body':
+      'I found 4 products running low on stock. Coffee Beans and Premium Tea need urgent reorder to avoid stockouts this week.',
   'chat_qr_view_inventory': 'View Inventory',
   'chat_qr_reorder': 'Auto-Reorder',
 
   // Default response
-  'chat_default_response': 'I understand! I can help you with invoices, products, customers, reports, and more.\n\nTry asking me to:\n• Create an invoice\n• Check inventory\n• Show revenue report\n• Add a new customer',
+  'chat_default_response':
+      'I understand! I can help you with invoices, products, customers, reports, and more.\n\nTry asking me to:\n• Create an invoice\n• Check inventory\n• Show revenue report\n• Add a new customer',
 
   // ── AI Advisor ────────────────────────────────────────────
   'adv_title': 'AI Advisor',
@@ -267,28 +285,36 @@ const Map<String, String> enStrings = {
   // Recommendations
   'adv_rec_low_stock_title': 'Low Stock Warning',
   'adv_rec_low_stock_desc': '4 products are below minimum stock level.',
-  'adv_rec_low_stock_detail': 'Coffee Beans, Premium Tea, Sugar, and Paper Cups are running low. Reorder within 48 hours to prevent stockouts.',
+  'adv_rec_low_stock_detail':
+      'Coffee Beans, Premium Tea, Sugar, and Paper Cups are running low. Reorder within 48 hours to prevent stockouts.',
   'adv_rec_overdue_title': 'Overdue Invoices',
   'adv_rec_overdue_desc': '3 invoices are past due totaling \$4,250.',
-  'adv_rec_overdue_detail': 'Send payment reminders to Ahmed Trading, Sara Group, and Khalid Co. to improve cash flow.',
+  'adv_rec_overdue_detail':
+      'Send payment reminders to Ahmed Trading, Sara Group, and Khalid Co. to improve cash flow.',
   'adv_rec_revenue_title': 'Revenue Dip on Wednesdays',
   'adv_rec_revenue_desc': 'Wednesday sales dropped 15% compared to last month.',
-  'adv_rec_revenue_detail': 'Consider running a mid-week promotion or happy hour pricing to boost sales on slower days.',
+  'adv_rec_revenue_detail':
+      'Consider running a mid-week promotion or happy hour pricing to boost sales on slower days.',
   'adv_rec_reorder_title': 'Enable Auto-Reorder',
   'adv_rec_reorder_desc': 'Automate purchase orders for top 10 products.',
-  'adv_rec_reorder_detail': 'Setting up auto-reorder for frequently sold items can save 3+ hours per week on manual procurement.',
+  'adv_rec_reorder_detail':
+      'Setting up auto-reorder for frequently sold items can save 3+ hours per week on manual procurement.',
   'adv_rec_pricing_title': 'Price Optimization Opportunity',
   'adv_rec_pricing_desc': '5 products may be underpriced vs market rates.',
-  'adv_rec_pricing_detail': 'Based on competitor analysis, adjusting prices could increase margins by 8% without significant demand impact.',
+  'adv_rec_pricing_detail':
+      'Based on competitor analysis, adjusting prices could increase margins by 8% without significant demand impact.',
   'adv_rec_cashflow_title': 'Cash Flow Forecast Alert',
   'adv_rec_cashflow_desc': 'Projected tight cash flow in 2 weeks.',
-  'adv_rec_cashflow_detail': 'Based on current receivables and upcoming expenses, consider accelerating collections or adjusting purchasing.',
+  'adv_rec_cashflow_detail':
+      'Based on current receivables and upcoming expenses, consider accelerating collections or adjusting purchasing.',
   'adv_rec_module_title': 'Activate HR Module',
   'adv_rec_module_desc': 'Your team has grown. Consider enabling HR features.',
-  'adv_rec_module_detail': 'With 12+ employees, the HR module can help manage attendance, payroll, and performance tracking.',
+  'adv_rec_module_detail':
+      'With 12+ employees, the HR module can help manage attendance, payroll, and performance tracking.',
   'adv_rec_topsel_title': 'Top Sellers Report',
   'adv_rec_topsel_desc': 'Your top 5 products generate 60% of revenue.',
-  'adv_rec_topsel_detail': 'Focus marketing and stock efforts on Coffee Beans, Premium Tea, Pastries, Juice, and Sandwiches.',
+  'adv_rec_topsel_detail':
+      'Focus marketing and stock efforts on Coffee Beans, Premium Tea, Pastries, Juice, and Sandwiches.',
 
   // Empty
   'adv_empty_title': 'No recommendations here',
@@ -405,7 +431,8 @@ const Map<String, String> enStrings = {
   'prod_edit': 'Edit Product',
   'prod_delete': 'Delete',
   'prod_delete_title': 'Delete Product',
-  'prod_delete_confirm': 'Are you sure you want to delete this product? This action cannot be undone.',
+  'prod_delete_confirm':
+      'Are you sure you want to delete this product? This action cannot be undone.',
   'prod_deleted': 'Product deleted.',
   'prod_validation_required': 'Product name and price are required.',
   'retry': 'Retry',
@@ -454,7 +481,8 @@ const Map<String, String> enStrings = {
   'emp_role': 'Role',
   'emp_ai_access': 'AI Access',
   'emp_lang_pref': 'Language Preference',
-  'emp_lang_note': 'UI language is per employee. Document language remains workspace-level.',
+  'emp_lang_note':
+      'UI language is per employee. Document language remains workspace-level.',
   'emp_send_invite': 'Send Invite',
   'emp_last_active': 'Last Active',
   'emp_permissions': 'Permissions',
@@ -483,11 +511,16 @@ const Map<String, String> enStrings = {
   'role_warehouse': 'Warehouse',
   'role_accountant': 'Accountant',
   'role_employee': 'Employee',
-  'role_owner_desc': 'Full system access. Manages all modules, users, billing, and AI settings.',
-  'role_cashier_desc': 'Handles sales and customer interactions. Creates invoices and receives payments.',
-  'role_warehouse_desc': 'Manages products and inventory. Adjusts stock and receives goods.',
-  'role_accountant_desc': 'Oversees finances, expenses, and reports. Views invoices for reconciliation.',
-  'role_employee_desc': 'Basic access to dashboard and AI chat. Limited to assigned tasks.',
+  'role_owner_desc':
+      'Full system access. Manages all modules, users, billing, and AI settings.',
+  'role_cashier_desc':
+      'Handles sales and customer interactions. Creates invoices and receives payments.',
+  'role_warehouse_desc':
+      'Manages products and inventory. Adjusts stock and receives goods.',
+  'role_accountant_desc':
+      'Oversees finances, expenses, and reports. Views invoices for reconciliation.',
+  'role_employee_desc':
+      'Basic access to dashboard and AI chat. Limited to assigned tasks.',
 
   // Permissions
   'perm_full_access': 'Full Access',
@@ -560,7 +593,8 @@ const Map<String, String> enStrings = {
   'cust_archived': 'Customer archived.',
   'cust_reactivated': 'Customer reactivated.',
   'cust_ai_insights': 'AI Insights',
-  'cust_ai_placeholder': 'AI customer insights will be available after backend integration.',
+  'cust_ai_placeholder':
+      'AI customer insights will be available after backend integration.',
   'cust_act_invoice': 'Invoice',
   'cust_act_payment': 'Payment',
   'cust_act_note': 'Note',
@@ -576,7 +610,8 @@ const Map<String, String> enStrings = {
   'cust_edit': 'Edit Customer',
   'cust_delete': 'Delete',
   'cust_delete_title': 'Delete Customer',
-  'cust_delete_confirm': 'Are you sure you want to delete this customer? This action cannot be undone.',
+  'cust_delete_confirm':
+      'Are you sure you want to delete this customer? This action cannot be undone.',
   'cust_deleted': 'Customer deleted.',
   'cust_name_required': 'Customer name is required.',
   'cust_saved': 'Customer saved.',
@@ -601,7 +636,8 @@ const Map<String, String> enStrings = {
   'stk_cancel': 'Cancel',
   'stk_movements': 'Movements',
   'stk_adjust': 'Adjust Stock',
-  'stk_ai_placeholder': 'AI inventory forecasting and reorder suggestions will be available after backend integration.',
+  'stk_ai_placeholder':
+      'AI inventory forecasting and reorder suggestions will be available after backend integration.',
   'stk_mv_subtitle': 'All stock movements across your inventory.',
   'stk_no_movements': 'No stock movements recorded.',
   'stk_mv_sale': 'Sale',
@@ -633,7 +669,6 @@ const Map<String, String> enStrings = {
   'stk_unit_cost': 'Unit Cost',
   'stk_optional': 'Optional',
 
-
   // ── Settings Hub ──────────────────────────────────────────
   'set_subtitle': 'Manage your workspace, branding, and subscription.',
   'set_workspace': 'Workspace',
@@ -650,7 +685,8 @@ const Map<String, String> enStrings = {
   'ws_industry': 'Industry / Business Type',
   'ws_timezone': 'Timezone',
   'ws_currency': 'Currency',
-  'ws_lang_note': 'Employee UI language is per user. Document language (invoices, reports) is set workspace-wide.',
+  'ws_lang_note':
+      'Employee UI language is per user. Document language (invoices, reports) is set workspace-wide.',
 
   // Branding
   'brand_primary': 'Primary Color',
@@ -707,11 +743,15 @@ const Map<String, String> enStrings = {
   'fb_save': 'Save Changes',
   'fb_ws_saved': 'Workspace settings saved locally.',
   'fb_brand_saved': 'Branding settings saved locally.',
-  'fb_logo_coming': 'Logo upload will be available after backend file storage integration.',
-  'fb_billing_coming': 'Billing actions will connect to payment backend in the integration phase.',
+  'fb_logo_coming':
+      'Logo upload will be available after backend file storage integration.',
+  'fb_billing_coming':
+      'Billing actions will connect to payment backend in the integration phase.',
   'fb_current_plan': 'This is your current plan.',
-  'fb_local_only': 'Changes are saved locally. Backend sync will be available in the integration phase.',
-  'brand_preview_note': 'Preview shows how your branding will look across the app.',
+  'fb_local_only':
+      'Changes are saved locally. Backend sync will be available in the integration phase.',
+  'brand_preview_note':
+      'Preview shows how your branding will look across the app.',
 
   // ── Placeholder / Empty states ───────────────────────────
   'coming_soon': 'This feature is coming soon.',
@@ -793,7 +833,8 @@ const Map<String, String> enStrings = {
 
   // ── Onboarding ───────────────────────────────────────────
   'onboard_welcome_title': 'Welcome to SmartBiz AI',
-  'onboard_welcome_subtitle': 'Let\'s build your custom business operating system.\nPowered by AI, tailored to your needs.',
+  'onboard_welcome_subtitle':
+      'Let\'s build your custom business operating system.\nPowered by AI, tailored to your needs.',
   'onboard_start': 'Start Setup',
   'onboard_discovery_title': 'Business Discovery',
   'onboard_input_hint': 'Describe your business...',
@@ -803,13 +844,20 @@ const Map<String, String> enStrings = {
   'onboard_thinking': 'Thinking...',
 
   // ── Discovery AI conversation ────────────────────────────
-  'disc_welcome': 'Welcome to SmartBiz AI! I\'m here to help you set up your business operating system.\n\nI\'ll ask a few questions to understand your business, then I\'ll generate a custom ERP system tailored to your needs.\n\nLet\'s start — what\'s your company name?',
-  'disc_q1_business_type': 'Great name! Now tell me — what type of business do you run?\n\nFor example: retail store, restaurant, wholesale, services, manufacturing, etc.',
-  'disc_q2_operations': 'Understood! Now let me understand your operations better.\n\nHow many employees do you have, and what are the main roles?',
-  'disc_q3_products': 'Perfect. What products or services do you offer?\n\nDescribe what you sell or the services you provide.',
-  'disc_q4_finance': 'Now let\'s talk about your financial workflows.\n\nDo you currently issue invoices? Track expenses? Accept online payments?',
-  'disc_q5_special': 'Great, I have a clear picture of your business now.\n\nDo you have any special requirements? Anything specific you want the system to handle?',
-  'disc_q6_ready': 'Excellent! I now have everything I need to generate your custom ERP blueprint.\n\nYour system will include modules for sales, inventory, accounting, and more — all tailored to your business.\n\nClick "View Blueprint" to review what I\'ve prepared for you.',
+  'disc_welcome':
+      'Welcome to SmartBiz AI! I\'m here to help you set up your business operating system.\n\nI\'ll ask a few questions to understand your business, then I\'ll generate a custom ERP system tailored to your needs.\n\nLet\'s start — what\'s your company name?',
+  'disc_q1_business_type':
+      'Great name! Now tell me — what type of business do you run?\n\nFor example: retail store, restaurant, wholesale, services, manufacturing, etc.',
+  'disc_q2_operations':
+      'Understood! Now let me understand your operations better.\n\nHow many employees do you have, and what are the main roles?',
+  'disc_q3_products':
+      'Perfect. What products or services do you offer?\n\nDescribe what you sell or the services you provide.',
+  'disc_q4_finance':
+      'Now let\'s talk about your financial workflows.\n\nDo you currently issue invoices? Track expenses? Accept online payments?',
+  'disc_q5_special':
+      'Great, I have a clear picture of your business now.\n\nDo you have any special requirements? Anything specific you want the system to handle?',
+  'disc_q6_ready':
+      'Excellent! I now have everything I need to generate your custom ERP blueprint.\n\nYour system will include modules for sales, inventory, accounting, and more — all tailored to your business.\n\nClick "View Blueprint" to review what I\'ve prepared for you.',
 
   // ── Discovery quick replies ──────────────────────────────
   'disc_qr_retail': 'Retail Store',
@@ -860,13 +908,15 @@ const Map<String, String> enStrings = {
   'bp_mod_sales': 'Sales & POS',
   'bp_mod_sales_desc': 'Point-of-sale, quotations, and order management.',
   'bp_mod_products': 'Product Catalog',
-  'bp_mod_products_desc': 'Product listings, categories, pricing, and variants.',
+  'bp_mod_products_desc':
+      'Product listings, categories, pricing, and variants.',
   'bp_mod_inventory': 'Inventory Management',
   'bp_mod_inventory_desc': 'Stock tracking, warehouses, and movement logs.',
   'bp_mod_customers': 'Customer Management',
   'bp_mod_customers_desc': 'Customer records, contacts, and history.',
   'bp_mod_accounting': 'Accounting & Finance',
-  'bp_mod_accounting_desc': 'Invoicing, payments, expenses, and financial reports.',
+  'bp_mod_accounting_desc':
+      'Invoicing, payments, expenses, and financial reports.',
   'bp_mod_reports': 'Reports & Analytics',
   'bp_mod_reports_desc': 'Business performance dashboards and custom reports.',
   'bp_mod_employees': 'Employee Management',
@@ -880,7 +930,8 @@ const Map<String, String> enStrings = {
   'bp_role_warehouse': 'Warehouse Manager',
   'bp_role_warehouse_desc': 'Product catalog and inventory operations.',
   'bp_role_accountant': 'Accountant',
-  'bp_role_accountant_desc': 'Financial records, reports, and customer billing.',
+  'bp_role_accountant_desc':
+      'Financial records, reports, and customer billing.',
 
   // ── Blueprint workflows ──────────────────────────────────
   'bp_wf_sale_to_invoice': 'Sale → Invoice generation',
@@ -901,13 +952,15 @@ const Map<String, String> enStrings = {
 
   // ── Blueprint notes ──────────────────────────────────────
   'bp_note_multi_branch': 'Multi-branch support can be added later.',
-  'bp_note_payment_gateway': 'Payment gateway integration ready for activation.',
+  'bp_note_payment_gateway':
+      'Payment gateway integration ready for activation.',
 
   // ── Provisioning ─────────────────────────────────────────
   'prov_title': 'Setting Up Your System',
   'prov_in_progress': 'Building your custom ERP...',
   'prov_success_title': 'Your System is Ready!',
-  'prov_success_subtitle': 'SmartBiz AI has generated your custom business operating system.',
+  'prov_success_subtitle':
+      'SmartBiz AI has generated your custom business operating system.',
   'prov_go_to_dashboard': 'Go to Dashboard',
   'prov_error': 'Something went wrong during setup.',
 
@@ -916,7 +969,8 @@ const Map<String, String> enStrings = {
   'rp_owner_preview': 'Full business overview with AI recommendations.',
   'rp_cashier_preview': 'Quick sales interface with customer lookup.',
   'rp_warehouse_preview': 'Inventory levels, receiving, and stock alerts.',
-  'rp_accountant_preview': 'Invoice tracking, expense reports, and financial insights.',
+  'rp_accountant_preview':
+      'Invoice tracking, expense reports, and financial insights.',
 
   // ── Organization Structure ──────────────────────────────
   'org_title': 'Organization',
@@ -966,7 +1020,8 @@ const Map<String, String> enStrings = {
   'org_team_saved': 'Team saved.',
   'org_leader_assigned': 'Leader assigned.',
   'org_teams_disabled': 'Teams are disabled',
-  'org_teams_disabled_hint': 'Switch to "Departments + Teams" mode in Organization settings to enable teams.',
+  'org_teams_disabled_hint':
+      'Switch to "Departments + Teams" mode in Organization settings to enable teams.',
   'org_change_mode': 'Change Mode',
   'org_dept_mgr': 'Dept Manager',
   'org_team_lead': 'Team Leader',
@@ -995,7 +1050,8 @@ const Map<String, String> enStrings = {
   'asgn_extra_roles': 'Extra Roles',
   'asgn_extra_hint': 'Select additional roles for hybrid responsibilities.',
   'asgn_effective': 'Effective Permissions',
-  'asgn_eff_hint': 'Combined from primary role + extra roles. Dangerous permissions are highlighted.',
+  'asgn_eff_hint':
+      'Combined from primary role + extra roles. Dangerous permissions are highlighted.',
   'asgn_no_perms': 'No permissions assigned.',
   'asgn_saved': 'Assignment saved.',
   'asgn_edit': 'Edit Assignment',
@@ -1027,13 +1083,15 @@ const Map<String, String> enStrings = {
   'cr_dashboard_type': 'Dashboard Type',
   'cr_ai_access': 'AI Access Level',
   'cr_permissions': 'Module Permissions',
-  'cr_perm_hint': 'Toggle permissions for each module. Use "All" or "Clear" for quick setup.',
+  'cr_perm_hint':
+      'Toggle permissions for each module. Use "All" or "Clear" for quick setup.',
   'cr_all': 'All',
   'cr_clear': 'Clear',
   'cr_save_role': 'Create Role',
   'cr_name_required': 'Role name is required.',
   'cr_created': 'Custom role created successfully.',
-  'cr_system_readonly': 'System roles are read-only. Duplicate to create a customizable copy.',
+  'cr_system_readonly':
+      'System roles are read-only. Duplicate to create a customizable copy.',
   'cr_perms_active': 'permissions active',
   'cr_total_perms': 'Total Permissions',
   'cr_save_changes': 'Save Changes',
@@ -1081,8 +1139,10 @@ const Map<String, String> enStrings = {
   'ux_notif_ai': 'AI Recommendation',
   'ux_notif_ai_desc': 'New optimization suggestions available.',
   'ux_logout': 'Logout',
-  'ux_logout_coming': 'Logout will be available after authentication integration.',
-  'ux_print_coming': 'Print / PDF export will be available after backend integration.',
+  'ux_logout_coming':
+      'Logout will be available after authentication integration.',
+  'ux_print_coming':
+      'Print / PDF export will be available after backend integration.',
   'ux_invite_resent': 'Invitation resent successfully.',
   'ux_min_ago': 'min ago',
   'ux_hr_ago': 'hr ago',
@@ -1113,7 +1173,8 @@ const Map<String, String> enStrings = {
 
   // ── Dynamic Screen ────────────────────────────────────────
   'dyn_dash_empty_title': 'No Dashboard Items',
-  'dyn_dash_empty_desc': 'No widgets are available for your current role and permissions. Contact your admin or try AI Chat.',
+  'dyn_dash_empty_desc':
+      'No widgets are available for your current role and permissions. Contact your admin or try AI Chat.',
   'dyn_dash_invalid_route': 'This action is not available yet.',
 
   // ── Quick Action Labels ───────────────────────────────────
@@ -1140,7 +1201,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Executive ──────────────────────────────
   'dw_ai_business_insight': 'AI Business Insight',
-  'dw_ai_business_insight_body': 'Your business performed 12% better this week. 3 overdue invoices need attention, and 4 products are running low.',
+  'dw_ai_business_insight_body':
+      'Your business performed 12% better this week. 3 overdue invoices need attention, and 4 products are running low.',
   'dw_revenue': 'Revenue',
   'dw_profit': 'Net Profit',
   'dw_receivables': 'Receivables',
@@ -1167,7 +1229,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Sales ──────────────────────────────────
   'dw_ai_sales_insight': 'AI Sales Insight',
-  'dw_ai_sales_insight_body': 'You processed 12 invoices today totaling \$2,480. Peak hour was 2-3 PM. Consider offering upsell suggestions during checkout.',
+  'dw_ai_sales_insight_body':
+      'You processed 12 invoices today totaling \$2,480. Peak hour was 2-3 PM. Consider offering upsell suggestions during checkout.',
   'dw_today_sales': 'Today\'s Sales',
   'dw_invoices_today': 'Invoices Today',
   'dw_pending_invoices': 'Pending Invoices',
@@ -1183,7 +1246,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Finance ────────────────────────────────
   'dw_ai_finance_insight': 'AI Financial Insight',
-  'dw_ai_finance_insight_body': 'Revenue is up 12% month-over-month. 3 overdue invoices total \$4,250. Consider sending automated payment reminders.',
+  'dw_ai_finance_insight_body':
+      'Revenue is up 12% month-over-month. 3 overdue invoices total \$4,250. Consider sending automated payment reminders.',
   'dw_expenses': 'Expenses',
   'dw_finance_summary': 'Finance Summary',
   'dw_finance_summary_row1': 'Cash flow: positive',
@@ -1196,7 +1260,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Inventory ──────────────────────────────
   'dw_ai_inventory_insight': 'AI Inventory Insight',
-  'dw_ai_inventory_insight_body': '3 products are below minimum stock. Smart Sensor X is predicted to run out in 2 days based on current sales velocity.',
+  'dw_ai_inventory_insight_body':
+      '3 products are below minimum stock. Smart Sensor X is predicted to run out in 2 days based on current sales velocity.',
   'dw_total_products': 'Total Products',
   'dw_low_stock': 'Low Stock',
   'dw_movements_today': 'Movements Today',
@@ -1212,7 +1277,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: HR ─────────────────────────────────────
   'dw_ai_hr_insight': 'AI HR Insight',
-  'dw_ai_hr_insight_body': '3 new hires joined this month. Team productivity is stable. Consider scheduling performance reviews for Q2.',
+  'dw_ai_hr_insight_body':
+      '3 new hires joined this month. Team productivity is stable. Consider scheduling performance reviews for Q2.',
   'dw_employee_count': 'Total Employees',
   'dw_new_employees': 'New Employees',
   'dw_active_roles': 'Active Roles',
@@ -1227,7 +1293,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Projects ───────────────────────────────
   'dw_ai_project_insight': 'AI Project Insight',
-  'dw_ai_project_insight_body': '5 active projects. 2 are on track, 1 is at risk of missing deadline. Consider reallocating resources.',
+  'dw_ai_project_insight_body':
+      '5 active projects. 2 are on track, 1 is at risk of missing deadline. Consider reallocating resources.',
   'dw_active_projects': 'Active Projects',
   'dw_delayed_tasks': 'Delayed Tasks',
   'dw_upcoming_deadlines': 'Upcoming Deadlines',
@@ -1242,7 +1309,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Operations ─────────────────────────────
   'dw_ai_ops_insight': 'AI Operations Insight',
-  'dw_ai_ops_insight_body': 'All systems operational. 2 approvals pending. Warehouse throughput is up 8% this week.',
+  'dw_ai_ops_insight_body':
+      'All systems operational. 2 approvals pending. Warehouse throughput is up 8% this week.',
   'dw_operational_alerts': 'Operational Alerts',
   'dw_approvals': 'Pending Approvals',
   'dw_approvals_item1': 'Purchase order #PO-015',
@@ -1252,7 +1320,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Support ────────────────────────────────
   'dw_ai_support_insight': 'AI Support Insight',
-  'dw_ai_support_insight_body': '8 open tickets, 3 high priority. Average response time is 2.5 hours. Consider routing overflow to senior agents.',
+  'dw_ai_support_insight_body':
+      '8 open tickets, 3 high priority. Average response time is 2.5 hours. Consider routing overflow to senior agents.',
   'dw_support_queue': 'Support Queue',
   'dw_support_queue_row1': 'Open tickets: 8',
   'dw_support_queue_row2': 'High priority: 3',
@@ -1262,7 +1331,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Service ────────────────────────────────
   'dw_ai_service_insight': 'AI Service Insight',
-  'dw_ai_service_insight_body': '6 jobs assigned today, 2 are urgent. On-time completion rate is 94%. Great performance this week.',
+  'dw_ai_service_insight_body':
+      '6 jobs assigned today, 2 are urgent. On-time completion rate is 94%. Great performance this week.',
   'dw_today_schedule': 'Today\'s Schedule',
   'dw_today_schedule_row1': 'Scheduled: 6 jobs',
   'dw_today_schedule_row2': 'In progress: 2',
@@ -1276,7 +1346,8 @@ const Map<String, String> enStrings = {
 
   // ── Widget Titles: Basic Employee ─────────────────────────
   'dw_ai_assistant': 'AI Assistant',
-  'dw_ai_assistant_body': 'I can help you with your daily tasks, answer questions about company policies, and assist with documentation.',
+  'dw_ai_assistant_body':
+      'I can help you with your daily tasks, answer questions about company policies, and assist with documentation.',
   'dw_my_tasks': 'My Tasks',
   'dw_my_tasks_item1': 'Complete onboarding checklist',
   'dw_my_tasks_item2': 'Submit weekly report',
@@ -1309,11 +1380,14 @@ const Map<String, String> enStrings = {
   'dc_reset_defaults': 'Reset to Defaults',
   'dc_ai_placeholder': 'Let AI configure this dashboard — coming soon.',
   'dc_advanced_options': 'Advanced Dashboard Options',
-  'dc_advanced_hint': 'Fine-tune which widgets and actions appear on this dashboard.',
+  'dc_advanced_hint':
+      'Fine-tune which widgets and actions appear on this dashboard.',
   'dc_widget_vis': 'Widget Visibility',
-  'dc_widget_vis_hint': 'Enable or disable specific widgets for this role. Available after backend integration.',
+  'dc_widget_vis_hint':
+      'Enable or disable specific widgets for this role. Available after backend integration.',
   'dc_action_vis': 'Quick Action Visibility',
-  'dc_action_vis_hint': 'Enable or disable specific quick actions for this role. Available after backend integration.',
+  'dc_action_vis_hint':
+      'Enable or disable specific quick actions for this role. Available after backend integration.',
 
   // ── Preview labels ────────────────────────────────────────
   'dp_visible_widgets': 'Visible Widgets',
@@ -1334,58 +1408,100 @@ const Map<String, String> enStrings = {
   // ═══════════════════════════════════════════════════════════
 
   // ── Module Names ──────────────────────────────────────────
-  'emod_dashboard': 'Dashboard', 'emod_aiChat': 'AI Chat', 'emod_aiAdvisor': 'AI Advisor',
+  'emod_dashboard': 'Dashboard',
+  'emod_aiChat': 'AI Chat',
+  'emod_aiAdvisor': 'AI Advisor',
   'emod_notifications': 'Notifications', 'emod_settings': 'Settings',
-  'emod_customers': 'Customers', 'emod_leads': 'Leads', 'emod_opportunities': 'Opportunities',
-  'emod_quotations': 'Quotations', 'emod_invoices': 'Invoices', 'emod_payments': 'Payments',
+  'emod_customers': 'Customers',
+  'emod_leads': 'Leads',
+  'emod_opportunities': 'Opportunities',
+  'emod_quotations': 'Quotations',
+  'emod_invoices': 'Invoices',
+  'emod_payments': 'Payments',
   'emod_pos': 'Point of Sale', 'emod_recurringBilling': 'Recurring Billing',
   'emod_pipelines': 'Pipelines', 'emod_commissions': 'Commissions',
-  'emod_products': 'Products', 'emod_inventory': 'Inventory', 'emod_warehouses': 'Warehouses',
-  'emod_warehouseTransfers': 'Warehouse Transfers', 'emod_suppliers': 'Suppliers',
+  'emod_products': 'Products',
+  'emod_inventory': 'Inventory',
+  'emod_warehouses': 'Warehouses',
+  'emod_warehouseTransfers': 'Warehouse Transfers',
+  'emod_suppliers': 'Suppliers',
   'emod_procurement': 'Procurement', 'emod_purchaseOrders': 'Purchase Orders',
-  'emod_accounting': 'Accounting', 'emod_expenses': 'Expenses', 'emod_reports': 'Reports',
+  'emod_accounting': 'Accounting',
+  'emod_expenses': 'Expenses',
+  'emod_reports': 'Reports',
   'emod_assets': 'Assets', 'emod_budgets': 'Budgets',
-  'emod_employees': 'Employees', 'emod_roles': 'Roles', 'emod_departments': 'Departments',
+  'emod_employees': 'Employees',
+  'emod_roles': 'Roles',
+  'emod_departments': 'Departments',
   'emod_teams': 'Teams', 'emod_attendance': 'Attendance', 'emod_leave': 'Leave',
   'emod_payroll': 'Payroll',
-  'emod_projects': 'Projects', 'emod_tasks': 'Tasks', 'emod_timesheets': 'Timesheets',
+  'emod_projects': 'Projects',
+  'emod_tasks': 'Tasks',
+  'emod_timesheets': 'Timesheets',
   'emod_bookings': 'Bookings', 'emod_appointments': 'Appointments',
   'emod_serviceJobs': 'Service Jobs', 'emod_support': 'Support',
-  'emod_restaurantTables': 'Restaurant Tables', 'emod_restaurantOrders': 'Restaurant Orders',
-  'emod_kitchenDisplay': 'Kitchen Display', 'emod_menuManagement': 'Menu Management',
+  'emod_restaurantTables': 'Restaurant Tables',
+  'emod_restaurantOrders': 'Restaurant Orders',
+  'emod_kitchenDisplay': 'Kitchen Display',
+  'emod_menuManagement': 'Menu Management',
   'emod_ingredients': 'Ingredients', 'emod_manufacturing': 'Manufacturing',
   'emod_bom': 'Bill of Materials', 'emod_productionOrders': 'Production Orders',
-  'emod_delivery': 'Delivery', 'emod_fleet': 'Fleet', 'emod_branches': 'Branches',
+  'emod_delivery': 'Delivery',
+  'emod_fleet': 'Fleet',
+  'emod_branches': 'Branches',
 
   // ── Module Descriptions ───────────────────────────────────
-  'emod_dashboard_desc': 'Business overview and KPIs', 'emod_aiChat_desc': 'AI-powered assistant',
-  'emod_aiAdvisor_desc': 'Strategic AI recommendations', 'emod_notifications_desc': 'Alerts and notifications',
+  'emod_dashboard_desc': 'Business overview and KPIs',
+  'emod_aiChat_desc': 'AI-powered assistant',
+  'emod_aiAdvisor_desc': 'Strategic AI recommendations',
+  'emod_notifications_desc': 'Alerts and notifications',
   'emod_settings_desc': 'Workspace configuration',
-  'emod_customers_desc': 'Customer relationship management', 'emod_leads_desc': 'Lead tracking and conversion',
-  'emod_opportunities_desc': 'Sales pipeline management', 'emod_quotations_desc': 'Price quotes and proposals',
-  'emod_invoices_desc': 'Invoice creation and tracking', 'emod_payments_desc': 'Payment processing',
-  'emod_pos_desc': 'In-store point of sale', 'emod_recurringBilling_desc': 'Automated recurring invoices',
-  'emod_pipelines_desc': 'Sales pipeline and deal tracking', 'emod_commissions_desc': 'Commission plans, rules, and entries',
-  'emod_products_desc': 'Product catalog management', 'emod_inventory_desc': 'Stock levels and movements',
-  'emod_warehouses_desc': 'Multi-warehouse management', 'emod_warehouseTransfers_desc': 'Inter-warehouse transfers',
-  'emod_suppliers_desc': 'Supplier directory', 'emod_procurement_desc': 'Purchase workflow management',
+  'emod_customers_desc': 'Customer relationship management',
+  'emod_leads_desc': 'Lead tracking and conversion',
+  'emod_opportunities_desc': 'Sales pipeline management',
+  'emod_quotations_desc': 'Price quotes and proposals',
+  'emod_invoices_desc': 'Invoice creation and tracking',
+  'emod_payments_desc': 'Payment processing',
+  'emod_pos_desc': 'In-store point of sale',
+  'emod_recurringBilling_desc': 'Automated recurring invoices',
+  'emod_pipelines_desc': 'Sales pipeline and deal tracking',
+  'emod_commissions_desc': 'Commission plans, rules, and entries',
+  'emod_products_desc': 'Product catalog management',
+  'emod_inventory_desc': 'Stock levels and movements',
+  'emod_warehouses_desc': 'Multi-warehouse management',
+  'emod_warehouseTransfers_desc': 'Inter-warehouse transfers',
+  'emod_suppliers_desc': 'Supplier directory',
+  'emod_procurement_desc': 'Purchase workflow management',
   'emod_purchaseOrders_desc': 'Purchase order tracking',
-  'emod_accounting_desc': 'Financial accounting', 'emod_expenses_desc': 'Expense tracking and approval',
-  'emod_reports_desc': 'Business analytics and reports', 'emod_assets_desc': 'Fixed asset management',
+  'emod_accounting_desc': 'Financial accounting',
+  'emod_expenses_desc': 'Expense tracking and approval',
+  'emod_reports_desc': 'Business analytics and reports',
+  'emod_assets_desc': 'Fixed asset management',
   'emod_budgets_desc': 'Budget planning and tracking',
-  'emod_employees_desc': 'Employee directory and management', 'emod_roles_desc': 'Role and permission management',
-  'emod_departments_desc': 'Department structure', 'emod_teams_desc': 'Team organization',
-  'emod_attendance_desc': 'Attendance tracking', 'emod_leave_desc': 'Leave requests and approvals',
+  'emod_employees_desc': 'Employee directory and management',
+  'emod_roles_desc': 'Role and permission management',
+  'emod_departments_desc': 'Department structure',
+  'emod_teams_desc': 'Team organization',
+  'emod_attendance_desc': 'Attendance tracking',
+  'emod_leave_desc': 'Leave requests and approvals',
   'emod_payroll_desc': 'Salary processing',
-  'emod_projects_desc': 'Project management', 'emod_tasks_desc': 'Task tracking',
-  'emod_timesheets_desc': 'Time logging', 'emod_bookings_desc': 'Booking management',
-  'emod_appointments_desc': 'Appointment scheduling', 'emod_serviceJobs_desc': 'Field service management',
+  'emod_projects_desc': 'Project management',
+  'emod_tasks_desc': 'Task tracking',
+  'emod_timesheets_desc': 'Time logging',
+  'emod_bookings_desc': 'Booking management',
+  'emod_appointments_desc': 'Appointment scheduling',
+  'emod_serviceJobs_desc': 'Field service management',
   'emod_support_desc': 'Customer support tickets',
-  'emod_restaurantTables_desc': 'Table layout and status', 'emod_restaurantOrders_desc': 'Order management',
-  'emod_kitchenDisplay_desc': 'Kitchen order display', 'emod_menuManagement_desc': 'Menu builder',
-  'emod_ingredients_desc': 'Ingredient tracking', 'emod_manufacturing_desc': 'Production management',
-  'emod_bom_desc': 'Bill of materials', 'emod_productionOrders_desc': 'Production order tracking',
-  'emod_delivery_desc': 'Delivery management', 'emod_fleet_desc': 'Vehicle fleet management',
+  'emod_restaurantTables_desc': 'Table layout and status',
+  'emod_restaurantOrders_desc': 'Order management',
+  'emod_kitchenDisplay_desc': 'Kitchen order display',
+  'emod_menuManagement_desc': 'Menu builder',
+  'emod_ingredients_desc': 'Ingredient tracking',
+  'emod_manufacturing_desc': 'Production management',
+  'emod_bom_desc': 'Bill of materials',
+  'emod_productionOrders_desc': 'Production order tracking',
+  'emod_delivery_desc': 'Delivery management',
+  'emod_fleet_desc': 'Vehicle fleet management',
   'emod_branches_desc': 'Multi-branch operations',
 
   // ── Categories ────────────────────────────────────────────
@@ -1403,10 +1519,12 @@ const Map<String, String> enStrings = {
 
   // ── Visibility ────────────────────────────────────────────
   'mvis_both': 'Basic & Advanced', 'mvis_basicOnly': 'Basic Only',
-  'mvis_advancedOnly': 'Advanced Only', 'mvis_hiddenUnlessEnabled': 'On Request',
+  'mvis_advancedOnly': 'Advanced Only',
+  'mvis_hiddenUnlessEnabled': 'On Request',
 
   // ── Blueprint Sources ─────────────────────────────────────
-  'msrc_aiRecommended': 'AI Recommended', 'msrc_ownerSelected': 'Owner Selected',
+  'msrc_aiRecommended': 'AI Recommended',
+  'msrc_ownerSelected': 'Owner Selected',
   'msrc_systemRequired': 'System Required', 'msrc_dependency': 'Dependency',
   'msrc_manuallyDisabled': 'Manually Disabled',
 
@@ -1429,7 +1547,8 @@ const Map<String, String> enStrings = {
   'ws_setup_modules_count': '{count} modules enabled',
   'ws_setup_mode_basic': 'Basic mode',
   'ws_setup_mode_advanced': 'Advanced mode',
-  'ws_setup_ai_pending': 'AI blueprint integration pending — using demo profile',
+  'ws_setup_ai_pending':
+      'AI blueprint integration pending — using demo profile',
 
   // ── Workspace Branding Card ────────────────────────────────
   'ws_brand_default_name': 'SmartBiz Workspace',
@@ -1495,15 +1614,20 @@ const Map<String, String> enStrings = {
 
   // ── Generic Page States ────────────────────────────────────
   'gps_empty_title': 'Nothing here yet',
-  'gps_empty_message': 'This section is empty. Content will appear here once data is available.',
+  'gps_empty_message':
+      'This section is empty. Content will appear here once data is available.',
   'gps_disabled_title': 'Module disabled',
-  'gps_disabled_message': 'This module is not enabled for your workspace. Contact your administrator.',
+  'gps_disabled_message':
+      'This module is not enabled for your workspace. Contact your administrator.',
   'gps_coming_soon_title': 'Coming soon',
-  'gps_coming_soon_message': 'This feature is under development and will be available in a future update.',
+  'gps_coming_soon_message':
+      'This feature is under development and will be available in a future update.',
   'gps_no_permission_title': 'Access restricted',
-  'gps_no_permission_message': 'You do not have permission to view this page. Contact your administrator.',
+  'gps_no_permission_message':
+      'You do not have permission to view this page. Contact your administrator.',
   'gps_not_found_title': 'Page not found',
-  'gps_not_found_message': 'The page you are looking for does not exist or has been moved.',
+  'gps_not_found_message':
+      'The page you are looking for does not exist or has been moved.',
 
   // ── POS ──────────────────────────────────────────────────
   'pos_title': 'Point of Sale',
@@ -1549,8 +1673,10 @@ const Map<String, String> enStrings = {
   'rpt_hr_dept': 'Department Breakdown',
   'rpt_hr_activity': 'Employee Activity Report',
   'rpt_export_demo': 'Demo export ready',
-  'rpt_print_demo': 'Print preview will be available after backend integration.',
-  'rpt_placeholder_hint': 'These reports will be available after backend integration.',
+  'rpt_print_demo':
+      'Print preview will be available after backend integration.',
+  'rpt_placeholder_hint':
+      'These reports will be available after backend integration.',
 
   // ── Super Admin ────────────────────────────────────────
   'sa_title': 'Super Admin',
@@ -1661,7 +1787,8 @@ const Map<String, String> enStrings = {
 
   'sa_ph_features': 'Planned Features',
   'sa_ph_planned': 'Planned',
-  'sa_ph_hint': 'This section will be implemented with backend API integration.',
+  'sa_ph_hint':
+      'This section will be implemented with backend API integration.',
 
   // ── Tenants Screen ─────────────────────────────────────
   'sat_title': 'Tenants & Workspaces',
@@ -1709,7 +1836,8 @@ const Map<String, String> enStrings = {
 
   // ── Plans Screen ───────────────────────────────────────
   'sap_title': 'Plans & Subscriptions',
-  'sap_subtitle': 'Manage plan tiers, pricing, limits, and tenant subscriptions.',
+  'sap_subtitle':
+      'Manage plan tiers, pricing, limits, and tenant subscriptions.',
   'sap_total_plans': 'Total Plans',
   'sap_active_subs': 'Active Subscriptions',
   'sap_trial_tenants': 'Trial Tenants',
@@ -1742,7 +1870,8 @@ const Map<String, String> enStrings = {
 
   // ── Module Control Screen ──────────────────────────────
   'sam_title': 'Module Control',
-  'sam_subtitle': 'Platform-wide module catalog, maturity, and access management.',
+  'sam_subtitle':
+      'Platform-wide module catalog, maturity, and access management.',
   'sam_total': 'Total Modules',
   'sam_implemented': 'Implemented',
   'sam_partial': 'Partial',
@@ -1814,7 +1943,8 @@ const Map<String, String> enStrings = {
 
   // ── Super Admin AI Usage ──────────────────────────────
   'sau_title': 'AI Usage & Billing',
-  'sau_subtitle': 'Monitor platform AI consumption and billing across all workspaces',
+  'sau_subtitle':
+      'Monitor platform AI consumption and billing across all workspaces',
   'sau_total_requests': 'Total AI Requests',
   'sau_credits_used': 'Credits Used',
   'sau_active_ws': 'Active AI Workspaces',
@@ -1893,7 +2023,8 @@ const Map<String, String> enStrings = {
   'mock_as_employee_sub': 'Limited access, assigned role & modules',
   'mock_as_admin': 'Continue as Super Admin',
   'mock_as_admin_sub': 'Platform management, tenants, plans, health',
-  'mock_session_note': 'Mock session only — real login/register will be added next.',
+  'mock_session_note':
+      'Mock session only — real login/register will be added next.',
 
   // ── Auth Screens ──────────────────────────────────────
   'auth_login_title': 'Welcome Back',
@@ -1919,10 +2050,12 @@ const Map<String, String> enStrings = {
   'auth_forgot_sub': 'Enter your email and we\'ll send you a reset link',
   'auth_send_reset': 'Send Reset Link',
   'auth_reset_sent': 'Reset link sent (demo)',
-  'auth_reset_confirm': 'If an account exists with that email, a reset link has been sent.',
+  'auth_reset_confirm':
+      'If an account exists with that email, a reset link has been sent.',
   'auth_back_login': 'Back to Sign In',
   'auth_fields_required': 'Please enter your email and password.',
-  'auth_network_error': 'Unable to connect to server. Please check your internet connection.',
+  'auth_network_error':
+      'Unable to connect to server. Please check your internet connection.',
   'auth_unexpected_error': 'An unexpected error occurred. Please try again.',
 
   // ── Splash ────────────────────────────────────────────
@@ -2049,7 +2182,8 @@ const Map<String, String> enStrings = {
   'pip_record_saved': 'Record saved.',
   'pip_load_failed': 'Failed to load pipelines.',
   'pip_settings_saved': 'Settings saved.',
-  'pip_settings_readonly_hint': 'You do not have permission to modify pipeline settings.',
+  'pip_settings_readonly_hint':
+      'You do not have permission to modify pipeline settings.',
   'pip_assign': 'Assign',
   'pip_assign_member_id': 'Member ID',
   'pip_assigned_ok': 'Record assigned successfully.',
@@ -2071,9 +2205,12 @@ const Map<String, String> enStrings = {
   'pip_customer_name_required': 'Customer name is required.',
   'pip_dup_contact_visible': 'This customer is already registered.',
   'pip_dup_contact_use_existing': 'Use Existing Customer',
-  'pip_dup_contact_outside_scope': 'This customer is already registered and assigned to another employee. Contact your sales manager.',
-  'pip_dup_deal_visible': 'An open deal already exists for this customer in this pipeline.',
-  'pip_dup_deal_outside_scope': 'This customer has an open deal managed by another employee. Contact your sales manager.',
+  'pip_dup_contact_outside_scope':
+      'This customer is already registered and assigned to another employee. Contact your sales manager.',
+  'pip_dup_deal_visible':
+      'An open deal already exists for this customer in this pipeline.',
+  'pip_dup_deal_outside_scope':
+      'This customer has an open deal managed by another employee. Contact your sales manager.',
 
   // ── Step 53 Document Checklists ────────────────────────
   'doc_checklists': 'Document Checklists',
@@ -2146,7 +2283,8 @@ const Map<String, String> enStrings = {
   'comm_entries_created': 'commission entries created',
   'comm_no_permission': 'You do not have permission for this action.',
   'comm_settings_readonly': 'You have read-only access to commission settings.',
-  'comm_settings_forbidden': 'You do not have permission to view commission settings.',
+  'comm_settings_forbidden':
+      'You do not have permission to view commission settings.',
   'comm_edit_plan': 'Edit Plan',
   'comm_delete_plan': 'Delete Plan',
   'comm_activate_plan': 'Activate Plan',
@@ -2155,16 +2293,19 @@ const Map<String, String> enStrings = {
   'comm_plan_deleted': 'Plan deactivated.',
   'comm_plan_activated': 'Plan activated.',
   'comm_plan_deactivated': 'Plan deactivated.',
-  'comm_delete_plan_confirm': 'This will deactivate the plan. Existing commission entries are not affected.',
+  'comm_delete_plan_confirm':
+      'This will deactivate the plan. Existing commission entries are not affected.',
   'comm_edit_rule': 'Edit Rule',
   'comm_delete_rule': 'Delete Rule',
   'comm_activate_rule': 'Activate Rule',
   'comm_deactivate_rule': 'Deactivate Rule',
-  'comm_rule_updated': 'Rule updated. Existing entries keep their original values.',
+  'comm_rule_updated':
+      'Rule updated. Existing entries keep their original values.',
   'comm_rule_deleted': 'Rule deactivated.',
   'comm_rule_activated': 'Rule activated.',
   'comm_rule_deactivated': 'Rule deactivated.',
-  'comm_delete_rule_confirm': 'This will deactivate the rule. Existing commission entries are not affected.',
+  'comm_delete_rule_confirm':
+      'This will deactivate the rule. Existing commission entries are not affected.',
   'comm_min_value': 'Min Record Value',
   'comm_max_value': 'Max Record Value',
   'comm_no_rules': 'No rules for this plan',
@@ -2173,10 +2314,14 @@ const Map<String, String> enStrings = {
   'comm_select_pipeline': 'Select Pipeline',
   'comm_select_stage': 'Trigger Stage',
   'comm_no_pipelines': 'No pipelines configured in this workspace.',
-  'comm_no_eligible_stages': 'No eligible trigger stages found for this pipeline.',
+  'comm_no_eligible_stages':
+      'No eligible trigger stages found for this pipeline.',
   'comm_loading_stages': 'Loading stages…',
   'comm_pipeline_required': 'Pipeline is required.',
   'comm_stage_required': 'Trigger stage is required.',
+  'comm_workflow_pending': 'Pending Approval Workflow',
+  'comm_workflow_pending_hint':
+      'This commission is awaiting approval through the configured workflow. View it in the Approvals inbox.',
   'all': 'All',
 
   // ── Step 55 Duplicate / Ownership ─────────────────────
@@ -2387,7 +2532,8 @@ const Map<String, String> enStrings = {
   'ai_usage_by_operation': 'Usage by Operation',
   'ai_recent_errors': 'Recent Errors',
   'ai_no_usage_yet': 'No AI usage yet. Data will appear after first use.',
-  'ai_no_business_data_yet': 'AI assistant is available for general questions. Business data integration (finance, sales, inventory) will come in a future update.',
+  'ai_no_business_data_yet':
+      'AI assistant is available for general questions. Business data integration (finance, sales, inventory) will come in a future update.',
   'ai_step_59_1_note': 'Step 59.1 — AI Foundation. Data reflects actual usage.',
   'ai_new_chat': 'New Chat',
 
@@ -2412,6 +2558,38 @@ const Map<String, String> enStrings = {
   'approval_steps': 'Approval Steps',
   'approval_audit_trail': 'Audit Trail',
   'approval_no_permission': 'You do not have permission to view approvals.',
+  'approval_rejection_reason': 'Rejection Reason',
+  'approval_rejection_reason_hint':
+      'Explain why this request is being rejected',
+  'approval_rejection_reason_required': 'A rejection reason is required.',
+
+  // Detail sheet labels
+  'approval_label_entity': 'Entity',
+  'approval_label_requester': 'Requester',
+  'approval_label_submitted': 'Submitted',
+
+  // Entity type human labels
+  'approval_entity_commission_entry': 'Commission Entry',
+  'approval_entity_invoice': 'Invoice',
+  'approval_entity_expense': 'Expense',
+  'approval_entity_purchase_order': 'Purchase Order',
+
+  // Step tile
+  'approval_step_fallback': 'Step',
+  'approval_awaiting_decision': 'Awaiting decision',
+  'approval_step_approved_by': 'Approved by',
+  'approval_step_rejected_by': 'Rejected by',
+  'approval_step_skipped': 'Skipped',
+
+  // Decision audit trail
+  'approval_decision_approved': 'Approved',
+  'approval_decision_rejected': 'Rejected',
+
+  // Progress label
+  'approval_progress_rejected_at': 'Rejected at step',
+  'approval_progress_of': 'of',
+  'approval_item_label': 'Item',
+  'approval_reason_label': 'Reason',
 
   // ── Approval Workflow Management ──────────────────────
   'approval_workflows': 'Approval Workflows',
@@ -2430,6 +2608,57 @@ const Map<String, String> enStrings = {
   'approval_approver_type': 'Approver Type',
   'approval_permission_key': 'Permission Key',
   'approval_allow_self_approval': 'Allow Self-Approval',
+  'approval_trigger_conditions': 'Trigger Conditions',
+  'approval_trigger_logic': 'Logic',
+  'approval_trigger_logic_and': 'All conditions must match (AND)',
+  'approval_trigger_logic_or': 'Any condition matches (OR)',
+  'approval_trigger_field': 'Field',
+  'approval_trigger_operator': 'Operator',
+  'approval_trigger_value': 'Value',
+  'approval_trigger_add_condition': 'Add Condition',
+  'approval_trigger_no_conditions':
+      'No trigger conditions — workflow triggers for all entities.',
+  'approval_trigger_op_equals': 'Equals',
+  'approval_trigger_op_not_equals': 'Not Equals',
+  'approval_trigger_op_greater_than': 'Greater Than',
+  'approval_trigger_op_greater_than_or_equal': 'Greater Than or Equal',
+  'approval_trigger_op_less_than': 'Less Than',
+  'approval_trigger_op_less_than_or_equal': 'Less Than or Equal',
+  'approval_trigger_op_contains': 'Contains',
+  'approval_trigger_op_in': 'In List',
+  'approval_trigger_op_not_in': 'Not In List',
+  'approval_trigger_op_exists': 'Exists',
+  'approval_trigger_summary': 'Triggers when',
+  'approval_type_permission': 'Permission-based',
+  'approval_type_requester_manager': 'Requester\'s Manager',
+  'approval_type_specific_member': 'Specific Member',
+  'approval_select_member': 'Select Member',
+  'approval_member_id': 'Member',
+  'approval_permission_approver_hint':
+      'Only decision-capable permissions are shown.',
+  'approval_no_members': 'No active members found in this workspace.',
+  'approval_no_permissions': 'No approver-eligible permissions available.',
+  'approval_selector_error': 'Failed to load data. Please try again.',
+  'approval_unknown_member': 'Unknown member',
+  'approval_select_permission': 'Required Permission',
+  'approval_permission_unavailable': 'Unavailable permission',
+  'approval_permission_no_longer_selectable': '(no longer selectable)',
+  'approval_field_unavailable': 'Unavailable field',
+  'approval_schema_load_error':
+      'Could not load field catalog. Conditions unavailable.',
+  'approval_trigger_invalid_number': 'Enter a valid number.',
+  'approval_entity_type_loading': 'Loading entity types…',
+  'approval_entity_type_error': 'Could not load entity types.',
+  'approval_entity_type_empty': 'No entity types available for this workspace.',
+  'approval_entity_type_unavailable': 'Unavailable entity type',
+  'approval_entity_type_select': 'Select entity type',
+  'approval_entity_type_change_confirm':
+      'Changing entity type will clear existing conditions. Continue?',
+  'approval_trigger_op_unknown': 'Operator no longer available',
+  'approval_entity_loading': 'Loading entity type…',
+  'approval_field_loading': 'Loading condition fields…',
+  'approval_metadata_error': 'Failed to load workflow metadata',
+  'approval_metadata_retry': 'Retry',
   'confirm_delete': 'Confirm Delete',
 
   // ── Generic labels ────────────────────────────────────
@@ -2444,4 +2673,3 @@ const Map<String, String> enStrings = {
   'emod_approvals': 'Approvals',
   'emod_approvals_desc': 'Multi-step approval workflows for business entities.',
 };
-

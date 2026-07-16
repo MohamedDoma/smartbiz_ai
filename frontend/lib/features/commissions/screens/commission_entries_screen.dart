@@ -94,14 +94,19 @@ class _EntryCard extends StatelessWidget {
     final canApprove = _hasPerm(context, 'commissions.approve');
     final canPay = _hasPerm(context, 'commissions.pay');
     final canCancel = _hasPerm(context, 'commissions.cancel');
-    final hasAnyAction = canApprove || canPay || canCancel;
+
+    // If the entry is governed by an approval workflow, hide the direct
+    // approve button — it must be resolved via the Approvals inbox.
+    final isWorkflowPending = entry.isWorkflowPending;
+    final showApproveBtn = canApprove && entry.status == 'pending' && !isWorkflowPending;
+    final hasAnyAction = showApproveBtn || canPay || canCancel;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header: record + amount
+          // Header: record + status badge
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Expanded(
               child: Text(
@@ -123,6 +128,34 @@ class _EntryCard extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 8),
+
+          // Workflow-pending indicator — shown when approval is routed
+          // through the multi-step approval engine.
+          if (isWorkflowPending) ...[
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => GoRouter.of(context).push('/approvals'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.hourglass_top_rounded, size: 14, color: Colors.amber[800]),
+                  const SizedBox(width: 6),
+                  Text(
+                    tr(context, 'comm_workflow_pending'),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber[800]),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_ios, size: 10, color: Colors.amber[800]),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
 
           // Amount details
           Row(children: [
@@ -152,11 +185,11 @@ class _EntryCard extends StatelessWidget {
           if (entry.plan != null)
             Text('${entry.plan!['name'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
 
-          // Actions — gated by permissions
+          // Actions — gated by permissions + workflow state
           if (hasAnyAction && (entry.status == 'pending' || entry.status == 'approved')) ...[
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              if (entry.status == 'pending' && canApprove)
+              if (showApproveBtn)
                 TextButton.icon(
                   icon: const Icon(Icons.check, size: 16),
                   label: Text(tr(context, 'comm_approve'), style: const TextStyle(fontSize: 12)),

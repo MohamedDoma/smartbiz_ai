@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\NoMatchingApprovalWorkflowException;
 use App\Models\ApprovalDecision;
 use App\Models\ApprovalRequest;
 use App\Models\ApprovalRequestStep;
@@ -49,7 +50,8 @@ class ApprovalEngine
      * @param array  $entitySnapshot  Snapshot of entity data for audit
      * @param array  $metadata        Optional additional context
      *
-     * @throws \RuntimeException if no active workflow matches the entity type
+     * @throws NoMatchingApprovalWorkflowException if no active workflow matches the entity type
+     * @throws \RuntimeException if the workflow has no active steps or a duplicate pending request exists
      */
     public function submit(
         string $workspaceId,
@@ -68,7 +70,7 @@ class ApprovalEngine
                 ->first();
 
             if (!$workflow) {
-                throw new \RuntimeException("No active approval workflow found for entity type '{$entityType}' in workspace '{$workspaceId}'.");
+                throw new NoMatchingApprovalWorkflowException($entityType, $workspaceId);
             }
 
             // Get active steps
@@ -315,6 +317,39 @@ class ApprovalEngine
     // ═══════════════════════════════════════════════════════════
 
     /**
+     * Check if an actor can decide on the current step of an approval request.
+     *
+     * This is the non-throwing counterpart to validateActorAuthorization().
+     * Used by the controller to compute the `can_decide` capability flag
+     * without relying on exception control flow in the API response layer.
+     *
+     * Returns false for non-pending requests or when no current step exists.
+     */
+    public function canActorDecide(ApprovalRequest $request, WorkspaceMembership $actor): bool
+    {
+        if (!$request->isPending()) {
+            return false;
+        }
+
+        $currentStep = $request->currentRequestStep();
+        if (!$currentStep) {
+            return false;
+        }
+
+        $workflowStep = ApprovalWorkflowStep::find($currentStep->workflow_step_id);
+        if (!$workflowStep) {
+            return false;
+        }
+
+        try {
+            $this->validateActorAuthorization($workflowStep, $actor, $request);
+            return true;
+        } catch (\RuntimeException) {
+            return false;
+        }
+    }
+
+    /**
      * Get pending approval requests where the actor can decide on the current step.
      *
      * This is the "Inbox" query — returns requests awaiting the actor's decision.
@@ -331,22 +366,7 @@ class ApprovalEngine
             ->get();
 
         return $pendingRequests->filter(function (ApprovalRequest $request) use ($actor) {
-            $currentStep = $request->currentRequestStep();
-            if (!$currentStep) {
-                return false;
-            }
-
-            $workflowStep = ApprovalWorkflowStep::find($currentStep->workflow_step_id);
-            if (!$workflowStep) {
-                return false;
-            }
-
-            try {
-                $this->validateActorAuthorization($workflowStep, $actor, $request);
-                return true;
-            } catch (\RuntimeException) {
-                return false;
-            }
+            return $this->canActorDecide($request, $actor);
         })->values();
     }
 

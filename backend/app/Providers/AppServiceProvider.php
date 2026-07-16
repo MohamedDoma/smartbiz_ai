@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\CommissionEntryConditionSchemaProvider;
+use App\Services\ConditionEntityFieldCatalog;
 use App\Services\PermissionResolver;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +21,16 @@ class AppServiceProvider extends ServiceProvider
 
         // PermissionResolver is stateless — singleton for performance.
         $this->app->singleton(PermissionResolver::class);
+
+        // ConditionEntityFieldCatalog — registry of entity field schemas
+        // for approval workflow trigger conditions. Register all known
+        // schema providers here. New entity types are added by creating
+        // a ConditionEntitySchemaProvider implementation and registering it.
+        $this->app->singleton(ConditionEntityFieldCatalog::class, function () {
+            $catalog = new ConditionEntityFieldCatalog();
+            $catalog->register(new CommissionEntryConditionSchemaProvider());
+            return $catalog;
+        });
 
         // AI: LLM provider resolved from env (AI_PROVIDER=openai|anthropic|fake)
         $this->app->singleton(

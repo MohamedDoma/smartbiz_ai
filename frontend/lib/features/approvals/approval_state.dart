@@ -50,36 +50,55 @@ class ApprovalState extends ChangeNotifier {
   // ── Inbox ──────────────────────────────────────────────
 
   Future<void> loadInbox() async {
-    _loading = true; _error = null; _isForbidden = false;
+    _loading = true;
+    _error = null;
+    _isForbidden = false;
     notifyListeners();
     try {
       _inbox = await _svc.inbox();
-    } catch (e) { _handleError(e); }
-    _loading = false; notifyListeners();
+    } catch (e) {
+      _handleError(e);
+    }
+    _loading = false;
+    notifyListeners();
   }
 
   // ── Requests ───────────────────────────────────────────
 
   Future<void> loadRequests({
-    String? scope, String? status, String? entityType,
+    String? scope,
+    String? status,
+    String? entityType,
   }) async {
-    _loading = true; _error = null; _isForbidden = false;
+    _loading = true;
+    _error = null;
+    _isForbidden = false;
     notifyListeners();
     try {
       _requests = await _svc.listRequests(
-        scope: scope, status: status, entityType: entityType,
+        scope: scope,
+        status: status,
+        entityType: entityType,
       );
-    } catch (e) { _handleError(e); }
-    _loading = false; notifyListeners();
+    } catch (e) {
+      _handleError(e);
+    }
+    _loading = false;
+    notifyListeners();
   }
 
   Future<void> loadRequestDetail(String id) async {
-    _loading = true; _error = null; _isForbidden = false;
+    _loading = true;
+    _error = null;
+    _isForbidden = false;
     notifyListeners();
     try {
       _selectedRequest = await _svc.showRequest(id);
-    } catch (e) { _handleError(e); }
-    _loading = false; notifyListeners();
+    } catch (e) {
+      _handleError(e);
+    }
+    _loading = false;
+    notifyListeners();
   }
 
   Future<ApprovalRequest?> submitRequest(ApprovalRequestPayload p) async {
@@ -88,31 +107,45 @@ class ApprovalState extends ChangeNotifier {
       _requests = [req, ..._requests];
       notifyListeners();
       return req;
-    } catch (e) { _handleError(e); notifyListeners(); return null; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<bool> approve(String id, {String? notes}) async {
     try {
       final updated = await _svc.decide(
-        id, ApprovalDecisionPayload(decision: 'approved', notes: notes),
+        id,
+        ApprovalDecisionPayload(decision: 'approved', notes: notes),
       );
       _updateInLists(updated);
       _selectedRequest = updated;
       notifyListeners();
       return true;
-    } catch (e) { _handleError(e); notifyListeners(); return false; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> reject(String id, {String? notes}) async {
     try {
       final updated = await _svc.decide(
-        id, ApprovalDecisionPayload(decision: 'rejected', notes: notes),
+        id,
+        ApprovalDecisionPayload(decision: 'rejected', notes: notes),
       );
       _updateInLists(updated);
       _selectedRequest = updated;
       notifyListeners();
       return true;
-    } catch (e) { _handleError(e); notifyListeners(); return false; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> cancelRequest(String id, {String? reason}) async {
@@ -122,38 +155,56 @@ class ApprovalState extends ChangeNotifier {
       _selectedRequest = updated;
       notifyListeners();
       return true;
-    } catch (e) { _handleError(e); notifyListeners(); return false; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   // ── Workflows (admin) ──────────────────────────────────
 
   Future<void> loadWorkflows({String? entityType}) async {
-    _loading = true; _error = null; _isForbidden = false;
+    _loading = true;
+    _error = null;
+    _isForbidden = false;
     notifyListeners();
     try {
       _workflows = await _svc.listWorkflows(entityType: entityType);
-    } catch (e) { _handleError(e); }
-    _loading = false; notifyListeners();
+    } catch (e) {
+      _handleError(e);
+    }
+    _loading = false;
+    notifyListeners();
   }
 
-  Future<ApprovalWorkflow?> createWorkflow(
-      ApprovalWorkflowPayload p) async {
+  Future<ApprovalWorkflow?> createWorkflow(ApprovalWorkflowPayload p) async {
     try {
       final wf = await _svc.createWorkflow(p);
       _workflows = [..._workflows, wf];
       notifyListeners();
       return wf;
-    } catch (e) { _handleError(e); notifyListeners(); return null; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<ApprovalWorkflow?> updateWorkflow(
-      String id, ApprovalWorkflowUpdatePayload p) async {
+    String id,
+    ApprovalWorkflowUpdatePayload p,
+  ) async {
     try {
       final wf = await _svc.updateWorkflow(id, p);
       _workflows = _workflows.map((w) => w.id == id ? wf : w).toList();
       notifyListeners();
       return wf;
-    } catch (e) { _handleError(e); notifyListeners(); return null; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<bool> deleteWorkflow(String id) async {
@@ -161,27 +212,43 @@ class ApprovalState extends ChangeNotifier {
       await _svc.deleteWorkflow(id);
       await loadWorkflows();
       return true;
-    } catch (e) { _handleError(e); notifyListeners(); return false; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   // ── Workflow Steps (admin) ───────────────────────────
 
   Future<ApprovalWorkflowStep?> addStep(
-      String workflowId, ApprovalWorkflowStepPayload p) async {
+    String workflowId,
+    ApprovalWorkflowStepPayload p,
+  ) async {
     try {
       final step = await _svc.addStep(workflowId, p);
       await loadWorkflows(); // refresh to get updated steps list
       return step;
-    } catch (e) { _handleError(e); notifyListeners(); return null; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<ApprovalWorkflowStep?> updateStep(
-      String stepId, Map<String, dynamic> data) async {
+    String stepId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final step = await _svc.updateStep(stepId, data);
       await loadWorkflows();
       return step;
-    } catch (e) { _handleError(e); notifyListeners(); return null; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<bool> deleteStep(String stepId) async {
@@ -189,16 +256,18 @@ class ApprovalState extends ChangeNotifier {
       await _svc.deleteStep(stepId);
       await loadWorkflows();
       return true;
-    } catch (e) { _handleError(e); notifyListeners(); return false; }
+    } catch (e) {
+      _handleError(e);
+      notifyListeners();
+      return false;
+    }
   }
 
   // ── Helpers ────────────────────────────────────────────
 
   void _updateInLists(ApprovalRequest updated) {
     _inbox = _inbox.where((r) => r.id != updated.id).toList();
-    _requests = _requests
-        .map((r) => r.id == updated.id ? updated : r)
-        .toList();
+    _requests = _requests.map((r) => r.id == updated.id ? updated : r).toList();
   }
 
   /// Clear all cached data (call on logout / workspace switch).

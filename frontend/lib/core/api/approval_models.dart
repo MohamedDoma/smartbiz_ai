@@ -137,6 +137,7 @@ class ApprovalRequest {
   final Map<String, dynamic>? workflow;
   final String entityType;
   final String entityId;
+  final String? subjectDisplayName;
   final String requesterMembershipId;
   final Map<String, dynamic>? requester;
   final String status;
@@ -147,10 +148,17 @@ class ApprovalRequest {
   final String? updatedAt;
   final int? stepsCount;
   final int? completedSteps;
+  final int? rejectedAtStep;
   final Map<String, dynamic>? entitySnapshot;
   final Map<String, dynamic>? metadata;
   final List<ApprovalRequestStepDetail> steps;
   final List<ApprovalDecisionDetail> decisions;
+
+  // Server-authoritative capability flags.
+  // These are the ONLY source of truth for UI action visibility.
+  final bool canView;
+  final bool canDecide;
+  final bool canCancel;
 
   const ApprovalRequest({
     required this.id,
@@ -158,6 +166,7 @@ class ApprovalRequest {
     this.workflow,
     required this.entityType,
     required this.entityId,
+    this.subjectDisplayName,
     required this.requesterMembershipId,
     this.requester,
     this.status = 'pending',
@@ -168,10 +177,14 @@ class ApprovalRequest {
     this.updatedAt,
     this.stepsCount,
     this.completedSteps,
+    this.rejectedAtStep,
     this.entitySnapshot,
     this.metadata,
     this.steps = const [],
     this.decisions = const [],
+    this.canView = false,
+    this.canDecide = false,
+    this.canCancel = false,
   });
 
   factory ApprovalRequest.fromJson(Map<String, dynamic> j) => ApprovalRequest(
@@ -180,6 +193,7 @@ class ApprovalRequest {
     workflow: _castMap(j['workflow']),
     entityType: j['entity_type'] as String,
     entityId: j['entity_id'] as String,
+    subjectDisplayName: j['subject_display_name'] as String?,
     requesterMembershipId: j['requester_membership_id'] as String,
     requester: _castMap(j['requester']),
     status: j['status'] as String? ?? 'pending',
@@ -190,6 +204,7 @@ class ApprovalRequest {
     updatedAt: j['updated_at'] as String?,
     stepsCount: j['steps_count'] as int?,
     completedSteps: j['completed_steps'] as int?,
+    rejectedAtStep: j['rejected_at_step'] as int?,
     entitySnapshot: _castMap(j['entity_snapshot']),
     metadata: _safeMap(j['metadata']),
     steps:
@@ -211,6 +226,9 @@ class ApprovalRequest {
             )
             .toList() ??
         [],
+    canView: j['can_view'] as bool? ?? false,
+    canDecide: j['can_decide'] as bool? ?? false,
+    canCancel: j['can_cancel'] as bool? ?? false,
   );
 
   /// Human-readable requester name.
@@ -219,12 +237,36 @@ class ApprovalRequest {
   /// Human-readable workflow name.
   String get workflowName => workflow?['name'] as String? ?? 'Unknown Workflow';
 
+  /// Readable subject title with cascading fallback:
+  /// 1. Backend-resolved subject_display_name (e.g., pipeline record title)
+  /// 2. entity_snapshot title or name
+  /// 3. null (caller should provide a localized entity label or shortened UUID)
+  String? get displayTitle =>
+      subjectDisplayName ??
+      entitySnapshot?['title'] as String? ??
+      entitySnapshot?['name'] as String?;
+
   /// Progress as 0.0–1.0.
+  /// For rejected requests, shows progress up to the rejection point.
   double get progress {
     final total = stepsCount ?? steps.length;
-    final done = completedSteps ?? 0;
     if (total <= 0) return 0;
+    if (status == 'approved') return 1.0;
+    final done = completedSteps ?? 0;
     return (done / total).clamp(0.0, 1.0);
+  }
+
+  /// Human-readable progress label.
+  /// e.g. "1/2" for pending, "Rejected at step 1" for rejected.
+  String get progressLabel {
+    final total = stepsCount ?? steps.length;
+    if (status == 'rejected' && rejectedAtStep != null) {
+      return 'Rejected at step $rejectedAtStep/$total';
+    }
+    if (status == 'approved') {
+      return '$total/$total';
+    }
+    return '${completedSteps ?? 0}/$total';
   }
 }
 
@@ -352,7 +394,7 @@ class ApprovalDecisionPayload {
 
 /// Payload for creating a new workflow.
 class ApprovalWorkflowPayload {
-  final String workflowKey;
+  final String? workflowKey;
   final String name;
   final String? description;
   final String entityType;
@@ -360,7 +402,7 @@ class ApprovalWorkflowPayload {
   final List<ApprovalWorkflowStepPayload>? steps;
 
   const ApprovalWorkflowPayload({
-    required this.workflowKey,
+    this.workflowKey,
     required this.name,
     this.description,
     required this.entityType,
@@ -369,7 +411,8 @@ class ApprovalWorkflowPayload {
   });
 
   Map<String, dynamic> toJson() => {
-    'workflow_key': workflowKey,
+    if (workflowKey != null && workflowKey!.isNotEmpty)
+      'workflow_key': workflowKey,
     'name': name,
     if (description != null) 'description': description,
     'entity_type': entityType,

@@ -14,6 +14,9 @@ use App\Models\WorkspaceTemplateApplication;
  * Builds the session payload returned by login/register/me/invite-accept.
  *
  * Extracted from AuthController to avoid duplication.
+ *
+ * Permissions are resolved through PermissionResolver to ensure consistency
+ * with runtime checks (includes overrides and delegations, not just roles).
  */
 class AuthSessionPayloadBuilder
 {
@@ -29,19 +32,18 @@ class AuthSessionPayloadBuilder
         // Platform role
         $platformRole = $user->is_super_admin ? 'super_admin' : 'none';
 
+        // Resolve permissions through PermissionResolver for consistency
+        // with runtime permission checks (includes overrides & delegations).
+        $resolver = app(PermissionResolver::class);
+
         // Build membership payloads
-        $membershipPayloads = $memberships->map(function ($membership) {
+        $membershipPayloads = $memberships->map(function ($membership) use ($resolver) {
             $workspace = $membership->workspace;
             $roles = $membership->membershipRoles;
 
             $primaryMr = $roles->firstWhere('is_primary', true) ?? $roles->first();
 
-            $permissions = $roles
-                ->map(fn ($mr) => $mr->role?->permissions ?? [])
-                ->flatten()
-                ->unique()
-                ->values()
-                ->toArray();
+            $permissions = $resolver->resolveAll($membership);
 
             $onboardingCompleted = false;
             if ($workspace) {

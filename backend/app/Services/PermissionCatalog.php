@@ -13,6 +13,10 @@ class PermissionCatalog
     /**
      * Return the full permission catalog grouped by category.
      *
+     * Each permission may include `usable_as_approver` (bool, default false).
+     * Only permissions flagged as `usable_as_approver => true` are eligible
+     * as `approver_permission_key` values in approval workflow steps.
+     *
      * @return array<int, array{category: string, label: string, permissions: array}>
      */
     public static function all(): array
@@ -161,10 +165,11 @@ class PermissionCatalog
                 'label'    => 'Commissions',
                 'permissions' => [
                     ['key' => 'commissions.list',            'label' => 'List commissions',            'description' => 'Can view commission entries list'],
+                    ['key' => 'commissions.view_own',        'label' => 'View own commissions',        'description' => 'Can view only commission entries where the user is the recipient'],
                     ['key' => 'commissions.view_all',        'label' => 'View all commissions',        'description' => 'Can view commission entries for all members'],
                     ['key' => 'commissions.view_team',       'label' => 'View team commissions',       'description' => 'Can view commission entries for own team'],
                     ['key' => 'commissions.calculate',       'label' => 'Calculate commissions',       'description' => 'Can trigger commission calculation'],
-                    ['key' => 'commissions.approve',         'label' => 'Approve commissions',         'description' => 'Can approve pending commission entries'],
+                    ['key' => 'commissions.approve',         'label' => 'Approve commissions',         'label_en' => 'Approve commissions', 'label_ar' => 'اعتماد العمولات', 'description' => 'Can approve pending commission entries', 'usable_as_approver' => true],
                     ['key' => 'commissions.pay',             'label' => 'Pay commissions',             'description' => 'Can mark commissions as paid'],
                     ['key' => 'commissions.cancel',          'label' => 'Cancel commissions',          'description' => 'Can cancel commission entries'],
                     ['key' => 'commissions.settings.view',   'label' => 'View commission settings',   'description' => 'Can view commission plans and rules'],
@@ -226,7 +231,7 @@ class PermissionCatalog
                     ['key' => 'approvals.list',    'label' => 'List approvals',     'description' => 'Can view approval requests and inbox'],
                     ['key' => 'approvals.show',    'label' => 'View approval',      'description' => 'Can view approval request details'],
                     ['key' => 'approvals.request', 'label' => 'Submit approvals',   'description' => 'Can submit new approval requests'],
-                    ['key' => 'approvals.decide',  'label' => 'Decide approvals',   'description' => 'Can approve or reject approval requests (subject to workflow step configuration)'],
+                    ['key' => 'approvals.decide',  'label' => 'Decide approvals',   'label_en' => 'Decide approvals', 'label_ar' => 'اتخاذ قرار الموافقة', 'description' => 'Can approve or reject approval requests (subject to workflow step configuration)', 'usable_as_approver' => true],
                     ['key' => 'approvals.manage',  'label' => 'Manage approvals',   'description' => 'Can manage approval workflows, cancel any request, and configure approval settings'],
                     ['key' => 'approvals.cancel',  'label' => 'Cancel approvals',   'description' => 'Can cancel own pending approval requests'],
                 ],
@@ -245,6 +250,26 @@ class PermissionCatalog
         foreach (self::all() as $category) {
             foreach ($category['permissions'] as $perm) {
                 $keys[] = $perm['key'];
+            }
+        }
+        return $keys;
+    }
+
+    /**
+     * Get a flat list of permission keys that are eligible as workflow approvers.
+     *
+     * Only permissions with `usable_as_approver => true` are returned.
+     *
+     * @return string[]
+     */
+    public static function approverKeys(): array
+    {
+        $keys = [];
+        foreach (self::all() as $category) {
+            foreach ($category['permissions'] as $perm) {
+                if (! empty($perm['usable_as_approver'])) {
+                    $keys[] = $perm['key'];
+                }
             }
         }
         return $keys;
