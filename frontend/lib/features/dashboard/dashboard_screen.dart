@@ -1,8 +1,8 @@
-// SmartBiz AI — Dashboard Screen (Phase 16.3).
+// SmartBiz AI — Dashboard Screen.
 //
 // Thin entry point that delegates to the DashboardCoordinator.
-// The coordinator wires AppState/RolesState/OrgState into the
-// dynamic dashboard engine and renders DynamicDashboardScreen.
+// The coordinator wires AppState/OrgState into the dynamic
+// dashboard engine and renders DynamicDashboardScreen.
 import 'package:flutter/material.dart';
 import 'dashboard_coordinator.dart';
 

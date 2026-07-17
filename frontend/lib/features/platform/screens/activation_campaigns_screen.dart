@@ -18,7 +18,10 @@ class _ActivationCampaignsScreenState extends State<ActivationCampaignsScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadCampaigns());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadCampaigns();
+    });
   }
 
   @override

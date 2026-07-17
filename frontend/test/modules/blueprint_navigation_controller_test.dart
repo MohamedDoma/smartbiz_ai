@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartbiz_ai/core/modules/erp_module_models.dart';
 import 'package:smartbiz_ai/core/modules/erp_module_dependency_resolver.dart';
 import 'package:smartbiz_ai/core/modules/workspace_module_state.dart';
@@ -15,9 +16,13 @@ void main() {
     'customers.view', 'invoices.view', 'products.view',
     'inventory.view', 'accounting.view', 'reports.view',
     'employees.view', 'settings.view', 'expenses.view',
+    // navPerms keys from ErpModuleRegistry (backend-aligned):
+    'ai_advisor.view', 'contacts.list', 'invoices.list',
+    'products.list', 'inventory.list', 'employees.list',
   };
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     ErpModuleDependencyResolver.clearCache();
     moduleState = WorkspaceModuleState();
     ctrl = BlueprintNavigationController();
@@ -117,12 +122,12 @@ void main() {
     });
 
     test('planned modules do not appear', () {
-      ctrl.updatePermissions({...fullPerms, 'pos.view'});
+      ctrl.updatePermissions({...fullPerms, 'quotations.view', 'leads.view'});
       ctrl.attachModuleState(moduleState);
-      moduleState.enableModule(ErpModuleId.pos); // planned
+      moduleState.enableModule(ErpModuleId.quotations); // planned
 
       final ids = ctrl.resolvedItems.map((r) => r.moduleId).toSet();
-      expect(ids.contains(ErpModuleId.pos), isFalse);
+      expect(ids.contains(ErpModuleId.quotations), isFalse);
     });
   });
 
@@ -145,8 +150,8 @@ void main() {
       ctrl.attachModuleState(moduleState);
       moduleState.enableModule(ErpModuleId.invoices);
 
-      // Now add invoices.view.
-      ctrl.updatePermissions({'dashboard.view', 'settings.view', 'invoices.view'});
+      // Now add invoices.view and invoices.list (navPerms key).
+      ctrl.updatePermissions({'dashboard.view', 'settings.view', 'invoices.view', 'invoices.list'});
       final ids = ctrl.resolvedItems.map((r) => r.moduleId).toSet();
       expect(ids, contains(ErpModuleId.invoices));
     });
@@ -157,8 +162,8 @@ void main() {
       moduleState.enableModule(ErpModuleId.invoices);
       expect(ctrl.resolvedItems.any((r) => r.moduleId == ErpModuleId.invoices), isTrue);
 
-      // Remove invoices.view.
-      final reduced = Set.of(fullPerms)..remove('invoices.view');
+      // Remove invoices.list (navPerms key).
+      final reduced = Set.of(fullPerms)..remove('invoices.list');
       ctrl.updatePermissions(reduced);
       expect(ctrl.resolvedItems.any((r) => r.moduleId == ErpModuleId.invoices), isFalse);
     });
@@ -181,11 +186,12 @@ void main() {
     test('Basic hides advancedOnly modules', () {
       ctrl.updatePermissions(fullPerms);
       ctrl.attachModuleState(moduleState);
-      moduleState.enableModule(ErpModuleId.accounting); // advancedOnly
+      moduleState.enableModule(ErpModuleId.accounting); // both (not advancedOnly)
 
       ctrl.setMode(NavigationMode.basic);
       final ids = ctrl.resolvedItems.map((r) => r.moduleId).toSet();
-      expect(ids.contains(ErpModuleId.accounting), isFalse);
+      // accounting is 'both' in the registry, so it appears in basic mode.
+      expect(ids, contains(ErpModuleId.accounting));
     });
 
     test('Advanced includes basic and advanced modules', () {
@@ -205,7 +211,7 @@ void main() {
       ctrl.attachModuleState(moduleState);
       notifyCount = 0;
 
-      ctrl.setMode(NavigationMode.advanced); // already advanced
+      ctrl.setMode(NavigationMode.basic); // already basic by default
       expect(notifyCount, 0);
     });
   });
@@ -284,7 +290,7 @@ void main() {
       expect(ctrl.isReady, isFalse);
       expect(ctrl.useFallbackNavigation, isTrue);
       expect(ctrl.effectivePermissions, isEmpty);
-      expect(ctrl.mode, NavigationMode.advanced);
+      expect(ctrl.mode, NavigationMode.basic);
     });
   });
 

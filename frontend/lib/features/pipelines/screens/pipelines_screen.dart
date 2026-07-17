@@ -345,41 +345,51 @@ class _PipelinesScreenState extends State<PipelinesScreen> {
                                   ));
                                   // Auto-select the newly created customer
                                   availableContacts = [created, ...availableContacts];
-                                  if (ctx.mounted) setDlg(() {
-                                    selectedContact = created;
-                                    showAddForm = false;
-                                    addingSaving = false;
-                                  });
+                                  if (ctx.mounted) {
+                                    setDlg(() {
+                                      selectedContact = created;
+                                      showAddForm = false;
+                                      addingSaving = false;
+                                    });
+                                  }
                                 } on ConflictException catch (ce) {
                                   if (ce.errorCode == 'contact_duplicate' && ce.existing != null) {
                                     // Visible duplicate — offer to use existing
                                     final existingName = ce.existing!['name'] as String? ?? '';
                                     final existingId = ce.existing!['id'] as String? ?? '';
-                                    if (ctx.mounted) setDlg(() {
-                                      addingSaving = false;
-                                      addError = '${tr(context, 'pip_dup_contact_visible')} ($existingName)';
-                                    });
+                                    if (ctx.mounted) {
+                                      setDlg(() {
+                                        addingSaving = false;
+                                        addError = '${tr(context, 'pip_dup_contact_visible')} ($existingName)';
+                                      });
+                                    }
                                     // Find or construct the existing contact
                                     final match = availableContacts.where((c) => c.id == existingId).toList();
                                     if (match.isNotEmpty) {
-                                      if (ctx.mounted) setDlg(() {
-                                        selectedContact = match.first;
-                                        showAddForm = false;
-                                        addError = null;
-                                      });
+                                      if (ctx.mounted) {
+                                        setDlg(() {
+                                          selectedContact = match.first;
+                                          showAddForm = false;
+                                          addError = null;
+                                        });
+                                      }
                                     }
                                   } else {
                                     // Out of scope duplicate
-                                    if (ctx.mounted) setDlg(() {
-                                      addingSaving = false;
-                                      addError = tr(context, 'pip_dup_contact_outside_scope');
-                                    });
+                                    if (ctx.mounted) {
+                                      setDlg(() {
+                                        addingSaving = false;
+                                        addError = tr(context, 'pip_dup_contact_outside_scope');
+                                      });
+                                    }
                                   }
                                 } catch (e) {
-                                  if (ctx.mounted) setDlg(() {
-                                    addingSaving = false;
-                                    addError = e is ApiException ? e.message : e.toString();
-                                  });
+                                  if (ctx.mounted) {
+                                    setDlg(() {
+                                      addingSaving = false;
+                                      addError = e is ApiException ? e.message : e.toString();
+                                    });
+                                  }
                                 }
                               },
                             ),

@@ -175,6 +175,7 @@ class DynamicDashboardState extends ChangeNotifier {
       final decision = ModuleRouteGuard.evaluate(
         location: a.route,
         enabledModules: erpIds,
+        effectivePermissions: _effectivePermissions,
       );
       if (!decision.allowed) {
         continue;

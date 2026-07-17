@@ -69,3 +69,23 @@ class ConflictException extends ApiException {
   @override
   String toString() => 'ConflictException($errorCode): $message';
 }
+
+/// 403 — Forbidden (authenticated but insufficient permissions).
+class ForbiddenException extends ApiException {
+  const ForbiddenException([super.message = 'Forbidden.'])
+      : super(statusCode: 403);
+}
+
+/// 404 — Resource not found.
+class NotFoundException extends ApiException {
+  /// Stable error code from the API, e.g. 'run_not_found'.
+  final String? errorCode;
+
+  const NotFoundException({
+    String message = 'Not found.',
+    this.errorCode,
+  }) : super(message, statusCode: 404);
+
+  @override
+  String toString() => 'NotFoundException($errorCode): $message';
+}

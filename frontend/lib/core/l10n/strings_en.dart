@@ -901,8 +901,10 @@ const Map<String, String> enStrings = {
   'bp_automations': 'Automations',
   'bp_notes': 'Notes & Assumptions',
   'bp_accept': 'Accept & Provision',
+  'bp_retry': 'Retry Provisioning',
   'bp_refine': 'Refine with AI',
   'bp_role_access': 'Access',
+  'bp_role_permissions': 'permissions',
 
   // ── Blueprint modules ────────────────────────────────────
   'bp_mod_sales': 'Sales & POS',
@@ -963,6 +965,11 @@ const Map<String, String> enStrings = {
       'SmartBiz AI has generated your custom business operating system.',
   'prov_go_to_dashboard': 'Go to Dashboard',
   'prov_error': 'Something went wrong during setup.',
+  'prov_step_previewing': 'Validating configuration...',
+  'prov_step_applying': 'Applying configuration...',
+  'prov_step_applying_operational': 'Setting up operations...',
+  'prov_step_finalizing': 'Finalizing setup...',
+  'prov_step_refreshing': 'Syncing your session...',
 
   // ── Role Previews ────────────────────────────────────────
   'rp_title': 'What Your Team Gets',

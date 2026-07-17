@@ -41,6 +41,7 @@ class AppColors {
   static const Color infoLight     = Color(0xFFDBEAFE);
   static const Color infoSurface   = Color(0xFFEFF6FF);
   static const Color successSurface = Color(0xFFECFDF5);
+  static const Color errorSurface  = Color(0xFFFEF2F2);
 
   // ── Surface / Background ─────────────────────────────────
   static const Color background    = Color(0xFFF9FAFB);

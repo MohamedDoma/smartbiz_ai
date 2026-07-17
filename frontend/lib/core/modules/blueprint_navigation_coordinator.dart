@@ -1,10 +1,10 @@
-// SmartBiz AI — Blueprint Navigation Coordinator (Phase 17).
+// SmartBiz AI — Blueprint Navigation Coordinator.
 //
 // StatefulWidget that connects WorkspaceModuleState, AppState,
-// RolesState, OrgState → BlueprintNavigationController.
+// OrgState → BlueprintNavigationController.
 //
 // Mirrors the DashboardCoordinator pattern:
-//   - explicit listeners for RolesState, OrgState, WorkspaceModuleState
+//   - explicit listeners for OrgState, WorkspaceModuleState
 //   - context.select for AppState (role, workspace, language)
 //   - post-frame sync to avoid build-loop violations
 //   - mounted checks everywhere
@@ -14,9 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/state/app_state.dart';
 import '../../core/l10n/app_localizations.dart';
-import '../../features/employees/roles_state.dart';
 import '../../features/employees/org_state.dart';
-import '../../features/dashboard/engine/dashboard_context_adapter.dart';
 import 'workspace_module_state.dart';
 import 'blueprint_navigation_controller.dart';
 
@@ -31,9 +29,6 @@ class BlueprintNavigationCoordinator extends StatefulWidget {
 
 class _BlueprintNavigationCoordinatorState
     extends State<BlueprintNavigationCoordinator> {
-  static const _adapter = DashboardContextAdapter();
-
-  RolesState? _rolesState;
   OrgState? _orgState;
   WorkspaceModuleState? _moduleState;
   bool _syncScheduled = false;
@@ -50,26 +45,21 @@ class _BlueprintNavigationCoordinatorState
   // ═══════════════════════════════════════════════════════════
 
   void _attachListeners() {
-    final newRoles = context.read<RolesState>();
     final newOrg = context.read<OrgState>();
     final newModules = context.read<WorkspaceModuleState>();
 
-    if (identical(_rolesState, newRoles) &&
-        identical(_orgState, newOrg) &&
+    if (identical(_orgState, newOrg) &&
         identical(_moduleState, newModules)) {
       return; // already listening
     }
 
     // Detach old listeners.
-    _rolesState?.removeListener(_onDependencyChanged);
     _orgState?.removeListener(_onDependencyChanged);
     _moduleState?.removeListener(_onDependencyChanged);
 
     // Attach new listeners.
-    _rolesState = newRoles;
     _orgState = newOrg;
     _moduleState = newModules;
-    _rolesState!.addListener(_onDependencyChanged);
     _orgState!.addListener(_onDependencyChanged);
     _moduleState!.addListener(_onDependencyChanged);
 
@@ -102,10 +92,8 @@ class _BlueprintNavigationCoordinatorState
 
   void _performSync() {
     final appState = context.read<AppState>();
-    final rolesState = _rolesState;
-    final orgState = _orgState;
     final modules = _moduleState;
-    if (rolesState == null || orgState == null || modules == null) return;
+    if (modules == null) return;
 
     final navCtrl = context.read<BlueprintNavigationController>();
 
@@ -114,26 +102,17 @@ class _BlueprintNavigationCoordinatorState
     // after that, the user's mode selection is preserved across syncs.
     navCtrl.attachModuleState(modules);
 
-    // Build the employee context to get effective permissions.
-    final empCtx = _adapter.build(
-      appState: appState,
-      rolesState: rolesState,
-      orgState: orgState,
-    );
-
     // Determine the effective permission set.
     // When a real backend session exists, its permissions are the sole
     // authority — the backend RBAC system is the source of truth.
-    // Frontend-computed permissions (from mock role templates) are only
-    // used as a fallback when no backend session is available.
+    // When no backend session is available, use an empty set — no mock
+    // role permissions are used.
     final Set<String> effectivePermissions;
     final session = appState.lastSession;
     if (session?.activeWorkspace != null) {
-      // Backend is authoritative — use its permissions exclusively.
       effectivePermissions = Set<String>.from(session!.activeWorkspace!.permissions);
     } else {
-      // No backend session — fall back to frontend-computed permissions.
-      effectivePermissions = empCtx.effectivePermissions;
+      effectivePermissions = const {};
     }
 
     // Push permissions to the navigation controller.
@@ -147,7 +126,6 @@ class _BlueprintNavigationCoordinatorState
 
   @override
   void dispose() {
-    _rolesState?.removeListener(_onDependencyChanged);
     _orgState?.removeListener(_onDependencyChanged);
     _moduleState?.removeListener(_onDependencyChanged);
     super.dispose();

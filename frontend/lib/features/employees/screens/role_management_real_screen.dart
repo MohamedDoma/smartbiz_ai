@@ -75,7 +75,7 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: _RoleCard(
                   role: r,
-                  onEdit: r.isOwner ? null : () => _showRoleEditor(context, r),
+                  onEdit: r.isProtected ? null : () => _showRoleEditor(context, r),
                 ),
               )),
               const SizedBox(height: AppSpacing.xl),
@@ -124,6 +124,8 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
         catalog: state.catalog,
         onSave: (payload) async {
           try {
+            final messenger = ScaffoldMessenger.of(context);
+            final successMsg = tr(context, existing != null ? 'rpm_role_updated' : 'rpm_role_created');
             if (existing != null) {
               await state.updateRole(existing.id, payload);
             } else {
@@ -131,8 +133,8 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
             }
             if (ctx.mounted) Navigator.pop(ctx);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(tr(context, existing != null ? 'rpm_role_updated' : 'rpm_role_created'))),
+              messenger.showSnackBar(
+                SnackBar(content: Text(successMsg)),
               );
             }
           } catch (e) {
@@ -148,6 +150,9 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
   }
 
   Future<void> _deactivateRole(BuildContext context, WorkspaceRole role) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final roleState = context.read<RolePermissionState>();
+    final deactivatedMsg = tr(context, 'rpm_role_deactivated');
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -161,15 +166,15 @@ class _RoleManagementScreenState extends State<RoleManagementScreen> {
     );
     if (confirmed != true || !mounted) return;
     try {
-      await context.read<RolePermissionState>().deactivateRole(role.id);
+      await roleState.deactivateRole(role.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr(context, 'rpm_role_deactivated'))),
+        messenger.showSnackBar(
+          SnackBar(content: Text(deactivatedMsg)),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
         );
       }
@@ -234,7 +239,7 @@ class _RoleCard extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Text(tr(context, 'rpm_inactive'), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.error)),
             ),
-          if (role.isOwner)
+          if (role.isProtected)
             Container(
               margin: const EdgeInsetsDirectional.only(start: 6),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -470,7 +475,7 @@ class _PermCategoryTile extends StatelessWidget {
     return ExpansionTile(
       leading: Icon(Icons.folder_outlined, size: 18, color: AppColors.primary),
       title: Row(children: [
-        Expanded(child: Text(category.label, style: AppTypography.labelMedium)),
+        Expanded(child: Text(category.localizedLabel(Localizations.localeOf(context).languageCode), style: AppTypography.labelMedium)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(color: count > 0 ? AppColors.primary.withValues(alpha: 0.1) : AppColors.neutral200, borderRadius: BorderRadius.circular(8)),
@@ -488,7 +493,7 @@ class _PermCategoryTile extends StatelessWidget {
         ...category.permissions.map((p) => CheckboxListTile(
           value: selected.contains(p.key),
           onChanged: (v) => onChanged(p.key, v ?? false),
-          title: Text(p.label, style: AppTypography.bodySmall),
+          title: Text(p.localizedLabel(Localizations.localeOf(context).languageCode), style: AppTypography.bodySmall),
           subtitle: p.description.isNotEmpty ? Text(p.description, style: AppTypography.caption.copyWith(color: AppColors.textSecondary)) : null,
           dense: true,
           controlAffinity: ListTileControlAffinity.leading,

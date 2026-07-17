@@ -5,6 +5,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartbiz_ai/core/modules/erp_module_models.dart';
 import 'package:smartbiz_ai/core/modules/module_route_guard.dart';
+import '../helpers/test_nav_permissions.dart';
 
 void main() {
   setUp(() {
@@ -96,6 +97,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/settings',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -104,6 +106,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/customers',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -112,6 +115,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -120,6 +124,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/invoices',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -179,6 +184,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products?tab=active',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -187,6 +193,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products#inventory',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -195,6 +202,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products/',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -203,6 +211,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/PRODUCTS',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -211,6 +220,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/PRODUCTS/?sort=name#top',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -233,6 +243,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/customers/123',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -250,6 +261,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products/sku-001',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -258,6 +270,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/invoices/INV-1',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -266,6 +279,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/invoices/create',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -274,6 +288,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/employees/invite',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -282,6 +297,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/settings/workspace',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -330,6 +346,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/accounting/expenses',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -349,6 +366,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/accounting',
         enabledModules: enabledWithoutExpenses,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -357,6 +375,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/employees/roles',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -375,6 +394,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/employees/departments',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -383,6 +403,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/employees/teams',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -404,6 +425,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/settings',
         enabledModules: {ErpModuleId.settings},
+        effectivePermissions: {'settings.view'},
       );
       expect(d.allowed, isTrue);
     });
@@ -447,6 +469,7 @@ void main() {
       final d = ModuleRouteGuard.evaluate(
         location: '/products',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       expect(d.allowed, isTrue);
     });
@@ -455,6 +478,7 @@ void main() {
       final allowed = ModuleRouteGuard.evaluate(
         location: '/products',
         enabledModules: allEnabled,
+        effectivePermissions: kAllNavPerms,
       );
       final blocked = ModuleRouteGuard.evaluate(
         location: '/products',

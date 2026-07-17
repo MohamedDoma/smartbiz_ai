@@ -1,4 +1,4 @@
-/// Step 58 — Platform Admin / Activation Code models.
+// Step 58 — Platform Admin / Activation Code models.
 
 class PlatformDashboard {
   final PlatformWorkspaceStats workspaces;

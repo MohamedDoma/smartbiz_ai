@@ -1,10 +1,10 @@
-// SmartBiz AI — Dashboard Coordinator (Phase 16.3).
+// SmartBiz AI — Dashboard Coordinator.
 //
-// Connects AppState, RolesState, OrgState → DashboardContextAdapter
+// Connects AppState, OrgState → DashboardContextAdapter
 // → DynamicDashboardState → DynamicDashboardScreen.
 // Only place where app state is wired to the dashboard engine.
 //
-// Reactivity: listens to RolesState + OrgState via explicit listeners,
+// Reactivity: listens to OrgState via explicit listeners,
 // and subscribes to AppState via context.select for role/workspace/lang.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +13,6 @@ import '../../core/l10n/app_localizations.dart';
 import '../../core/modules/workspace_module_state.dart';
 import '../../core/modules/erp_module_models.dart';
 import '../../core/modules/workspace_blueprint_profile_resolver.dart';
-import '../employees/roles_state.dart';
 import '../employees/org_state.dart';
 import 'dynamic_dashboard_state.dart';
 import 'dynamic_dashboard_screen.dart';
@@ -30,7 +29,6 @@ class DashboardCoordinator extends StatefulWidget {
 class _DashboardCoordinatorState extends State<DashboardCoordinator> {
   static const _adapter = DashboardContextAdapter();
 
-  RolesState? _rolesState;
   OrgState? _orgState;
   WorkspaceModuleState? _moduleState;
   bool _callbackScheduled = false;
@@ -42,29 +40,23 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
     _scheduleSync();
   }
 
-  /// Attach explicit listeners to RolesState and OrgState.
-  /// These fire when permissions, roles, or org assignments change.
+  /// Attach explicit listeners to OrgState and WorkspaceModuleState.
   void _attachListeners() {
-    final newRoles = context.read<RolesState>();
     final newOrg = context.read<OrgState>();
     final newModules = context.read<WorkspaceModuleState>();
 
-    if (identical(_rolesState, newRoles) &&
-        identical(_orgState, newOrg) &&
+    if (identical(_orgState, newOrg) &&
         identical(_moduleState, newModules)) {
       return; // already listening
     }
 
     // Detach old
-    _rolesState?.removeListener(_onStateChanged);
     _orgState?.removeListener(_onStateChanged);
     _moduleState?.removeListener(_onStateChanged);
 
     // Attach new
-    _rolesState = newRoles;
     _orgState = newOrg;
     _moduleState = newModules;
-    _rolesState!.addListener(_onStateChanged);
     _orgState!.addListener(_onStateChanged);
     _moduleState!.addListener(_onStateChanged);
   }
@@ -87,17 +79,12 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
 
   void _performSync() {
     final appState = context.read<AppState>();
-    final rolesState = _rolesState;
-    final orgState = _orgState;
     final moduleState = _moduleState;
-    if (rolesState == null || orgState == null) return;
 
     final dashState = context.read<DynamicDashboardState>();
 
     final ctx = _adapter.build(
       appState: appState,
-      rolesState: rolesState,
-      orgState: orgState,
     );
 
     // ── Frontend blueprint profile application ──────────────
@@ -139,7 +126,7 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
     // Future: replaced by backend/AI blueprint.
     final realEnabledModules = moduleState != null
         ? moduleState.enabledModuleIds.map((id) => id.name).toSet()
-        : ctx.enabledModules; // fallback to adapter mock if state unavailable
+        : ctx.enabledModules; // fallback to adapter if state unavailable
 
     // DynamicDashboardState.updateContext compares all inputs internally
     // and is a no-op when nothing changed — no rebuild loop possible.
@@ -156,7 +143,6 @@ class _DashboardCoordinatorState extends State<DashboardCoordinator> {
 
   @override
   void dispose() {
-    _rolesState?.removeListener(_onStateChanged);
     _orgState?.removeListener(_onStateChanged);
     _moduleState?.removeListener(_onStateChanged);
     super.dispose();

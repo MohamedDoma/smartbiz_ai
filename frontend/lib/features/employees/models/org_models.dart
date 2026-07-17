@@ -1,99 +1,119 @@
-// SmartBiz AI — Organization structure models.
-import 'role_models.dart';
+// SmartBiz AI — Organization structure models (backend-backed).
+// Matches the JSON shape from DepartmentController and TeamController.
 
-/// A department in the organization.
+/// A department from the backend.
 class Department {
   final String id;
-  String name;
-  String description;
-  String? managerId;
-  int employeeCount;
+  final String workspaceId;
+  final String? departmentKey;
+  final String name;
+  final String? description;
+  final bool isActive;
+  final int sortOrder;
+  final DeptManager? manager;
+  final int memberCount;
+  final int teamCount;
 
-  Department({
+  const Department({
     required this.id,
+    required this.workspaceId,
+    this.departmentKey,
     required this.name,
-    required this.description,
-    this.managerId,
-    this.employeeCount = 0,
+    this.description,
+    this.isActive = true,
+    this.sortOrder = 0,
+    this.manager,
+    this.memberCount = 0,
+    this.teamCount = 0,
   });
+
+  factory Department.fromJson(Map<String, dynamic> json) => Department(
+    id: json['id'] as String,
+    workspaceId: json['workspace_id'] as String? ?? '',
+    departmentKey: json['department_key'] as String?,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    isActive: json['is_active'] as bool? ?? true,
+    sortOrder: json['sort_order'] as int? ?? 0,
+    manager: json['manager'] != null
+        ? DeptManager.fromJson(json['manager'] as Map<String, dynamic>)
+        : null,
+    memberCount: json['member_count'] as int? ?? 0,
+    teamCount: json['team_count'] as int? ?? 0,
+  );
 }
 
-/// A team within a department.
+class DeptManager {
+  final String membershipId;
+  final String fullName;
+  final String email;
+
+  const DeptManager({
+    required this.membershipId,
+    required this.fullName,
+    required this.email,
+  });
+
+  factory DeptManager.fromJson(Map<String, dynamic> json) => DeptManager(
+    membershipId: json['membership_id'] as String,
+    fullName: json['full_name'] as String,
+    email: json['email'] as String? ?? '',
+  );
+}
+
+/// A team from the backend.
 class Team {
   final String id;
-  String departmentId;
-  String name;
-  String description;
-  String? leaderId;
-  List<String> memberIds;
-
-  Team({
-    required this.id,
-    required this.departmentId,
-    required this.name,
-    required this.description,
-    this.leaderId,
-    List<String>? memberIds,
-  }) : memberIds = memberIds ?? [];
-
-  int get memberCount => memberIds.length;
-}
-
-/// Employee's role assignment with hybrid support.
-class EmployeeAssignment {
-  final String employeeId;
-  String? departmentId;
-  List<String> teamIds;
-  String? managerId;
-  String primaryRoleId;
-  List<String> extraRoleIds;
-  Set<ExtraPerm> extraPermissions;
-
-  EmployeeAssignment({
-    required this.employeeId,
-    this.departmentId,
-    List<String>? teamIds,
-    this.managerId,
-    required this.primaryRoleId,
-    List<String>? extraRoleIds,
-    Set<ExtraPerm>? extraPermissions,
-  }) : teamIds = teamIds ?? [],
-       extraRoleIds = extraRoleIds ?? [],
-       extraPermissions = extraPermissions ?? {};
-
-  bool get hasExtraRoles => extraRoleIds.isNotEmpty;
-  bool get hasExtraPerms => extraPermissions.isNotEmpty;
-  int get totalRoleCount => 1 + extraRoleIds.length;
-}
-
-/// A single extra permission override.
-class ExtraPerm {
-  final AppModule module;
-  final PermAction action;
-  const ExtraPerm(this.module, this.action);
-
-  @override
-  bool operator ==(Object other) => other is ExtraPerm && other.module == module && other.action == action;
-
-  @override
-  int get hashCode => module.hashCode ^ action.hashCode;
-}
-
-/// Node in the org chart tree.
-class OrgNode {
-  final String employeeId;
+  final String workspaceId;
+  final String? departmentId;
+  final TeamDepartment? department;
+  final String? teamKey;
   final String name;
-  final String role;
-  final String? title;
-  final String? badge; // 'org_dept_mgr', 'org_team_lead', 'org_both_lead'
-  final List<OrgNode> children;
+  final String? description;
+  final bool isActive;
+  final int sortOrder;
+  final DeptManager? manager;
+  final int memberCount;
 
-  const OrgNode({
-    required this.employeeId,
+  const Team({
+    required this.id,
+    required this.workspaceId,
+    this.departmentId,
+    this.department,
+    this.teamKey,
     required this.name,
-    required this.role,
-    this.title,
-    this.badge,
-    this.children = const [],
+    this.description,
+    this.isActive = true,
+    this.sortOrder = 0,
+    this.manager,
+    this.memberCount = 0,
   });
+
+  factory Team.fromJson(Map<String, dynamic> json) => Team(
+    id: json['id'] as String,
+    workspaceId: json['workspace_id'] as String? ?? '',
+    departmentId: json['department_id'] as String?,
+    department: json['department'] != null
+        ? TeamDepartment.fromJson(json['department'] as Map<String, dynamic>)
+        : null,
+    teamKey: json['team_key'] as String?,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    isActive: json['is_active'] as bool? ?? true,
+    sortOrder: json['sort_order'] as int? ?? 0,
+    manager: json['manager'] != null
+        ? DeptManager.fromJson(json['manager'] as Map<String, dynamic>)
+        : null,
+    memberCount: json['member_count'] as int? ?? 0,
+  );
+}
+
+class TeamDepartment {
+  final String id;
+  final String name;
+
+  const TeamDepartment({required this.id, required this.name});
+
+  factory TeamDepartment.fromJson(Map<String, dynamic> json) =>
+      TeamDepartment(id: json['id'] as String, name: json['name'] as String);
 }

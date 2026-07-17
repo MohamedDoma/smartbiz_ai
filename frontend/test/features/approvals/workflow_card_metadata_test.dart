@@ -24,7 +24,6 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartbiz_ai/core/api/api_exceptions.dart';
-import 'package:smartbiz_ai/core/api/approval_models.dart';
 import 'package:smartbiz_ai/core/api/approval_service.dart';
 import 'package:smartbiz_ai/core/api/entity_field_catalog_models.dart';
 import 'package:smartbiz_ai/features/approvals/entity_field_catalog_state.dart';

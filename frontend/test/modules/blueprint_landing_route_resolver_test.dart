@@ -17,6 +17,18 @@ void main() {
     ModuleRouteGuard.clearCache();
   });
 
+  /// All navPerms keys from ErpModuleRegistry so the guard does not
+  /// block routes for permission reasons — these tests focus on
+  /// module enablement, not permission gating.
+  final allPerms = <String>{
+    'ai_advisor.view', 'contacts.list', 'pipelines.list',
+    'commissions.list', 'invoices.list', 'payments.list',
+    'pos.view', 'products.list', 'inventory.list',
+    'accounting.view', 'reports.view', 'employees.list',
+    'roles.list', 'departments.list', 'teams.list',
+    'approvals.list', 'settings.view',
+  };
+
   /// Baseline: all commonly-used modules enabled.
   final allEnabled = <ErpModuleId>{
     ErpModuleId.dashboard,
@@ -50,6 +62,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: null,
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/dashboard');
       expect(d.usedFallback, isTrue);
@@ -60,6 +73,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/dashboard');
       expect(d.usedFallback, isTrue);
@@ -69,6 +83,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '   ',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/dashboard');
       expect(d.usedFallback, isTrue);
@@ -78,6 +93,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '  /customers  ',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/customers');
       expect(d.usedFallback, isFalse);
@@ -87,6 +103,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: 'products',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/products');
       expect(d.usedFallback, isFalse);
@@ -96,6 +113,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers?tab=active',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/customers');
       expect(d.usedFallback, isFalse);
@@ -105,6 +123,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/products#details',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/products');
       expect(d.usedFallback, isFalse);
@@ -114,6 +133,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/invoices/',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/invoices');
       expect(d.usedFallback, isFalse);
@@ -123,6 +143,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/');
       expect(d.usedFallback, isFalse);
@@ -132,6 +153,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '  customers?x=1#top  ',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/customers');
       expect(d.usedFallback, isFalse);
@@ -146,6 +168,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/dashboard',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/dashboard');
       expect(d.usedFallback, isFalse);
@@ -156,6 +179,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/customers');
       expect(d.usedFallback, isFalse);
@@ -165,6 +189,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/products/123',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/products/123');
       expect(d.usedFallback, isFalse);
@@ -174,6 +199,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/invoices/create',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/invoices/create');
       expect(d.usedFallback, isFalse);
@@ -268,6 +294,7 @@ void main() {
         preferredRoute: '/customers',
         fallbackRoute: '/settings',
         enabledModules: systemOnly,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/settings');
       expect(d.usedFallback, isTrue);
@@ -332,6 +359,7 @@ void main() {
         preferredRoute: null,
         fallbackRoute: '/settings',
         enabledModules: systemOnly,
+        effectivePermissions: allPerms,
       );
       expect(d.route, '/settings');
       expect(d.usedFallback, isTrue);
@@ -380,6 +408,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/employees/roles',
         enabledModules: Set.of(allEnabled)..remove(ErpModuleId.roles),
+        effectivePermissions: allPerms,
       );
       // /employees/roles is owned by roles module (longest prefix).
       expect(d.usedFallback, isTrue);
@@ -391,6 +420,7 @@ void main() {
       final d = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/accounting/expenses',
         enabledModules: withoutExpenses,
+        effectivePermissions: allPerms,
       );
       expect(d.usedFallback, isTrue);
       expect(d.route, '/dashboard');
@@ -405,10 +435,12 @@ void main() {
       final d1 = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       final d2 = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       expect(d1.route, d2.route);
       expect(d1.usedFallback, d2.usedFallback);
@@ -418,6 +450,7 @@ void main() {
       final allowed = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',
         enabledModules: allEnabled,
+        effectivePermissions: allPerms,
       );
       final blocked = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',
@@ -434,6 +467,7 @@ void main() {
         preferredRoute: '/customers',
         fallbackRoute: '/settings',
         enabledModules: systemOnly,
+        effectivePermissions: allPerms,
       );
       final d2 = BlueprintLandingRouteResolver.resolve(
         preferredRoute: '/customers',

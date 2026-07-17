@@ -164,13 +164,6 @@ class DynamicPageRegistry {
       isAdvancedOnly: true,
     ),
     DynamicPageDefinition(
-      id: 'role_create', moduleId: ErpModuleId.roles,
-      route: '/employees/roles/create', titleKey: 'page_role_create',
-      pageType: _PT.form, capabilities: _formCaps,
-      requiredPermissions: {'roles.create'},
-      isAdvancedOnly: true,
-    ),
-    DynamicPageDefinition(
       id: 'departments_list', moduleId: ErpModuleId.departments,
       route: '/employees/departments', titleKey: 'page_departments',
       pageType: _PT.list, capabilities: _listCaps,

@@ -47,18 +47,30 @@ class PermissionItem {
 class PermissionCategory {
   final String category;
   final String label;
+  final String? labelEn;
+  final String? labelAr;
   final List<PermissionItem> permissions;
 
-  const PermissionCategory({required this.category, required this.label, required this.permissions});
+  const PermissionCategory({required this.category, required this.label, this.labelEn, this.labelAr, required this.permissions});
 
   factory PermissionCategory.fromJson(Map<String, dynamic> json) => PermissionCategory(
         category: json['category'] as String? ?? '',
         label: json['label'] as String? ?? '',
+        labelEn: json['label_en'] as String?,
+        labelAr: json['label_ar'] as String?,
         permissions: (json['permissions'] as List<dynamic>? ?? [])
             .whereType<Map<String, dynamic>>()
             .map(PermissionItem.fromJson)
             .toList(),
       );
+
+  /// Returns the best label for the given language code ('en' or 'ar'),
+  /// falling back to the default [label] field.
+  String localizedLabel(String langCode) {
+    if (langCode == 'ar') return labelAr ?? label;
+    if (langCode == 'en') return labelEn ?? label;
+    return label;
+  }
 }
 
 /// A workspace role (from GET /api/workspace-roles).
@@ -106,7 +118,10 @@ class WorkspaceRole {
         assignedCount: json['assigned_count'] as int? ?? 0,
       );
 
-  bool get isOwner => roleKey == 'owner';
+  /// Whether this role is a protected system role that cannot be modified
+  /// or deactivated. Uses backend flags (is_system + not deletable) rather
+  /// than checking the role_key string.
+  bool get isProtected => isSystem && !isDeletable;
 }
 
 /// Payload for creating/updating a workspace role.

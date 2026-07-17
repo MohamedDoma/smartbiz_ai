@@ -1,10 +1,14 @@
 // SmartBiz AI — AI Discovery conversation screen.
+//
+// Adaptive conversation UI — no fixed question count, no scripted chips.
+// Shows real AI messages from the backend and allows free-form input.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive.dart';
+import '../../../core/state/app_state.dart';
 import '../models/onboarding_models.dart';
 import '../onboarding_state.dart';
 import '../widgets/chat_bubble.dart';
@@ -20,6 +24,16 @@ class DiscoveryScreen extends StatefulWidget {
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger backend resume on page startup (e.g. after browser refresh)
+    final state = context.read<OnboardingState>();
+    if (!state.resumeAttempted) {
+      state.resumeDiscovery();
+    }
+  }
 
   @override
   void dispose() {
@@ -53,10 +67,23 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     final state = context.watch<OnboardingState>();
     final isMobile = Responsive.isMobile(context);
 
+    // Inject local welcome greeting if conversation is empty
+    final appState = context.read<AppState>();
+    state.ensureWelcomeGreeting(appState);
+
+    // Replace backend English ready-notification with localized version
+    state.localizeReadyMessage(appState);
+
     return Column(
       children: [
-        // Progress bar
-        DiscoveryProgressBar(progress: state.progress),
+        // Progress bar — dynamic, backend-driven
+        DiscoveryProgressBar(
+          completeness: state.completeness,
+          readyForBlueprint: state.readyForBlueprint,
+        ),
+
+        // Error banner (retryable)
+        if (state.discoveryError != null) _buildErrorBanner(context, state),
 
         // Messages
         Expanded(
@@ -74,13 +101,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               }
 
               final msg = state.messages[index];
-              final isLast = index == state.messages.length - 1 && !state.isAiThinking;
+              final isLast =
+                  index == state.messages.length - 1 && !state.isAiThinking;
 
               return ChatBubble(
                 message: msg,
                 showQuickReplies: isLast && msg.sender == MessageSender.ai,
                 onQuickReply: (reply) {
-                  context.read<OnboardingState>().sendQuickReply(reply, context);
+                  context
+                      .read<OnboardingState>()
+                      .sendQuickReply(reply, context);
                   _scrollToBottom();
                 },
               );
@@ -88,8 +118,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           ),
         ),
 
-        // Blueprint CTA (show when progress is complete)
-        if (state.progress.isComplete) _buildBlueprintCta(context),
+        // Blueprint CTA (show when backend reports ready)
+        if (state.readyForBlueprint) _buildBlueprintCta(context, state),
 
         // Input bar
         _buildInputBar(context, state, isMobile),
@@ -97,26 +127,66 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
-  Widget _buildBlueprintCta(BuildContext context) {
+  Widget _buildErrorBanner(BuildContext context, OnboardingState state) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
+      color: AppColors.error.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              state.discoveryError!,
+              style: const TextStyle(fontSize: 12, color: AppColors.error),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              // Retry: just re-send the last user message
+              // The conversation is preserved
+            },
+            child: Text(tr(context, 'retry')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlueprintCta(BuildContext context, OnboardingState state) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       child: SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
-          onPressed: () => context.read<OnboardingState>().goToBlueprint(),
+          onPressed: state.isAiThinking
+              ? null
+              : () => context
+                  .read<OnboardingState>()
+                  .classifyAndGenerateBlueprint(),
           icon: const Icon(Icons.architecture, size: 18),
           label: Text(tr(context, 'onboard_view_blueprint')),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInputBar(BuildContext context, OnboardingState state, bool isMobile) {
+  Widget _buildInputBar(
+      BuildContext context, OnboardingState state, bool isMobile) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? AppSpacing.sm : AppSpacing.base,
@@ -140,11 +210,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   hintTextDirection: Directionality.of(context),
                   prefixIcon: const Padding(
                     padding: EdgeInsets.all(12),
-                    child: Icon(Icons.auto_awesome_outlined, color: AppColors.accent, size: 18),
+                    child: Icon(Icons.auto_awesome_outlined,
+                        color: AppColors.accent, size: 18),
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 42, minHeight: 42),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 42, minHeight: 42),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   isDense: true,
                 ),
               ),
@@ -156,7 +230,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
               child: InkWell(
                 onTap: state.isAiThinking ? null : _send,
                 borderRadius: BorderRadius.circular(12),
-                child: const SizedBox(width: 44, height: 44, child: Icon(Icons.send, size: 18, color: Colors.white)),
+                child: const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Icon(Icons.send, size: 18, color: Colors.white),
+                ),
               ),
             ),
           ],

@@ -1,13 +1,13 @@
-// SmartBiz AI — Dashboard Context Adapter (Phase 16.3).
+// SmartBiz AI — Dashboard Context Adapter.
 //
 // Pure adapter that converts app state into the normalized input
 // required by DynamicDashboardState. No widgets, no Provider, no
 // BuildContext, no notifyListeners.
-import '../../employees/models/role_models.dart';
-import '../../employees/org_state.dart';
-import '../../employees/roles_state.dart';
+//
+// Permissions come exclusively from the backend session. When no
+// session is available the permission set is empty — no mock role
+// templates are used.
 import '../../../core/state/app_state.dart';
-// erp_module_registry import removed — adapter must not mock modules from registry.
 import '../models/dashboard_config_models.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -49,74 +49,41 @@ class DashboardContextAdapter {
 
   /// Builds a normalized DashboardEmployeeContext from current app state.
   ///
-  /// [employeeId] — if null, uses the current user as the employee.
+  /// Permissions come exclusively from the backend session.
+  /// When no session is available, the permission set is empty.
   DashboardEmployeeContext build({
     required AppState appState,
-    required RolesState rolesState,
-    required OrgState orgState,
-    String? employeeId,
   }) {
-    final empId = employeeId ?? appState.currentUser.id;
+    // ── 1. Primary role ID ────────────────────────────────
+    final primaryRoleId = _appRoleToRoleId(appState.currentRole);
 
-    // ── 1. Resolve assignment ─────────────────────────────
-    final assignment = orgState.getAssignment(empId);
-
-    // ── 2. Primary role ───────────────────────────────────
-    final primaryRoleId = assignment?.primaryRoleId ?? _appRoleToRoleId(appState.currentRole);
-
-    // ── 3. Extra roles (deduplicated, excluding primary) ──
-    final extraRoleIds = <String>[];
-    if (assignment != null) {
-      for (final id in assignment.extraRoleIds) {
-        if (id != primaryRoleId && !extraRoleIds.contains(id)) {
-          extraRoleIds.add(id);
-        }
-      }
+    // ── 2. Effective permissions — backend only ───────────
+    final session = appState.lastSession;
+    final Set<String> effectivePerms;
+    if (session?.activeWorkspace != null) {
+      effectivePerms = Set<String>.from(session!.activeWorkspace!.permissions);
+    } else {
+      // No backend session — empty set; no mock permissions.
+      effectivePerms = const {};
     }
 
-    // ── 4. Build roles map for permission computation ─────
-    final rolesMap = <String, CustomRole>{};
-    for (final r in rolesState.allRoles) {
-      rolesMap[r.id] = r;
-    }
-    // Also include templates that may be referenced by ID
-    for (final t in RoleTemplates.allTemplates()) {
-      rolesMap.putIfAbsent(t.id, () => t);
-    }
-
-    // ── 5. Effective permissions ──────────────────────────
-    final effectivePerms = _computeEffectivePermissions(
-      primaryRoleId: primaryRoleId,
-      extraRoleIds: extraRoleIds,
-      rolesMap: rolesMap,
-      orgState: orgState,
-      empId: empId,
-    );
-
-    // ── 6. Enabled modules ───────────────────────────────
+    // ── 3. Enabled modules ───────────────────────────────
     final enabledModules = _resolveEnabledModules(appState);
 
-    // ── 7. Role display name ─────────────────────────────
-    final roleName = rolesMap[primaryRoleId]?.name ?? orgState.roleLabel(primaryRoleId);
-
-    // ── 8. Template override (custom roles override ID-based lookup) ──
-    final primaryRole = rolesMap[primaryRoleId];
-    final DashboardTemplate? tplOverride =
-        (primaryRole != null && primaryRole.type == RoleType.custom)
-            ? primaryRole.dashboardTemplate
-            : null;
+    // ── 4. Role display name ─────────────────────────────
+    final roleName = appState.displayRoleName(appState.uiLanguage);
 
     return DashboardEmployeeContext(
       workspaceId: appState.currentWorkspace.id,
       workspaceName: appState.currentWorkspace.name,
       primaryRoleId: primaryRoleId,
-      extraRoleIds: List.unmodifiable(extraRoleIds),
+      extraRoleIds: const [],
       effectivePermissions: Set.unmodifiable(effectivePerms),
       enabledModules: Set.unmodifiable(enabledModules),
       roleName: roleName,
-      templateOverride: tplOverride,
+      templateOverride: null, // future: from backend role config
       workspaceRoleConfig: null, // future: from workspace settings
-      employeeOverride: null,    // future: from employee profile
+      employeeOverride: null, // future: from employee profile
     );
   }
 
@@ -125,71 +92,12 @@ class DashboardContextAdapter {
   // ═══════════════════════════════════════════════════════════
 
   static String _appRoleToRoleId(AppRole role) => switch (role) {
-    AppRole.owner      => 'sys_owner',
-    AppRole.cashier    => 'sys_cashier',
-    AppRole.warehouse  => 'sys_warehouse',
+    AppRole.owner => 'sys_owner',
+    AppRole.cashier => 'sys_cashier',
+    AppRole.warehouse => 'sys_warehouse',
     AppRole.accountant => 'sys_accountant',
-    AppRole.employee   => 'sys_employee',
-    AppRole.superAdmin => 'sys_owner', // super admin uses owner perms
-  };
-
-  // ═══════════════════════════════════════════════════════════
-  //  Effective permissions computation
-  // ═══════════════════════════════════════════════════════════
-
-  static Set<String> _computeEffectivePermissions({
-    required String primaryRoleId,
-    required List<String> extraRoleIds,
-    required Map<String, CustomRole> rolesMap,
-    required OrgState orgState,
-    required String empId,
-  }) {
-    final perms = <String>{};
-
-    void mergeRole(String roleId) {
-      final role = rolesMap[roleId];
-      if (role == null) return;
-      for (final entry in role.permissions.entries) {
-        final moduleName = _moduleToKey(entry.key);
-        for (final action in entry.value.enabled) {
-          perms.add('$moduleName.${action.name}');
-        }
-      }
-    }
-
-    // Primary role
-    mergeRole(primaryRoleId);
-
-    // Extra roles
-    for (final id in extraRoleIds) {
-      mergeRole(id);
-    }
-
-    // Manual extra permissions from assignment (if any)
-    // Currently EmployeeAssignment.extraPermissions is private (_ExtraPerm)
-    // so we cannot access it directly. When the backend API provides
-    // explicit grant/deny overrides, they will be merged here.
-
-    return perms;
-  }
-
-  /// Maps AppModule enum to the string key used in dashboard configs.
-  static String _moduleToKey(AppModule m) => switch (m) {
-    AppModule.dashboard  => 'dashboard',
-    AppModule.aiChat     => 'aiChat',
-    AppModule.aiAdvisor  => 'aiAdvisor',
-    AppModule.customers  => 'customers',
-    AppModule.invoices   => 'invoices',
-    AppModule.products   => 'products',
-    AppModule.inventory  => 'inventory',
-    AppModule.accounting => 'accounting',
-    AppModule.reports    => 'reports',
-    AppModule.employees  => 'employees',
-    AppModule.roles      => 'roles',
-    AppModule.settings   => 'settings',
-    AppModule.billing    => 'billing',
-    AppModule.payments   => 'payments',
-    AppModule.pos        => 'pos',
+    AppRole.employee => 'sys_employee',
+    AppRole.superAdmin => 'sys_owner',
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -216,4 +124,3 @@ class DashboardContextAdapter {
     return Set<String>.from(backendModules);
   }
 }
-

@@ -1,259 +1,217 @@
-// SmartBiz AI — Organization state management (Phase 16.2).
-// Performance: lazy mock data + cached org tree + cached manager count.
+// SmartBiz AI — Organization state management (backend-backed).
+// Loads departments and teams from the real API.
+// All mutations go through the backend; local state is refreshed from the response.
 import 'package:flutter/material.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exceptions.dart';
 import 'models/org_models.dart';
-import 'models/role_models.dart';
+import 'data/org_api_service.dart';
 
 /// Organization structure mode.
 enum OrgMode { flat, departments, departmentsTeams }
 
 class OrgState extends ChangeNotifier {
   OrgMode _mode = OrgMode.departmentsTeams;
+
+  List<Department> _departments = [];
+  List<Team> _teams = [];
+
+  bool _loading = false;
   bool _initialized = false;
+  String? _error;
 
-  // Cached computations
-  OrgNode? _orgTreeCache;
-  int? _managerCountCache;
+  late OrgApiService _api;
+  bool _apiReady = false;
 
-  final List<Department> _departments = [];
-  final List<Team> _teams = [];
-  final Map<String, EmployeeAssignment> _assignments = {};
-  final Map<String, String> _empNames = {};
-  int _deptCounter = 5;
-  int _teamCounter = 3;
+  // ── Initialization ──────────────────────────────────────
 
-  void _ensureInit() {
-    if (_initialized) return;
-    _initialized = true;
-    _departments.addAll([
-      Department(id: 'dept_1', name: 'Management', description: 'Executive leadership and strategy.', managerId: 'emp_1', employeeCount: 1),
-      Department(id: 'dept_2', name: 'Finance', description: 'Accounting, billing, and financial planning.', managerId: 'emp_2', employeeCount: 1),
-      Department(id: 'dept_3', name: 'Sales', description: 'Customer sales and point-of-sale operations.', managerId: 'emp_3', employeeCount: 2),
-      Department(id: 'dept_4', name: 'Operations', description: 'Warehouse, inventory, and logistics.', managerId: 'emp_4', employeeCount: 2),
-    ]);
-    _teams.addAll([
-      Team(id: 'team_1', departmentId: 'dept_3', name: 'Retail Sales', description: 'In-store sales team.', leaderId: 'emp_3', memberIds: ['emp_3', 'emp_6']),
-      Team(id: 'team_2', departmentId: 'dept_4', name: 'Warehouse Ops', description: 'Stock management team.', leaderId: 'emp_4', memberIds: ['emp_4', 'emp_5']),
-    ]);
-    _assignments.addAll({
-      'emp_1': EmployeeAssignment(employeeId: 'emp_1', departmentId: 'dept_1', primaryRoleId: 'sys_owner'),
-      'emp_2': EmployeeAssignment(employeeId: 'emp_2', departmentId: 'dept_2', primaryRoleId: 'sys_accountant', managerId: 'emp_1', extraRoleIds: ['tpl_manager']),
-      'emp_3': EmployeeAssignment(employeeId: 'emp_3', departmentId: 'dept_3', teamIds: ['team_1'], primaryRoleId: 'sys_cashier', managerId: 'emp_1'),
-      'emp_4': EmployeeAssignment(employeeId: 'emp_4', departmentId: 'dept_4', teamIds: ['team_2'], primaryRoleId: 'sys_warehouse', managerId: 'emp_1'),
-      'emp_5': EmployeeAssignment(employeeId: 'emp_5', departmentId: 'dept_4', teamIds: ['team_2'], primaryRoleId: 'sys_employee', managerId: 'emp_4'),
-      'emp_6': EmployeeAssignment(employeeId: 'emp_6', departmentId: 'dept_3', teamIds: ['team_1'], primaryRoleId: 'sys_cashier', managerId: 'emp_3'),
-    });
-    _empNames.addAll({
-      'emp_1': 'Mohamed Doma', 'emp_2': 'Sara Ahmed', 'emp_3': 'Khalid Omar',
-      'emp_4': 'Layla Hassan', 'emp_5': 'Ahmed Ali', 'emp_6': 'Nour Khalil',
-    });
+  /// Wire the API client. Must be called before any API operations.
+  void setApiClient(ApiClient client) {
+    _api = OrgApiService(client);
+    _apiReady = true;
   }
 
-  // ── Org mode ────────────────────────────────────────────
+  /// Load departments and teams from the backend.
+  Future<void> loadAll() async {
+    if (!_apiReady) return;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        _api.listDepartments(),
+        _api.listTeams(),
+      ]);
+      _departments = results[0] as List<Department>;
+      _teams = results[1] as List<Team>;
+      _initialized = true;
+    } on ApiException catch (e) {
+      _error = e.message;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Getters ─────────────────────────────────────────────
+
+  bool get loading => _loading;
+  bool get initialized => _initialized;
+  String? get error => _error;
+
   OrgMode get mode => _mode;
   bool get teamsEnabled => _mode == OrgMode.departmentsTeams;
   bool get deptsEnabled => _mode != OrgMode.flat;
-  void setMode(OrgMode m) { _mode = m; _invalidate(); }
 
-  // ── Department getters ──────────────────────────────────
-  List<Department> get departments { _ensureInit(); return List.unmodifiable(_departments); }
-  Department? getDept(String id) { _ensureInit(); try { return _departments.firstWhere((d) => d.id == id); } catch (_) { return null; } }
-  int get deptCount { _ensureInit(); return _departments.length; }
+  void setMode(OrgMode m) {
+    _mode = m;
+    notifyListeners();
+  }
 
-  // ── Team getters ────────────────────────────────────────
-  List<Team> get teams { _ensureInit(); return List.unmodifiable(_teams); }
-  List<Team> teamsForDept(String deptId) { _ensureInit(); return _teams.where((t) => t.departmentId == deptId).toList(); }
-  Team? getTeam(String id) { _ensureInit(); try { return _teams.firstWhere((t) => t.id == id); } catch (_) { return null; } }
-  int get teamCount { _ensureInit(); return _teams.length; }
+  List<Department> get departments => List.unmodifiable(_departments);
+  int get deptCount => _departments.length;
 
-  // ── Assignment getters ──────────────────────────────────
-  EmployeeAssignment? getAssignment(String empId) { _ensureInit(); return _assignments[empId]; }
-  Map<String, EmployeeAssignment> get allAssignments { _ensureInit(); return Map.unmodifiable(_assignments); }
-  int get managerCount {
-    _ensureInit();
-    if (_managerCountCache != null) return _managerCountCache!;
-    final managerIds = <String>{};
-    for (final a in _assignments.values) {
-      if (a.managerId != null) managerIds.add(a.managerId!);
+  Department? getDept(String id) {
+    try {
+      return _departments.firstWhere((d) => d.id == id);
+    } catch (_) {
+      return null;
     }
-    _managerCountCache = _assignments.keys.where((id) => managerIds.contains(id)).length;
-    return _managerCountCache!;
-  }
-  int get assignedCount { _ensureInit(); return _assignments.values.where((a) => a.departmentId != null).length; }
-  int get unassignedCount { _ensureInit(); return _empNames.length - assignedCount; }
-  List<String> get allEmployeeIds { _ensureInit(); return _empNames.keys.toList(); }
-  List<String> employeesInDept(String deptId) { _ensureInit(); return _assignments.entries.where((e) => e.value.departmentId == deptId).map((e) => e.key).toList(); }
-
-  // ── Name helpers ────────────────────────────────────────
-  String empName(String id) { _ensureInit(); return _empNames[id] ?? 'Employee'; }
-  void registerName(String id, String name) { _ensureInit(); _empNames[id] = name; }
-
-  // ── Org chart ───────────────────────────────────────────
-  OrgNode buildOrgTree() {
-    _ensureInit();
-    if (_orgTreeCache != null) return _orgTreeCache!;
-    final rootId = _assignments.entries.firstWhere((e) => e.value.managerId == null, orElse: () => _assignments.entries.first).key;
-    _orgTreeCache = _buildNode(rootId);
-    return _orgTreeCache!;
   }
 
-  OrgNode _buildNode(String empId) {
-    final a = _assignments[empId];
-    final children = _assignments.entries.where((e) => e.value.managerId == empId).map((e) => _buildNode(e.key)).toList();
-    final isDeptMgr = _departments.any((d) => d.managerId == empId);
-    final isTeamLead = _teams.any((t) => t.leaderId == empId);
-    String? badge;
-    if (isDeptMgr) badge = 'org_dept_mgr';
-    if (isTeamLead) badge = badge != null ? 'org_both_lead' : 'org_team_lead';
-    return OrgNode(employeeId: empId, name: empName(empId), role: a?.primaryRoleId ?? 'sys_employee',
-      title: _deptTitle(a?.departmentId), badge: badge, children: children);
+  List<Team> get teams => List.unmodifiable(_teams);
+  int get teamCount => _teams.length;
+
+  List<Team> teamsForDept(String deptId) =>
+      _teams.where((t) => t.departmentId == deptId).toList();
+
+  Team? getTeam(String id) {
+    try {
+      return _teams.firstWhere((t) => t.id == id);
+    } catch (_) {
+      return null;
+    }
   }
-
-  String? _deptTitle(String? deptId) => deptId == null ? null : getDept(deptId)?.name;
-
-  String roleLabel(String roleId) => switch (roleId) {
-    'sys_owner' => 'Owner', 'sys_cashier' => 'Cashier', 'sys_warehouse' => 'Warehouse',
-    'sys_accountant' => 'Accountant', 'sys_employee' => 'Employee',
-    'tpl_manager' => 'Manager', 'tpl_sales' => 'Sales', 'tpl_hr' => 'HR',
-    'tpl_procurement' => 'Procurement', 'tpl_gen_manager' => 'General Manager',
-    'tpl_dept_manager' => 'Dept Manager', 'tpl_team_leader' => 'Team Leader',
-    'tpl_sales_rep' => 'Sales Rep', 'tpl_hr_mgr' => 'HR Manager',
-    'tpl_hr_asst' => 'HR Assistant', 'tpl_wh_mgr' => 'WH Manager',
-    'tpl_procurement_off' => 'Procurement', 'tpl_support' => 'Support',
-    'tpl_pm' => 'Project Mgr', 'tpl_service' => 'Service',
-    'tpl_delivery' => 'Delivery',
-    _ => 'Custom',
-  };
 
   // ── Department CRUD ─────────────────────────────────────
-  void _invalidate() { _orgTreeCache = null; _managerCountCache = null; notifyListeners(); }
 
-  void addDept({required String name, required String description, String? managerId}) {
-    _ensureInit();
-    _departments.add(Department(id: 'dept_${_deptCounter++}', name: name, description: description, managerId: managerId));
-    _invalidate();
+  /// Create a department via the backend. Returns the error message, or null.
+  Future<String?> addDept({required String name, String? description}) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      final dept = await _api.createDepartment(
+        name: name,
+        description: description,
+      );
+      _departments = [..._departments, dept];
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
-  void editDept(String id, {String? name, String? description}) {
-    final d = getDept(id); if (d == null) return;
-    if (name != null) d.name = name;
-    if (description != null) d.description = description;
-    _invalidate();
+  /// Edit a department via the backend. Returns the error message, or null.
+  Future<String?> editDept(
+    String id, {
+    String? name,
+    String? description,
+  }) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      final updated = await _api.updateDepartment(
+        id,
+        name: name,
+        description: description,
+      );
+      _departments = _departments.map((d) => d.id == id ? updated : d).toList();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
-  void setDeptManager(String deptId, String? managerId) {
-    final d = getDept(deptId); if (d == null) return;
-    d.managerId = managerId;
-    _invalidate();
-  }
-
-  void deleteDept(String id) {
-    _ensureInit();
-    _departments.removeWhere((d) => d.id == id);
-    _teams.removeWhere((t) => t.departmentId == id);
-    for (final a in _assignments.values) { if (a.departmentId == id) a.departmentId = null; }
-    _invalidate();
+  /// Delete (deactivate) a department via the backend.
+  Future<String?> deleteDept(String id) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      await _api.deleteDepartment(id);
+      _departments = _departments.where((d) => d.id != id).toList();
+      _teams = _teams.where((t) => t.departmentId != id).toList();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   // ── Team CRUD ───────────────────────────────────────────
-  void addTeam({required String departmentId, required String name, required String description, String? leaderId}) {
-    _ensureInit();
-    _teams.add(Team(id: 'team_${_teamCounter++}', departmentId: departmentId, name: name, description: description, leaderId: leaderId));
-    _invalidate();
-  }
 
-  void editTeam(String id, {String? name, String? description}) {
-    final t = getTeam(id); if (t == null) return;
-    if (name != null) t.name = name;
-    if (description != null) t.description = description;
-    _invalidate();
-  }
-
-  void setTeamLeader(String teamId, String? leaderId) {
-    final t = getTeam(teamId); if (t == null) return;
-    t.leaderId = leaderId;
-    _invalidate();
-  }
-
-  void addTeamMember(String teamId, String empId) {
-    final t = getTeam(teamId); if (t == null) return;
-    if (!t.memberIds.contains(empId)) t.memberIds.add(empId);
-    addToTeam(empId, teamId);
-    _invalidate();
-  }
-
-  void removeTeamMember(String teamId, String empId) {
-    final t = getTeam(teamId); if (t == null) return;
-    t.memberIds.remove(empId);
-    removeFromTeam(empId, teamId);
-    _invalidate();
-  }
-
-  void deleteTeam(String id) {
-    _ensureInit();
-    _teams.removeWhere((t) => t.id == id);
-    for (final a in _assignments.values) { a.teamIds.remove(id); }
-    _invalidate();
-  }
-
-  // ── Assignment ──────────────────────────────────────────
-  void ensureAssignment(String empId) {
-    _ensureInit();
-    _assignments.putIfAbsent(empId, () => EmployeeAssignment(employeeId: empId, primaryRoleId: 'sys_employee'));
-  }
-
-  void assignDept(String empId, String? deptId) {
-    ensureAssignment(empId);
-    _assignments[empId]!.departmentId = deptId;
-    _invalidate();
-  }
-
-  void assignManager(String empId, String? managerId) {
-    ensureAssignment(empId);
-    _assignments[empId]!.managerId = managerId;
-    _invalidate();
-  }
-
-  void setPrimaryRole(String empId, String roleId) {
-    ensureAssignment(empId);
-    _assignments[empId]!.primaryRoleId = roleId;
-    _invalidate();
-  }
-
-  void toggleExtraRole(String empId, String roleId) {
-    ensureAssignment(empId);
-    final list = _assignments[empId]!.extraRoleIds;
-    if (list.contains(roleId)) { list.remove(roleId); } else { list.add(roleId); }
-    _invalidate();
-  }
-
-  void addToTeam(String empId, String teamId) {
-    ensureAssignment(empId);
-    final list = _assignments[empId]!.teamIds;
-    if (!list.contains(teamId)) list.add(teamId);
-  }
-
-  void removeFromTeam(String empId, String teamId) {
-    _assignments[empId]?.teamIds.remove(teamId);
-  }
-
-  // ── Effective permissions calculation ───────────────────
-  /// Returns merged permissions from primary + extra roles.
-  Map<AppModule, Set<PermAction>> effectivePermissions(String empId, Map<String, CustomRole> rolesMap) {
-    _ensureInit();
-    final a = _assignments[empId];
-    if (a == null) return {};
-    final result = <AppModule, Set<PermAction>>{};
-    void merge(String roleId) {
-      final role = rolesMap[roleId];
-      if (role == null) return;
-      for (final e in role.permissions.entries) {
-        result.putIfAbsent(e.key, () => {});
-        result[e.key]!.addAll(e.value.enabled);
-      }
+  Future<String?> addTeam({
+    required String name,
+    required String departmentId,
+    String? description,
+  }) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      final team = await _api.createTeam(
+        name: name,
+        departmentId: departmentId,
+        description: description,
+      );
+      _teams = [..._teams, team];
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
     }
-    merge(a.primaryRoleId);
-    for (final extra in a.extraRoleIds) { merge(extra); }
-    return result;
+  }
+
+  Future<String?> editTeam(
+    String id, {
+    String? name,
+    String? description,
+  }) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      final updated = await _api.updateTeam(
+        id,
+        name: name,
+        description: description,
+      );
+      _teams = _teams.map((t) => t.id == id ? updated : t).toList();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> deleteTeam(String id) async {
+    if (!_apiReady) return 'API not initialized';
+    try {
+      await _api.deleteTeam(id);
+      _teams = _teams.where((t) => t.id != id).toList();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
   }
 }

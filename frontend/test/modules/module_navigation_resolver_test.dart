@@ -12,6 +12,10 @@ void main() {
     'inventory.view', 'accounting.view', 'reports.view',
     'employees.view', 'settings.view', 'settings.edit',
     'expenses.view',
+    // navPerms keys from ErpModuleRegistry (backend-aligned):
+    'ai_advisor.view', 'contacts.list', 'invoices.list',
+    'products.list', 'inventory.list', 'employees.list',
+    'payments.list', 'pos.view',
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -41,13 +45,13 @@ void main() {
     });
 
     test('3. planned modules with no implemented screen do not appear', () {
-      // pos is planned, leads is planned
+      // quotations is planned, leads is planned
       final result = resolver.resolve(
-        enabledModules: {ErpModuleId.dashboard, ErpModuleId.pos, ErpModuleId.leads},
-        effectivePermissions: {...allPerms, 'pos.view', 'leads.view'},
+        enabledModules: {ErpModuleId.dashboard, ErpModuleId.quotations, ErpModuleId.leads},
+        effectivePermissions: {...allPerms, 'quotations.view', 'leads.view'},
       );
       final ids = result.map((r) => r.moduleId).toSet();
-      expect(ids.contains(ErpModuleId.pos), isFalse);
+      expect(ids.contains(ErpModuleId.quotations), isFalse);
       expect(ids.contains(ErpModuleId.leads), isFalse);
     });
 
@@ -78,7 +82,7 @@ void main() {
     test('6. having the required view permission shows the module', () {
       final result = resolver.resolve(
         enabledModules: {ErpModuleId.dashboard, ErpModuleId.invoices},
-        effectivePermissions: {'dashboard.view', 'invoices.view'},
+        effectivePermissions: {'dashboard.view', 'invoices.view', 'invoices.list'},
       );
       final ids = result.map((r) => r.moduleId).toSet();
       expect(ids, contains(ErpModuleId.invoices));
@@ -102,7 +106,10 @@ void main() {
   //  8-9. Basic / Advanced Mode
   // ═══════════════════════════════════════════════════════════
   group('Basic / Advanced Mode', () {
-    // accounting is advancedOnly + implemented
+    // All currently implemented modules use ModuleVisibility.both,
+    // so Basic and Advanced mode produce the same visible set for
+    // implemented modules. advancedOnly modules are all planned.
+    // accounting is both + implemented
     // invoices is both + implemented
     // dashboard is both + implemented
     final enabled = <ErpModuleId>{
@@ -122,8 +129,8 @@ void main() {
       expect(ids, contains(ErpModuleId.dashboard));
       expect(ids, contains(ErpModuleId.invoices));
       expect(ids, contains(ErpModuleId.customers));
-      // advancedOnly → excluded
-      expect(ids.contains(ErpModuleId.accounting), isFalse);
+      // accounting is 'both' (not advancedOnly), so included in basic too.
+      expect(ids, contains(ErpModuleId.accounting));
     });
 
     test('9. Advanced Mode includes both, basicOnly, and advancedOnly', () {
@@ -267,7 +274,7 @@ void main() {
       final enabled = <ErpModuleId>{
         ErpModuleId.dashboard, ErpModuleId.settings,
         ErpModuleId.employees,
-        // All planned restaurant modules:
+        // POS is now implemented; rest are still planned:
         ErpModuleId.pos, ErpModuleId.menuManagement,
         ErpModuleId.restaurantTables, ErpModuleId.restaurantOrders,
         ErpModuleId.kitchenDisplay, ErpModuleId.ingredients,
@@ -278,12 +285,12 @@ void main() {
         mode: NavigationMode.advanced,
       );
       final ids = result.map((r) => r.moduleId).toSet();
-      // Only implemented modules survive.
+      // Implemented modules survive.
       expect(ids, contains(ErpModuleId.dashboard));
       expect(ids, contains(ErpModuleId.employees));
       expect(ids, contains(ErpModuleId.settings));
-      // All restaurant modules are planned → hidden.
-      expect(ids.contains(ErpModuleId.pos), isFalse);
+      expect(ids, contains(ErpModuleId.pos)); // POS is now implemented
+      // Planned restaurant modules are still hidden.
       expect(ids.contains(ErpModuleId.menuManagement), isFalse);
       expect(ids.contains(ErpModuleId.restaurantTables), isFalse);
       expect(ids.contains(ErpModuleId.kitchenDisplay), isFalse);
@@ -293,6 +300,8 @@ void main() {
       // A cashier-like role with limited permissions.
       final limitedPerms = <String>{
         'dashboard.view', 'invoices.view', 'customers.view', 'settings.view',
+        // navPerms keys from registry:
+        'invoices.list', 'contacts.list',
       };
       final enabled = <ErpModuleId>{
         ErpModuleId.dashboard, ErpModuleId.settings,

@@ -170,7 +170,7 @@ class SmartBizDemoResetCommand extends Command
             'workspace_invitation_roles', 'workspace_invitations',
             'workspace_integrations', 'workspace_configurations',
             'workspace_feature_flags', 'workspace_country_packs',
-            'provisioning_runs',
+            'provisioning_entity_bindings', 'provisioning_runs',
             'user_permission_overrides', 'permission_delegation_items', 'permission_delegations',
             'membership_roles', 'workspace_memberships',
             'branches',

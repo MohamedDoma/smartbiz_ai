@@ -19,10 +19,43 @@ enum PlatformRole { none, superAdmin }
 /// Roles that affect navigation and dashboard behavior.
 enum AppRole {
   owner(id: 'owner', labelKey: 'role_owner', navFilter: null),
-  cashier(id: 'cashier', labelKey: 'role_cashier', navFilter: ['dashboard', 'ai_chat', 'invoices', 'payments', 'pos', 'customers', 'settings']),
-  warehouse(id: 'warehouse', labelKey: 'role_warehouse', navFilter: ['dashboard', 'ai_chat', 'products', 'inventory', 'settings']),
-  accountant(id: 'accountant', labelKey: 'role_accountant', navFilter: ['dashboard', 'ai_chat', 'accounting', 'reports', 'invoices', 'payments', 'customers', 'settings']),
-  employee(id: 'employee', labelKey: 'role_employee', navFilter: ['dashboard', 'ai_chat', 'settings']),
+  cashier(
+    id: 'cashier',
+    labelKey: 'role_cashier',
+    navFilter: [
+      'dashboard',
+      'ai_chat',
+      'invoices',
+      'payments',
+      'pos',
+      'customers',
+      'settings',
+    ],
+  ),
+  warehouse(
+    id: 'warehouse',
+    labelKey: 'role_warehouse',
+    navFilter: ['dashboard', 'ai_chat', 'products', 'inventory', 'settings'],
+  ),
+  accountant(
+    id: 'accountant',
+    labelKey: 'role_accountant',
+    navFilter: [
+      'dashboard',
+      'ai_chat',
+      'accounting',
+      'reports',
+      'invoices',
+      'payments',
+      'customers',
+      'settings',
+    ],
+  ),
+  employee(
+    id: 'employee',
+    labelKey: 'role_employee',
+    navFilter: ['dashboard', 'ai_chat', 'settings'],
+  ),
   superAdmin(id: 'super_admin', labelKey: 'role_super_admin', navFilter: null);
 
   final String id;
@@ -31,7 +64,11 @@ enum AppRole {
   /// Nav item IDs this role can see. null = all items visible.
   final List<String>? navFilter;
 
-  const AppRole({required this.id, required this.labelKey, required this.navFilter});
+  const AppRole({
+    required this.id,
+    required this.labelKey,
+    required this.navFilter,
+  });
 
   /// Whether this role can see a given nav item.
   bool canSee(String navId) {
@@ -42,7 +79,7 @@ enum AppRole {
   String label(AppLanguage lang) => trForLang(lang, labelKey);
 }
 
-/// Mock workspace data.
+/// Workspace identity data.
 class WorkspaceInfo {
   final String id;
   final String name;
@@ -69,7 +106,7 @@ class WorkspaceInfo {
   }
 }
 
-/// Mock user data.
+/// User identity data.
 class UserInfo {
   final String id;
   final String fullName;
@@ -137,13 +174,10 @@ class AppState extends ChangeNotifier {
   /// Last loaded auth session (available after real login or session restore).
   AuthSession? _lastSession;
 
-  AppState({
-    UserInfo? user,
-    AppRole? role,
-    WorkspaceInfo? workspace,
-  })  : _currentUser = user ?? _defaultUser,
-        _currentRole = role ?? AppRole.owner,
-        _currentWorkspace = workspace ?? _defaultWorkspace {
+  AppState({UserInfo? user, AppRole? role, WorkspaceInfo? workspace})
+    : _currentUser = user ?? _defaultUser,
+      _currentRole = role ?? AppRole.owner,
+      _currentWorkspace = workspace ?? _defaultWorkspace {
     apiClient = ApiClient(
       workspaceIdProvider: () => _authenticated ? _currentWorkspace.id : null,
       onAuthError: _handleAuthError,
@@ -275,11 +309,6 @@ class AppState extends ChangeNotifier {
 
   void setDocumentLanguage(AppLanguage lang) {
     _currentWorkspace = _currentWorkspace.copyWith(documentLanguage: lang);
-    notifyListeners();
-  }
-
-  void setRole(AppRole role) {
-    _currentRole = role;
     notifyListeners();
   }
 
@@ -531,100 +560,9 @@ class AppState extends ChangeNotifier {
       case 'super_admin':
         return AppRole.superAdmin;
       default:
-        return AppRole.employee; // all other roles: dynamic nav handles filtering
+        return AppRole
+            .employee; // all other roles: dynamic nav handles filtering
     }
-  }
-
-  // ── Mock sign-in / sign-out (kept for dev/demo) ─────────
-
-  /// Mock sign in as business owner.
-  void signInAsOwner() {
-    _authenticated = true;
-    _platformRole = PlatformRole.none;
-    _currentRole = AppRole.owner;
-    _currentUser = _defaultUser;
-    _currentWorkspace = _defaultWorkspace;
-    notifyListeners();
-  }
-
-  /// Mock sign in as employee.
-  void signInAsEmployee() {
-    _authenticated = true;
-    _platformRole = PlatformRole.none;
-    _currentRole = AppRole.employee;
-    _onboardingCompleted = true; // employees skip business onboarding
-    _currentUser = const UserInfo(
-      id: 'demo-emp-1', fullName: 'Sara Ahmed',
-      email: 'sara@smartbiz.ai', uiLanguage: AppLanguage.ar,
-    );
-    _currentWorkspace = _defaultWorkspace;
-    notifyListeners();
-  }
-
-  /// Mock sign in as platform super admin.
-  void signInAsSuperAdmin() {
-    _authenticated = true;
-    _platformRole = PlatformRole.superAdmin;
-    _currentRole = AppRole.superAdmin;
-    _currentUser = const UserInfo(
-      id: 'admin-1', fullName: 'Platform Admin',
-      email: 'admin@smartbiz.ai', uiLanguage: AppLanguage.ar,
-    );
-    notifyListeners();
-  }
-
-  /// Register a new business owner with workspace details.
-  /// Mock-only — real backend will create tenant + user.
-  void registerBusinessOwner({
-    required String fullName,
-    required String email,
-    required String workspaceName,
-    String businessSize = 'small',
-    String businessType = 'general',
-  }) {
-    _authenticated = true;
-    _platformRole = PlatformRole.none;
-    _currentRole = AppRole.owner;
-    _onboardingCompleted = false;
-    _currentUser = UserInfo(
-      id: 'owner-${DateTime.now().millisecondsSinceEpoch}',
-      fullName: fullName,
-      email: email,
-      uiLanguage: _currentUser.uiLanguage,
-    );
-    _currentWorkspace = WorkspaceInfo(
-      id: 'ws-${DateTime.now().millisecondsSinceEpoch}',
-      name: workspaceName,
-      defaultLanguage: AppLanguage.ar,
-      documentLanguage: AppLanguage.ar,
-    );
-    notifyListeners();
-  }
-
-  /// Accept an employee invite — join existing workspace, skip onboarding.
-  /// Mock-only — real backend will verify invite token.
-  void acceptEmployeeInvite({
-    required String fullName,
-    required String email,
-    required String workspaceName,
-  }) {
-    _authenticated = true;
-    _platformRole = PlatformRole.none;
-    _currentRole = AppRole.employee;
-    _onboardingCompleted = true; // employees skip business onboarding
-    _currentUser = UserInfo(
-      id: 'emp-${DateTime.now().millisecondsSinceEpoch}',
-      fullName: fullName,
-      email: email,
-      uiLanguage: _currentUser.uiLanguage,
-    );
-    _currentWorkspace = WorkspaceInfo(
-      id: 'ws-invited-${DateTime.now().millisecondsSinceEpoch}',
-      name: workspaceName,
-      defaultLanguage: AppLanguage.ar,
-      documentLanguage: AppLanguage.ar,
-    );
-    notifyListeners();
   }
 
   /// Clear session → unauthenticated.

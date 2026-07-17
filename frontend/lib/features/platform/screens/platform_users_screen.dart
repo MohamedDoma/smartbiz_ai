@@ -16,7 +16,10 @@ class _PlatformUsersScreenState extends State<PlatformUsersScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadUsers());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadUsers();
+    });
   }
 
   @override

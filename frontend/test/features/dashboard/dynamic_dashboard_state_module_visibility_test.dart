@@ -4,7 +4,6 @@
 // as a post-processing step after DashboardResolver produces its base config.
 // The resolver engine itself is NOT modified; filtering is layered on top.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartbiz_ai/core/modules/erp_module_models.dart';
 import 'package:smartbiz_ai/features/dashboard/dashboard_module_visibility_resolver.dart';
 import 'package:smartbiz_ai/features/dashboard/dynamic_dashboard_state.dart';
 import 'package:smartbiz_ai/features/dashboard/models/dashboard_config_models.dart';
@@ -23,6 +22,8 @@ void main() {
   final salesPerms = <String>{
     'dashboard.view', 'invoices.view', 'invoices.create',
     'customers.view', 'customers.create', 'products.view',
+    // navPerms keys from ErpModuleRegistry (backend-aligned):
+    'invoices.list', 'contacts.list', 'products.list',
   };
 
   setUp(() {

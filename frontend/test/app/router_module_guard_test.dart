@@ -28,7 +28,9 @@ import 'package:smartbiz_ai/features/dashboard/dynamic_dashboard_state.dart';
 /// Builds a GoRouter that uses the EXACT same redirect logic as
 /// the production buildAppRouter() but with placeholder route
 /// builders. This isolates redirect behavior from screen widgets.
-GoRouter _buildTestRouter(AppState appState) {
+///
+/// [effectivePermissions] gates the module route guard's permission check.
+GoRouter _buildTestRouter(AppState appState, {Set<String> effectivePermissions = const {}}) {
   return GoRouter(
     initialLocation: '/',
     refreshListenable: appState,
@@ -55,6 +57,7 @@ GoRouter _buildTestRouter(AppState appState) {
           final decision = ModuleRouteGuard.evaluate(
             location: state.matchedLocation,
             enabledModules: enabledIds,
+            effectivePermissions: effectivePermissions,
           );
           if (!decision.allowed) {
             String preferredLanding = '/dashboard';
@@ -260,7 +263,7 @@ void main() {
     testWidgets('/customers allowed when customers module enabled', (tester) async {
       appState.completeOnboarding();
       moduleState.enableModule(ErpModuleId.customers);
-      final router = _buildTestRouter(appState);
+      final router = _buildTestRouter(appState, effectivePermissions: {'contacts.list'});
       await tester.pumpWidget(_buildApp(
         router: router, appState: appState, moduleState: moduleState,
       ));
@@ -276,7 +279,7 @@ void main() {
     testWidgets('/products allowed when products module enabled', (tester) async {
       appState.completeOnboarding();
       moduleState.enableModule(ErpModuleId.products);
-      final router = _buildTestRouter(appState);
+      final router = _buildTestRouter(appState, effectivePermissions: {'products.list'});
       await tester.pumpWidget(_buildApp(
         router: router, appState: appState, moduleState: moduleState,
       ));

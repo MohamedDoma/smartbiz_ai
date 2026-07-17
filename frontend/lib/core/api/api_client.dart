@@ -169,6 +169,17 @@ class ApiClient {
       return AuthException(message);
     }
 
+    // 403 — Forbidden
+    if (statusCode == 403) {
+      return ForbiddenException(message);
+    }
+
+    // 404 — Not Found
+    if (statusCode == 404) {
+      final errorCode = data is Map ? data['error'] as String? : null;
+      return NotFoundException(message: message, errorCode: errorCode);
+    }
+
     // 422 — Validation
     if (statusCode == 422) {
       final rawErrors = data is Map ? data['errors'] : null;

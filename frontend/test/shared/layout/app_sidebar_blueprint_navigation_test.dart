@@ -5,9 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smartbiz_ai/core/l10n/app_localizations.dart';
-import 'package:smartbiz_ai/core/navigation/nav_model.dart';
 import 'package:smartbiz_ai/core/navigation/shell_state.dart';
 import 'package:smartbiz_ai/core/state/app_state.dart';
 import 'package:smartbiz_ai/core/modules/workspace_module_state.dart';
@@ -61,17 +61,6 @@ Widget _buildHarness({
   );
 }
 
-/// Legacy flat items for owner role (all visible).
-List<NavItem> _legacyFlatItems() {
-  final items = <NavItem>[];
-  for (final section in appNavigation) {
-    for (final item in section.items) {
-      items.add(item);
-    }
-  }
-  return items;
-}
-
 void main() {
   late AppState appState;
   late ShellState shellState;
@@ -80,6 +69,7 @@ void main() {
   late _TapRecorder tapRecorder;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     ErpModuleDependencyResolver.clearCache();
     appState = AppState(); // owner by default
     shellState = ShellState();
@@ -113,9 +103,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Legacy items should be visible — check for Dashboard label.
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
       // Legacy section headers should appear (expanded desktop mode).
-      expect(find.text(tr_en('nav_section_core').toUpperCase()), findsOneWidget);
+      expect(find.text(trEn('nav_section_core').toUpperCase()), findsOneWidget);
     });
 
     testWidgets('legacy section headers and items render', (tester) async {
@@ -129,11 +119,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Core section items.
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
-      expect(find.text(tr_en('nav_ai_chat')), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_ai_chat')), findsOneWidget);
       // Business section.
-      expect(find.text(tr_en('nav_section_business').toUpperCase()), findsOneWidget);
-      expect(find.text(tr_en('nav_sales')), findsOneWidget);
+      expect(find.text(trEn('nav_section_business').toUpperCase()), findsOneWidget);
+      expect(find.text(trEn('nav_sales')), findsOneWidget);
     });
   });
 
@@ -159,9 +149,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dashboard should still appear (it's system-required + enabled).
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
       // Settings should appear (system-required).
-      expect(find.text(tr_en('nav_settings')), findsOneWidget);
+      expect(find.text(trEn('nav_settings')), findsOneWidget);
     });
 
     testWidgets('legacy section headers are NOT required in dynamic mode', (tester) async {
@@ -179,8 +169,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dynamic path does not emit section headers.
-      expect(find.text(tr_en('nav_section_core').toUpperCase()), findsNothing);
-      expect(find.text(tr_en('nav_section_business').toUpperCase()), findsNothing);
+      expect(find.text(trEn('nav_section_core').toUpperCase()), findsNothing);
+      expect(find.text(trEn('nav_section_business').toUpperCase()), findsNothing);
     });
 
     testWidgets('localization resolves labels in dynamic mode', (tester) async {
@@ -199,7 +189,7 @@ void main() {
 
       // Labels should still be localized, not raw keys.
       expect(find.text('nav_dashboard'), findsNothing); // raw key absent
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget); // localized present
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget); // localized present
     });
   });
 
@@ -225,7 +215,7 @@ void main() {
 
       // Find the invoices nav item. In dynamic mode the label comes
       // from the registry key 'emod_invoices' not the legacy 'nav_sales'.
-      final invoicesLabel = find.text(tr_en('emod_invoices'));
+      final invoicesLabel = find.text(trEn('emod_invoices'));
       expect(invoicesLabel, findsOneWidget);
       await tester.tap(invoicesLabel);
       await tester.pumpAndSettle();
@@ -282,7 +272,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dashboard should render and be highlighted.
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
       expect(find.byType(AppSidebar), findsOneWidget);
     });
 
@@ -307,7 +297,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Invoices label uses registry key in dynamic mode.
-      expect(find.text(tr_en('emod_invoices')), findsOneWidget);
+      expect(find.text(trEn('emod_invoices')), findsOneWidget);
     });
   });
 
@@ -316,7 +306,7 @@ void main() {
   // ═══════════════════════════════════════════════════════════
   group('Super Admin', () {
     testWidgets('super admin section appears in dynamic mode', (tester) async {
-      appState.setRole(AppRole.superAdmin);
+      appState.signInAsSuperAdmin();
       navCtrl.attachModuleState(moduleState);
       navCtrl.setMode(nav.NavigationMode.advanced);
       navCtrl.updatePermissions(_ownerPerms());
@@ -331,10 +321,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Admin section header.
-      expect(find.text(tr_en('nav_section_admin').toUpperCase()), findsOneWidget);
+      expect(find.text(trEn('nav_section_admin').toUpperCase()), findsOneWidget);
       // Admin nav item. Note: 'Super Admin' text also appears in the
       // header role badge, so use findsWidgets (≥ 1).
-      expect(find.text(tr_en('nav_admin')), findsWidgets);
+      expect(find.text(trEn('nav_admin')), findsWidgets);
     });
 
     testWidgets('super admin section does NOT appear for non-admin in dynamic mode', (tester) async {
@@ -352,13 +342,14 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text(tr_en('nav_admin')), findsNothing);
+      expect(find.text(trEn('nav_admin')), findsNothing);
     });
 
     testWidgets('super admin section appears in fallback mode', (tester) async {
-      appState.setRole(AppRole.superAdmin);
+      appState.signInAsSuperAdmin();
       // navCtrl not attached → fallback.
       expect(navCtrl.useFallbackNavigation, isTrue);
+      expect(appState.isSuperAdmin, isTrue);
 
       await tester.pumpWidget(_buildHarness(
         appState: appState,
@@ -369,7 +360,17 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text(tr_en('nav_admin')), findsOneWidget);
+      // In legacy mode all nav sections are rendered. The admin section
+      // is at the very bottom of the ListView, below the viewport fold.
+      // Scroll to the bottom to mount the lazy-built admin items.
+      await tester.scrollUntilVisible(
+        find.text(trEn('nav_admin')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(trEn('nav_admin')), findsOneWidget);
     });
   });
 
@@ -465,10 +466,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Both labels should be visible in the toggle.
-      expect(find.text(tr_en('ws_shell_mode_advanced')), findsOneWidget);
-      expect(find.text(tr_en('ws_shell_mode_basic')), findsOneWidget);
-      // Controller default is Advanced.
-      expect(navCtrl.mode, nav.NavigationMode.advanced);
+      expect(find.text(trEn('ws_shell_mode_advanced')), findsOneWidget);
+      expect(find.text(trEn('ws_shell_mode_basic')), findsOneWidget);
+      // Controller default is Basic (persisted via SharedPreferences, which
+      // we mock with empty values → defaults to basic).
+      expect(navCtrl.mode, nav.NavigationMode.basic);
     });
 
     testWidgets('tapping Basic switches controller to basic mode', (tester) async {
@@ -485,7 +487,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap on the Basic segment.
-      await tester.tap(find.text(tr_en('ws_shell_mode_basic')));
+      await tester.tap(find.text(trEn('ws_shell_mode_basic')));
       await tester.pumpAndSettle();
 
       expect(navCtrl.mode, nav.NavigationMode.basic);
@@ -509,7 +511,7 @@ void main() {
       expect(navCtrl.mode, nav.NavigationMode.basic);
 
       // Tap on the Advanced segment.
-      await tester.tap(find.text(tr_en('ws_shell_mode_advanced')));
+      await tester.tap(find.text(trEn('ws_shell_mode_advanced')));
       await tester.pumpAndSettle();
 
       expect(navCtrl.mode, nav.NavigationMode.advanced);
@@ -534,7 +536,7 @@ void main() {
       expect(advancedCount, greaterThan(0));
 
       // Switch to basic.
-      await tester.tap(find.text(tr_en('ws_shell_mode_basic')));
+      await tester.tap(find.text(trEn('ws_shell_mode_basic')));
       await tester.pumpAndSettle();
 
       // Basic mode should have items (subset or equal).
@@ -560,20 +562,20 @@ void main() {
       await tester.pumpAndSettle();
 
       // Legacy nav should still be visible.
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
-      expect(find.text(tr_en('nav_section_core').toUpperCase()), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_section_core').toUpperCase()), findsOneWidget);
 
       // Mode toggle labels should still be present in the footer.
-      expect(find.text(tr_en('ws_shell_mode_basic')), findsOneWidget);
-      expect(find.text(tr_en('ws_shell_mode_advanced')), findsOneWidget);
+      expect(find.text(trEn('ws_shell_mode_basic')), findsOneWidget);
+      expect(find.text(trEn('ws_shell_mode_advanced')), findsOneWidget);
 
       // Tapping Basic should update controller but not break fallback nav.
-      await tester.tap(find.text(tr_en('ws_shell_mode_basic')));
+      await tester.tap(find.text(trEn('ws_shell_mode_basic')));
       await tester.pumpAndSettle();
 
       expect(navCtrl.mode, nav.NavigationMode.basic);
       // Legacy nav still intact.
-      expect(find.text(tr_en('nav_dashboard')), findsOneWidget);
+      expect(find.text(trEn('nav_dashboard')), findsOneWidget);
     });
   });
 }
@@ -583,13 +585,20 @@ void main() {
 // ═══════════════════════════════════════════════════════════
 
 /// English translation helper for assertions (avoids raw key checks).
-String tr_en(String key) => trForLang(AppLanguage.en, key);
+String trEn(String key) => trForLang(AppLanguage.en, key);
 
 /// Owner-level permissions (all modules, all actions).
+/// Includes both PermAction-style keys and registry navPerms keys.
 Set<String> _ownerPerms() => const {
   'dashboard.view', 'aiChat.view', 'aiAdvisor.view',
   'customers.view', 'invoices.view', 'products.view',
   'inventory.view', 'accounting.view', 'reports.view',
   'employees.view', 'settings.view', 'expenses.view',
   'roles.view', 'billing.view',
+  // navPerms keys from ErpModuleRegistry (backend-aligned):
+  'ai_advisor.view', 'contacts.list', 'invoices.list',
+  'products.list', 'inventory.list', 'employees.list',
+  'roles.list', 'departments.list', 'teams.list',
+  'approvals.list', 'payments.list',
+  'pos.view', 'pipelines.list', 'commissions.list',
 };

@@ -38,7 +38,7 @@ class RolePermissionState extends ChangeNotifier {
 
   List<WorkspaceRole> get roles => _roles;
   List<WorkspaceRole> get activeRoles => _roles.where((r) => r.isActive).toList();
-  List<WorkspaceRole> get nonOwnerRoles => activeRoles.where((r) => !r.isOwner).toList();
+  List<WorkspaceRole> get nonOwnerRoles => activeRoles.where((r) => !r.isProtected).toList();
   bool get rolesLoading => _rolesLoading;
   String? get rolesError => _rolesError;
 

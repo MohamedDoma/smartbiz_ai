@@ -22,7 +22,10 @@ class _PlatformDashboardScreenState extends State<PlatformDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadDashboard());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadDashboard();
+    });
   }
 
   @override

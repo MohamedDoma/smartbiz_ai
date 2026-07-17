@@ -63,6 +63,8 @@ class BlueprintLandingRouteResolver {
   ///
   /// [enabledModules] — the set of module IDs enabled for the current
   ///   workspace, sourced from `WorkspaceModuleState.enabledModuleIds`.
+  /// [effectivePermissions] — the user's current permission strings,
+  ///   forwarded to the module route guard for permission gating.
   ///
   /// Resolution order:
   ///   1. Try normalized preferred route → allowed? → use it.
@@ -72,6 +74,7 @@ class BlueprintLandingRouteResolver {
     String? preferredRoute,
     String fallbackRoute = '/dashboard',
     required Set<ErpModuleId> enabledModules,
+    Set<String> effectivePermissions = const {},
   }) {
     // ── 1. Normalize preferred route ─────────────────────────
     final normalizedPreferred = _normalize(preferredRoute);
@@ -81,6 +84,7 @@ class BlueprintLandingRouteResolver {
       return _tryFallback(
         fallbackRoute: fallbackRoute,
         enabledModules: enabledModules,
+        effectivePermissions: effectivePermissions,
         reason: 'No preferred route provided',
       );
     }
@@ -89,6 +93,7 @@ class BlueprintLandingRouteResolver {
     final guardDecision = ModuleRouteGuard.evaluate(
       location: normalizedPreferred,
       enabledModules: enabledModules,
+      effectivePermissions: effectivePermissions,
       fallbackRoute: fallbackRoute,
     );
 
@@ -104,6 +109,7 @@ class BlueprintLandingRouteResolver {
     return _tryFallback(
       fallbackRoute: fallbackRoute,
       enabledModules: enabledModules,
+      effectivePermissions: effectivePermissions,
       reason: 'Preferred route blocked: ${guardDecision.reason}',
     );
   }
@@ -117,6 +123,7 @@ class BlueprintLandingRouteResolver {
   static BlueprintLandingRouteDecision _tryFallback({
     required String fallbackRoute,
     required Set<ErpModuleId> enabledModules,
+    Set<String> effectivePermissions = const {},
     required String reason,
   }) {
     final normalizedFallback = _normalize(fallbackRoute) ?? _ultimateFallback;
@@ -134,6 +141,7 @@ class BlueprintLandingRouteResolver {
     final fallbackGuard = ModuleRouteGuard.evaluate(
       location: normalizedFallback,
       enabledModules: enabledModules,
+      effectivePermissions: effectivePermissions,
       fallbackRoute: _ultimateFallback,
     );
 

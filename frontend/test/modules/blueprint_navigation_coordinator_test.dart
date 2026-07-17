@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smartbiz_ai/core/state/app_state.dart';
 import 'package:smartbiz_ai/core/l10n/app_localizations.dart';
@@ -65,6 +66,7 @@ void main() {
   late BlueprintNavigationController navCtrl;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     ErpModuleDependencyResolver.clearCache();
     appState = AppState();
     rolesState = RolesState();
@@ -308,7 +310,7 @@ void main() {
     });
 
     testWidgets('planned modules do not appear', (tester) async {
-      moduleState.enableModule(ErpModuleId.pos);
+      moduleState.enableModule(ErpModuleId.quotations);
       await tester.pumpWidget(_buildHarness(
         appState: appState,
         rolesState: rolesState,
@@ -319,7 +321,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final ids = navCtrl.resolvedItems.map((r) => r.moduleId).toSet();
-      expect(ids.contains(ErpModuleId.pos), isFalse);
+      expect(ids.contains(ErpModuleId.quotations), isFalse);
     });
   });
 

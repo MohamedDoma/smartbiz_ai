@@ -2,6 +2,7 @@
 namespace Database\Seeders;
 
 use App\Models\BusinessTemplate;
+use App\Models\ProvisioningEntityBinding;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
@@ -93,6 +94,36 @@ class SmartBizDemoSeeder
 
     private function now(): string { return now()->toDateTimeString(); }
 
+    /**
+     * Write a template provenance binding for a seeded entity.
+     *
+     * Uses raw insert (matching the seeder's pattern) so that it works
+     * even before the ProvisioningEntityBinding model is fully booted.
+     * Guard: skips if the table doesn't exist yet.
+     */
+    private function writeSeederProvenance(string $entityType, string $localKey, string $entityId): void
+    {
+        if (!Schema::hasTable('provisioning_entity_bindings')) return;
+
+        $this->ins('provisioning_entity_bindings', [[
+            'id'                       => Str::uuid()->toString(),
+            'workspace_id'             => self::WS,
+            'entity_type'              => $entityType,
+            'local_key'                => $localKey,
+            'entity_id'                => $entityId,
+            'ownership_type'           => ProvisioningEntityBinding::OWNERSHIP_CREATED_BY_TEMPLATE,
+            'last_provisioning_run_id' => null,
+            'last_blueprint_id'        => null,
+            'last_blueprint_version'   => 1,
+            'metadata'                 => json_encode([
+                'source'     => 'demo_seeder',
+                'seeded_at'  => $this->now(),
+            ]),
+            'created_at' => $this->now(),
+            'updated_at' => $this->now(),
+        ]]);
+    }
+
     private function seedSuperAdmin(): void
 {
     $id = '5a000000-0000-4000-8000-000000000001';
@@ -122,6 +153,9 @@ class SmartBizDemoSeeder
         ]]);
     }
 
+    /** Stable department keys for provenance (index-aligned with Arabic names). */
+    private const DEPT_KEYS = ['management', 'sales', 'finance', 'inventory', 'hr', 'customer_service'];
+
     private function seedDepartments(): void
     {
         $depts = ['الإدارة','المبيعات','المالية','المخزون','الموارد البشرية','خدمة العملاء'];
@@ -132,8 +166,12 @@ class SmartBizDemoSeeder
                 'id' => $id, 'workspace_id' => self::WS, 'name' => $n,
                 'is_active' => true, 'sort_order' => $i, 'created_at' => $this->now(), 'updated_at' => $this->now(),
             ]]);
+            $this->writeSeederProvenance('department', self::DEPT_KEYS[$i], $id);
         }
     }
+
+    /** Stable team keys for provenance. */
+    private const TEAM_KEYS = ['vehicle_sales_team', 'spare_parts_team', 'main_warehouse_team'];
 
     private function seedTeams(): void
     {
@@ -150,6 +188,7 @@ class SmartBizDemoSeeder
                 'name' => $n, 'is_active' => true, 'sort_order' => $i,
                 'created_at' => $this->now(), 'updated_at' => $this->now(),
             ]]);
+            $this->writeSeederProvenance('team', self::TEAM_KEYS[$i], $id);
         }
     }
 
@@ -191,6 +230,7 @@ class SmartBizDemoSeeder
                 'hierarchy_level' => $sort, 'sort_order' => $sort,
                 'created_at' => $this->now(), 'updated_at' => $this->now(),
             ]]);
+            $this->writeSeederProvenance('role', $key, $id);
         }
     }
 

@@ -10,6 +10,9 @@ import 'features/ai_chat/ai_chat_state.dart';
 import 'features/advisor/advisor_state.dart';
 import 'features/invoices/invoices_state.dart';
 import 'features/onboarding/onboarding_state.dart';
+import 'core/api/provisioning_service.dart';
+import 'core/api/discovery_service.dart';
+import 'features/onboarding/data/provisioning_repository.dart';
 import 'features/products/products_state.dart';
 import 'core/api/product_service.dart';
 import 'core/api/contact_service.dart';
@@ -23,7 +26,6 @@ import 'features/settings/settings_state.dart';
 import 'features/customers/customers_state.dart';
 import 'features/inventory/inventory_state.dart';
 import 'features/payments/payments_state.dart';
-import 'features/employees/roles_state.dart';
 import 'features/employees/org_state.dart';
 import 'features/employees/role_permission_state.dart';
 import 'core/api/role_permission_service.dart';
@@ -68,7 +70,18 @@ class SmartBizApp extends StatelessWidget {
         // Essential — always needed at startup
         ChangeNotifierProvider(create: (_) => AppState()),
         ChangeNotifierProvider(create: (_) => ShellState()),
-        ChangeNotifierProvider(create: (_) => OnboardingState()),
+        ChangeNotifierProxyProvider<AppState, OnboardingState>(
+          create: (ctx) {
+            final appState = ctx.read<AppState>();
+            final client = appState.apiClient;
+            final repo = ProvisioningRepository(ProvisioningService(client));
+            final state = OnboardingState();
+            state.setProvisioningRepository(repo);
+            state.setDiscoveryService(DiscoveryService(client));
+            return state;
+          },
+          update: (_, __, prev) => prev!,
+        ),
         ChangeNotifierProxyProvider<AppState, AiChatState>(
           create: (ctx) =>
               AiChatState(AiService(ctx.read<AppState>().apiClient)),
@@ -124,8 +137,16 @@ class SmartBizApp extends StatelessWidget {
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
-        ChangeNotifierProvider(create: (_) => RolesState(), lazy: true),
-        ChangeNotifierProvider(create: (_) => OrgState(), lazy: true),
+
+        ChangeNotifierProxyProvider<AppState, OrgState>(
+          create: (ctx) {
+            final state = OrgState();
+            state.setApiClient(ctx.read<AppState>().apiClient);
+            return state;
+          },
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProxyProvider<AppState, RolePermissionState>(
           create: (ctx) => RolePermissionState(
             RolePermissionService(ctx.read<AppState>().apiClient),

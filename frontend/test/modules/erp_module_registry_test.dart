@@ -69,8 +69,8 @@ void main() {
       expect(ErpModuleRegistry.get(ErpModuleId.dashboard).maturity, ModuleMaturity.implemented);
     });
 
-    test('pos is planned', () {
-      expect(ErpModuleRegistry.get(ErpModuleId.pos).maturity, ModuleMaturity.planned);
+    test('pos is implemented', () {
+      expect(ErpModuleRegistry.get(ErpModuleId.pos).maturity, ModuleMaturity.implemented);
     });
 
     test('manufacturing is planned', () {
@@ -158,8 +158,12 @@ void main() {
   });
 
   group('Permission Keys', () {
-    test('every module has at least one permission', () {
+    test('every module has at least one permission (except system-accessible)', () {
+      // dashboard and aiChat are intentionally permission-less —
+      // they are accessible to all authenticated users.
+      const systemAccessible = {ErpModuleId.dashboard, ErpModuleId.aiChat};
       for (final m in ErpModuleRegistry.all) {
+        if (systemAccessible.contains(m.id)) continue;
         expect(m.permissionKeys.isNotEmpty, isTrue,
             reason: '${m.id.name} has no permission keys');
       }

@@ -12,6 +12,7 @@ import '../../../core/state/app_state.dart';
 import '../../ai_chat/ai_chat_state.dart';
 import '../../approvals/approval_state.dart';
 import '../../approvals/entity_field_catalog_state.dart';
+import '../../onboarding/onboarding_state.dart';
 
 /// Navigation items for the Super Admin sidebar.
 class _SaNavItem {
@@ -397,6 +398,9 @@ class _Sidebar extends StatelessWidget {
     } catch (_) {}
     try {
       context.read<EntityFieldCatalogState>().clearData();
+    } catch (_) {}
+    try {
+      context.read<OnboardingState>().resetOnboarding();
     } catch (_) {}
     final app = context.read<AppState>();
     try {

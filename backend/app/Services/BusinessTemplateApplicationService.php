@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BusinessTemplate;
 use App\Models\MembershipRole;
+use App\Models\ProvisioningEntityBinding;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
  * Applies a BusinessTemplate to a Workspace.
  *
  * Creates workspace feature flags, roles, and records the application.
+ * Writes entity-level template provenance for every created/updated role.
  * Fully idempotent — safe to call multiple times for the same template.
  */
 class BusinessTemplateApplicationService
@@ -37,7 +39,7 @@ class BusinessTemplateApplicationService
             // 1. Apply modules as workspace feature flags
             $this->applyModules($template, $workspace, $user);
 
-            // 2. Apply roles to workspace
+            // 2. Apply roles to workspace (with provenance)
             $this->applyRoles($template, $workspace, $user);
 
             // 3. Build snapshot of everything applied
@@ -110,6 +112,7 @@ class BusinessTemplateApplicationService
      *
      * Preserves existing owner role if already created during registration.
      * Updates permissions from template but does not remove user-created roles.
+     * Writes entity-level template provenance for every role touched.
      */
     private function applyRoles(BusinessTemplate $template, Workspace $workspace, User $user): void
     {
@@ -130,8 +133,17 @@ class BusinessTemplateApplicationService
                     'permissions'     => $merged,
                     'hierarchy_level' => $templateRole->hierarchy_level,
                 ]);
+
+                // Write provenance binding for this role
+                $this->writeTemplateProvenance(
+                    $workspace->id,
+                    'role',
+                    $templateRole->role_key,
+                    $existingRole->id,
+                    $template->template_key,
+                );
             } else {
-                Role::create([
+                $newRole = Role::create([
                     'workspace_id'    => $workspace->id,
                     'name'            => $templateRole->name,
                     'role_key'        => $templateRole->role_key,
@@ -142,11 +154,53 @@ class BusinessTemplateApplicationService
                     'is_default'      => false,
                     'is_deletable'    => ! $templateRole->is_primary_owner_role,
                 ]);
+
+                // Write provenance binding for the new role
+                $this->writeTemplateProvenance(
+                    $workspace->id,
+                    'role',
+                    $templateRole->role_key,
+                    $newRole->id,
+                    $template->template_key,
+                );
             }
         }
 
         // Ensure the workspace owner membership has the primary owner role
         $this->ensureOwnerHasPrimaryRole($workspace, $user);
+    }
+
+    /**
+     * Write entity-level template provenance to provisioning_entity_bindings.
+     *
+     * Uses updateOrCreate to be idempotent — safe on repeated template applications.
+     */
+    private function writeTemplateProvenance(
+        string $workspaceId,
+        string $entityType,
+        string $localKey,
+        string $entityId,
+        string $templateKey,
+    ): void {
+        ProvisioningEntityBinding::updateOrCreate(
+            [
+                'workspace_id' => $workspaceId,
+                'entity_type'  => $entityType,
+                'local_key'    => $localKey,
+            ],
+            [
+                'entity_id'                => $entityId,
+                'ownership_type'           => ProvisioningEntityBinding::OWNERSHIP_CREATED_BY_TEMPLATE,
+                'last_provisioning_run_id' => null,
+                'last_blueprint_id'        => null,
+                'last_blueprint_version'   => 1,
+                'metadata'                 => [
+                    'source'       => 'template_application',
+                    'template_key' => $templateKey,
+                    'applied_at'   => now()->toIso8601String(),
+                ],
+            ],
+        );
     }
 
     /**

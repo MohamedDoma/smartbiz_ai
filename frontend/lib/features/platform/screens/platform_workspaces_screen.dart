@@ -16,7 +16,10 @@ class _PlatformWorkspacesScreenState extends State<PlatformWorkspacesScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadWorkspaces());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadWorkspaces();
+    });
   }
 
   @override

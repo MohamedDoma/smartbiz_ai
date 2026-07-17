@@ -22,10 +22,12 @@ class DiscoverySession extends Model
         'classification_confidence',
         'classification_method',
         'classification_version',
+        'discovery_state',
     ];
 
     protected $casts = [
         'classification_confidence' => 'float',
+        'discovery_state'           => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

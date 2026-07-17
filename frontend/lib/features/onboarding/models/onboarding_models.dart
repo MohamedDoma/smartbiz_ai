@@ -8,6 +8,7 @@ class DiscoveryMessage {
   final DateTime timestamp;
   final List<String>? quickReplies;
   final bool isThinking;
+  final String? messageType;
 
   const DiscoveryMessage({
     required this.id,
@@ -16,48 +17,11 @@ class DiscoveryMessage {
     required this.timestamp,
     this.quickReplies,
     this.isThinking = false,
+    this.messageType,
   });
 }
 
 enum MessageSender { user, ai }
-
-/// Discovery progress categories.
-enum DiscoveryCategory {
-  companyBasics,
-  businessType,
-  operations,
-  teamRoles,
-  productsServices,
-  financeWorkflows,
-}
-
-/// Tracks which categories are complete.
-class DiscoveryProgress {
-  final Map<DiscoveryCategory, bool> categories;
-
-  const DiscoveryProgress({required this.categories});
-
-  factory DiscoveryProgress.initial() {
-    return DiscoveryProgress(
-      categories: {for (final c in DiscoveryCategory.values) c: false},
-    );
-  }
-
-  double get completionPercent {
-    final done = categories.values.where((v) => v).length;
-    return done / categories.length;
-  }
-
-  bool get isComplete => categories.values.every((v) => v);
-
-  int get completedCount => categories.values.where((v) => v).length;
-
-  DiscoveryProgress copyWith(DiscoveryCategory category, bool done) {
-    final updated = Map<DiscoveryCategory, bool>.from(categories);
-    updated[category] = done;
-    return DiscoveryProgress(categories: updated);
-  }
-}
 
 /// Generated ERP blueprint.
 class BlueprintModel {
@@ -88,30 +52,48 @@ class BlueprintModel {
 
 class BlueprintModule {
   final String id;
-  final String nameKey;
-  final String descriptionKey;
+
+  /// Human-readable display name (already localized by the bridge).
+  final String displayName;
+
+  /// Human-readable description (already localized by the bridge).
+  final String displayDescription;
+
   final String icon;
   final bool included;
 
   const BlueprintModule({
     required this.id,
-    required this.nameKey,
-    required this.descriptionKey,
+    required this.displayName,
+    required this.displayDescription,
     required this.icon,
     this.included = true,
   });
+
+  // Legacy alias for backward compatibility with tests
+  String get nameKey => displayName;
+  String get descriptionKey => displayDescription;
 }
 
 class BlueprintRole {
   final String id;
-  final String nameKey;
-  final String descriptionKey;
+
+  /// Human-readable display name (already localized by the bridge).
+  final String displayName;
+
+  /// Human-readable description (already localized by the bridge).
+  final String displayDescription;
+
   final List<String> accessModules;
 
   const BlueprintRole({
     required this.id,
-    required this.nameKey,
-    required this.descriptionKey,
+    required this.displayName,
+    required this.displayDescription,
     required this.accessModules,
   });
+
+  // Legacy alias for backward compatibility with tests
+  String get nameKey => displayName;
+  String get descriptionKey => displayDescription;
 }

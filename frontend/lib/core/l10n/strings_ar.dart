@@ -894,8 +894,10 @@ const Map<String, String> arStrings = {
   'bp_automations': 'الأتمتة',
   'bp_notes': 'ملاحظات وافتراضات',
   'bp_accept': 'قبول وتشغيل',
+  'bp_retry': 'إعادة المحاولة',
   'bp_refine': 'تحسين مع AI',
   'bp_role_access': 'الوصول',
+  'bp_role_permissions': 'صلاحية',
 
   // ── Blueprint modules ────────────────────────────────────
   'bp_mod_sales': 'المبيعات ونقاط البيع',
@@ -951,6 +953,11 @@ const Map<String, String> arStrings = {
   'prov_success_subtitle': 'أنشأ سمارت بيز AI نظام تشغيل أعمالك المخصص.',
   'prov_go_to_dashboard': 'الذهاب للوحة التحكم',
   'prov_error': 'حدث خطأ أثناء الإعداد.',
+  'prov_step_previewing': 'جاري التحقق من الإعدادات...',
+  'prov_step_applying': 'جاري تطبيق الإعدادات...',
+  'prov_step_applying_operational': 'جاري إعداد العمليات...',
+  'prov_step_finalizing': 'جاري إنهاء الإعداد...',
+  'prov_step_refreshing': 'جاري مزامنة الجلسة...',
 
   // ── Role Previews ────────────────────────────────────────
   'rp_title': 'ما سيحصل عليه فريقك',

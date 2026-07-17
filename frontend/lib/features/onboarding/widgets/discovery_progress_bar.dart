@@ -1,33 +1,34 @@
 // SmartBiz AI — Discovery progress bar widget.
+//
+// Shows adaptive discovery progress based on the backend's completeness
+// percentage. No fixed "N / 6" counter — the completeness is dynamic
+// and determined by the AI analysis.
 import 'package:flutter/material.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../models/onboarding_models.dart';
 
 class DiscoveryProgressBar extends StatelessWidget {
-  final DiscoveryProgress progress;
+  final double completeness;
+  final bool readyForBlueprint;
 
-  const DiscoveryProgressBar({super.key, required this.progress});
-
-  static const _categoryKeys = <DiscoveryCategory, String>{
-    DiscoveryCategory.companyBasics: 'cat_company_basics',
-    DiscoveryCategory.businessType: 'cat_business_type',
-    DiscoveryCategory.operations: 'cat_operations',
-    DiscoveryCategory.teamRoles: 'cat_team_roles',
-    DiscoveryCategory.productsServices: 'cat_products_services',
-    DiscoveryCategory.financeWorkflows: 'cat_finance_workflows',
-  };
+  const DiscoveryProgressBar({
+    super.key,
+    required this.completeness,
+    this.readyForBlueprint = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final percent = progress.completionPercent;
-    final completed = progress.completedCount;
-    final total = progress.categories.length;
+    final percent = (completeness / 100).clamp(0.0, 1.0);
+    final percentDisplay = completeness.round();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
@@ -40,9 +41,31 @@ class DiscoveryProgressBar extends StatelessWidget {
             children: [
               const Icon(Icons.explore, size: 16, color: AppColors.accent),
               const SizedBox(width: AppSpacing.xs),
-              Text(tr(context, 'onboard_progress'), style: AppTypography.labelSmall),
+              Text(
+                tr(context, 'onboard_progress'),
+                style: AppTypography.labelSmall,
+              ),
               const Spacer(),
-              Text('$completed / $total', style: AppTypography.labelSmall.copyWith(color: AppColors.accent)),
+              if (readyForBlueprint)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle,
+                        size: 14, color: AppColors.success),
+                    const SizedBox(width: 4),
+                    Text(
+                      tr(context, 'disc_q6_ready'),
+                      style: AppTypography.labelSmall
+                          .copyWith(color: AppColors.success),
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  '$percentDisplay%',
+                  style: AppTypography.labelSmall
+                      .copyWith(color: AppColors.accent),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -55,39 +78,8 @@ class DiscoveryProgressBar extends StatelessWidget {
               minHeight: 4,
               backgroundColor: AppColors.neutral100,
               valueColor: AlwaysStoppedAnimation<Color>(
-                percent >= 1.0 ? AppColors.success : AppColors.accent,
+                readyForBlueprint ? AppColors.success : AppColors.accent,
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-
-          // Category chips
-          SizedBox(
-            height: 28,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _categoryKeys.entries.map((entry) {
-                final done = progress.categories[entry.key] ?? false;
-                return Padding(
-                  padding: const EdgeInsetsDirectional.only(end: AppSpacing.xs),
-                  child: Chip(
-                    label: Text(
-                      tr(context, entry.value),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: done ? Colors.white : AppColors.neutral500,
-                        fontWeight: done ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                    backgroundColor: done ? AppColors.success : AppColors.neutral100,
-                    side: BorderSide.none,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                );
-              }).toList(),
             ),
           ),
         ],

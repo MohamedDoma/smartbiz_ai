@@ -234,9 +234,9 @@ class _ModuleGrid extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tr(context, m.nameKey), style: AppTypography.labelLarge),
+                        Text(m.displayName, style: AppTypography.labelLarge),
                         const SizedBox(height: 2),
-                        Text(tr(context, m.descriptionKey), style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        Text(m.displayDescription, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -277,14 +277,14 @@ class _RoleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(tr(context, role.nameKey), style: AppTypography.labelLarge),
+                    Text(role.displayName, style: AppTypography.labelLarge),
                     const SizedBox(height: 2),
-                    Text(tr(context, role.descriptionKey), style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                    Text(role.displayDescription, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
                   ],
                 ),
               ),
               Chip(
-                label: Text('${role.accessModules.length} ${tr(context, 'bp_role_access')}',
+                label: Text('${role.accessModules.length} ${tr(context, 'bp_role_permissions')}',
                     style: const TextStyle(fontSize: 11, color: AppColors.primary)),
                 backgroundColor: AppColors.primarySurface,
                 side: BorderSide.none,
@@ -325,7 +325,7 @@ class _StringListCard extends StatelessWidget {
                   color: infoStyle ? AppColors.info : AppColors.accent,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(tr(context, key), style: AppTypography.bodyMedium)),
+                Expanded(child: Text(key, style: AppTypography.bodyMedium)),
               ],
             ),
           )).toList(),
@@ -400,6 +400,9 @@ class _RolePreviewData {
 class _BlueprintActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final onboardingState = context.watch<OnboardingState>();
+    final provError = onboardingState.provisioningError;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
       decoration: const BoxDecoration(
@@ -408,35 +411,69 @@ class _BlueprintActions extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.read<OnboardingState>().goBack(),
-                icon: const Icon(Icons.arrow_back, size: 16),
-                label: Text(tr(context, 'bp_refine')),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // Error banner — shown when provisioning failed and user is retrying
+            if (provError != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.errorSurface,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        provError,
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                onPressed: () {
-                  final appState = context.read<AppState>();
-                  context.read<OnboardingState>().startRealProvisioning(appState);
-                },
-                icon: const Icon(Icons.rocket_launch, size: 16),
-                label: Text(tr(context, 'bp_accept')),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.read<OnboardingState>().goBack(),
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: Text(tr(context, 'bp_refine')),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      final appState = context.read<AppState>();
+                      context.read<OnboardingState>().startRealProvisioning(appState);
+                    },
+                    icon: const Icon(Icons.rocket_launch, size: 16),
+                    label: Text(tr(context, provError != null ? 'bp_retry' : 'bp_accept')),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -451,6 +488,24 @@ class _BlueprintActions extends StatelessWidget {
 class _ProvisioningView extends StatelessWidget {
   final OnboardingState state;
   const _ProvisioningView({required this.state});
+
+  /// Map the current [ProvisioningStep] to a localization key.
+  String _subStepKey(ProvisioningStep step) {
+    switch (step) {
+      case ProvisioningStep.previewing:
+        return 'prov_step_previewing';
+      case ProvisioningStep.applying:
+        return 'prov_step_applying';
+      case ProvisioningStep.applyingOperational:
+        return 'prov_step_applying_operational';
+      case ProvisioningStep.finalizing:
+        return 'prov_step_finalizing';
+      case ProvisioningStep.refreshingSession:
+        return 'prov_step_refreshing';
+      case ProvisioningStep.idle:
+        return 'prov_in_progress';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -487,8 +542,11 @@ class _ProvisioningView extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
+              // Sub-step label — shows granular pipeline phase
               Text(
-                tr(context, isDone ? 'prov_success_subtitle' : 'prov_in_progress'),
+                tr(context, isDone
+                    ? 'prov_success_subtitle'
+                    : _subStepKey(state.provisioningStep)),
                 style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -526,3 +584,4 @@ class _ProvisioningView extends StatelessWidget {
     );
   }
 }
+

@@ -143,6 +143,8 @@ class _EmployeeRolesScreenState extends State<EmployeeRolesScreen> {
                     ? null
                     : () async {
                         try {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final successMsg = tr(context, 'emr_roles_updated');
                           await state.updateEmployeeRoles(
                             emp.membershipId,
                             EmployeeRolesPayload(
@@ -152,8 +154,8 @@ class _EmployeeRolesScreenState extends State<EmployeeRolesScreen> {
                           );
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(tr(context, 'emr_roles_updated'))),
+                            messenger.showSnackBar(
+                              SnackBar(content: Text(successMsg)),
                             );
                           }
                         } catch (e) {

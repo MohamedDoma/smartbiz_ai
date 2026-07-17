@@ -18,7 +18,10 @@ class _State extends State<PlatformHealthScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadHealth());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadHealth();
+    });
   }
 
   @override

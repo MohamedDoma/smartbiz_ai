@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\BlueprintValidationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnswerDiscoveryRequest;
 use App\Http\Requests\StartDiscoveryRequest;
@@ -47,6 +48,7 @@ class DiscoveryController extends Controller
             $this->context->workspaceId(),
             $request->user()->id,
             $request->validated('business_description'),
+            $request->input('locale', 'ar'),
         );
 
         return response()->json(['data' => new DiscoverySessionResource($session)], 201);
@@ -65,6 +67,7 @@ class DiscoveryController extends Controller
                 $session,
                 $request->validated('message_id'),
                 $request->validated('answers'),
+                $request->input('locale', 'ar'),
             );
             return response()->json(['data' => new DiscoverySessionResource($session)]);
         } catch (\InvalidArgumentException $e) {
@@ -80,8 +83,12 @@ class DiscoveryController extends Controller
         $session = $this->sessions->find($this->context->workspaceId(), $id);
         if (! $session) return response()->json(['message' => 'Discovery session not found.'], 404);
 
-        $session = $this->sessions->classify($session);
-        return response()->json(['data' => new DiscoverySessionResource($session)]);
+        try {
+            $session = $this->sessions->classify($session);
+            return response()->json(['data' => new DiscoverySessionResource($session)]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -95,8 +102,31 @@ class DiscoveryController extends Controller
         try {
             $blueprint = $this->sessions->generateBlueprint($session);
             return response()->json(['data' => new DiscoveryBlueprintResource($blueprint)], 201);
+        } catch (BlueprintValidationException $e) {
+            return response()->json([
+                'message'  => $e->getMessage(),
+                'error'    => 'blueprint_validation_error',
+                'errors'   => $e->errors,
+                'warnings' => $e->warnings,
+            ], 422);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Validate the existing blueprint against the canonical schema.
+     */
+    public function validateBlueprint(string $id): JsonResponse
+    {
+        $session = $this->sessions->find($this->context->workspaceId(), $id);
+        if (! $session) return response()->json(['message' => 'Discovery session not found.'], 404);
+
+        try {
+            $result = $this->sessions->validateBlueprint($session);
+            return response()->json(['data' => $result]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
         }
     }
 

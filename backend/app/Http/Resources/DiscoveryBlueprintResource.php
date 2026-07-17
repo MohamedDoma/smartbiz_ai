@@ -13,6 +13,7 @@ class DiscoveryBlueprintResource extends JsonResource
             'session_id'        => $this->session_id,
             'business_type'     => $this->business_type,
             'blueprint'         => $this->blueprint,
+            'schema_version'    => $this->blueprint['schema_version'] ?? null,
             'version'           => $this->version,
             'generator_method'  => $this->generator_method,
             'generator_version' => $this->generator_version,

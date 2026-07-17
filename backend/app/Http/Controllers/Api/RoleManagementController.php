@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MembershipRole;
 use App\Models\Role;
-use App\Models\WorkspaceMembership;
 use App\Services\PermissionCatalog;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +22,7 @@ use Illuminate\Support\Str;
  */
 class RoleManagementController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager'];
+
 
     // ═══════════════════════════════════════════════════════════
     //  Permission Catalog (no workspace context needed)
@@ -64,7 +63,7 @@ class RoleManagementController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->authorizeRoleManagement($ctx);
+
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -90,11 +89,12 @@ class RoleManagementController extends Controller
             ], 422);
         }
 
-        // Block owner role creation through this endpoint
+        // Block creation of protected system roles via this endpoint
         if ($roleKey === 'owner') {
             return response()->json([
-                'message' => 'Cannot create a role with the owner key.',
-            ], 403);
+                'message' => 'A role with this key already exists in the workspace.',
+                'errors'  => ['role_key' => ['Role key must be unique within the workspace.']],
+            ], 422);
         }
 
         // Validate permission keys against catalog + existing workspace permissions
@@ -129,7 +129,7 @@ class RoleManagementController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->authorizeRoleManagement($ctx);
+
 
         $role = Role::where('workspace_id', $ctx->workspaceId())->find($id);
 
@@ -137,10 +137,10 @@ class RoleManagementController extends Controller
             return response()->json(['message' => 'Role not found.'], 404);
         }
 
-        // Protect owner role permissions from reduction via this endpoint
-        if ($role->role_key === 'owner') {
+        // Protect non-deletable system roles from modification
+        if ($role->is_system && !$role->is_deletable) {
             return response()->json([
-                'message' => 'Owner role cannot be modified through this endpoint.',
+                'message' => 'This system role is protected and cannot be modified.',
             ], 403);
         }
 
@@ -181,7 +181,7 @@ class RoleManagementController extends Controller
     public function deactivate(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->authorizeRoleManagement($ctx);
+
 
         $role = Role::where('workspace_id', $ctx->workspaceId())->find($id);
 
@@ -189,8 +189,8 @@ class RoleManagementController extends Controller
             return response()->json(['message' => 'Role not found.'], 404);
         }
 
-        if ($role->role_key === 'owner') {
-            return response()->json(['message' => 'Owner role cannot be deactivated.'], 403);
+        if ($role->is_system && !$role->is_deletable) {
+            return response()->json(['message' => 'This system role is protected and cannot be deactivated.'], 403);
         }
 
         // Check if role is assigned to active memberships
@@ -256,22 +256,5 @@ class RoleManagementController extends Controller
         return array_values(array_diff($keys, $allValid));
     }
 
-    private function authorizeRoleManagement(WorkspaceContextManager $ctx): void
-    {
-        $membership = WorkspaceMembership::where('id', $ctx->membershipId())->first();
 
-        if (! $membership) {
-            abort(403, 'No active membership in this workspace.');
-        }
-
-        $roleKeys = $membership->membershipRoles()
-            ->with('role')
-            ->get()
-            ->pluck('role.role_key')
-            ->toArray();
-
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) {
-            abort(403, 'You do not have permission to manage roles.');
-        }
-    }
 }

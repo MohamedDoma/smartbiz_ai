@@ -11,6 +11,7 @@ import '../../core/responsive.dart';
 import '../../features/ai_chat/ai_chat_state.dart';
 import '../../features/approvals/approval_state.dart';
 import '../../features/approvals/entity_field_catalog_state.dart';
+import '../../features/onboarding/onboarding_state.dart';
 
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -228,6 +229,12 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       context.read<EntityFieldCatalogState>().clearData();
     } catch (_) {
       // EntityFieldCatalogState might not be mounted yet
+    }
+    // Clear discovery session data to prevent cross-account leakage
+    try {
+      context.read<OnboardingState>().resetOnboarding();
+    } catch (_) {
+      // OnboardingState might not be mounted yet
     }
     final app = context.read<AppState>();
     try {

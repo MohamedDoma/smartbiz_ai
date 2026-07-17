@@ -295,6 +295,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/classify',            [DiscoveryController::class, 'classify'])->name('discovery.classify');
             Route::post('/{id}/generate-blueprint',  [DiscoveryController::class, 'generateBlueprint'])->name('discovery.generate');
             Route::get('/{id}/blueprint',            [DiscoveryController::class, 'showBlueprint'])->name('discovery.blueprint');
+            Route::get('/{id}/validate-blueprint',   [DiscoveryController::class, 'validateBlueprint'])->name('discovery.validate');
         });
 
         // ── ERP Provisioning ───────────────────────────────────────
@@ -305,6 +306,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/config',         [ProvisioningController::class, 'config'])->name('provisioning.config');
             Route::put('/modules',        [ProvisioningController::class, 'updateModules'])->name('provisioning.modules');
             Route::put('/roles/{role}',   [ProvisioningController::class, 'updateRole'])->name('provisioning.roles');
+            Route::post('/{run}/apply-operational', [ProvisioningController::class, 'applyOperational'])->name('provisioning.apply-operational');
+            Route::post('/{run}/finalize', [ProvisioningController::class, 'finalize'])->name('provisioning.finalize');
         });
 
         // ── Manual Payment Submission ──────────────────────────────
@@ -346,12 +349,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Workspace Roles (CRUD + permission catalog) ──────────
         Route::get('/permission-catalog', [RoleManagementController::class, 'permissionCatalog'])
+            ->middleware(CheckPermission::class . ':roles.list')
             ->name('permission-catalog.index');
         Route::prefix('workspace-roles')->group(function () {
-            Route::get('/',               [RoleManagementController::class, 'index'])->name('workspace-roles.index');
-            Route::post('/',              [RoleManagementController::class, 'store'])->name('workspace-roles.store');
-            Route::put('/{id}',           [RoleManagementController::class, 'update'])->name('workspace-roles.update');
-            Route::post('/{id}/deactivate', [RoleManagementController::class, 'deactivate'])->name('workspace-roles.deactivate');
+            Route::get('/',               [RoleManagementController::class, 'index'])->middleware(CheckPermission::class . ':roles.list')->name('workspace-roles.index');
+            Route::post('/',              [RoleManagementController::class, 'store'])->middleware(CheckPermission::class . ':roles.manage')->name('workspace-roles.store');
+            Route::put('/{id}',           [RoleManagementController::class, 'update'])->middleware(CheckPermission::class . ':roles.manage')->name('workspace-roles.update');
+            Route::post('/{id}/deactivate', [RoleManagementController::class, 'deactivate'])->middleware(CheckPermission::class . ':roles.manage')->name('workspace-roles.deactivate');
         });
 
         // ── Workspace Employees (role assignment + org assignment) ─
@@ -363,20 +367,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Departments ───────────────────────────────────────────
         Route::prefix('departments')->group(function () {
-            Route::get('/',     [DepartmentController::class, 'index'])->name('departments.index');
-            Route::post('/',    [DepartmentController::class, 'store'])->name('departments.store');
-            Route::get('/{id}', [DepartmentController::class, 'show'])->name('departments.show');
-            Route::put('/{id}', [DepartmentController::class, 'update'])->name('departments.update');
-            Route::delete('/{id}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+            Route::get('/',     [DepartmentController::class, 'index'])->middleware(CheckPermission::class . ':departments.list')->name('departments.index');
+            Route::post('/',    [DepartmentController::class, 'store'])->middleware(CheckPermission::class . ':departments.manage')->name('departments.store');
+            Route::get('/{id}', [DepartmentController::class, 'show'])->middleware(CheckPermission::class . ':departments.list')->name('departments.show');
+            Route::put('/{id}', [DepartmentController::class, 'update'])->middleware(CheckPermission::class . ':departments.manage')->name('departments.update');
+            Route::delete('/{id}', [DepartmentController::class, 'destroy'])->middleware(CheckPermission::class . ':departments.manage')->name('departments.destroy');
         });
 
         // ── Teams ──────────────────────────────────────────────────
         Route::prefix('teams')->group(function () {
-            Route::get('/',     [TeamController::class, 'index'])->name('teams.index');
-            Route::post('/',    [TeamController::class, 'store'])->name('teams.store');
-            Route::get('/{id}', [TeamController::class, 'show'])->name('teams.show');
-            Route::put('/{id}', [TeamController::class, 'update'])->name('teams.update');
-            Route::delete('/{id}', [TeamController::class, 'destroy'])->name('teams.destroy');
+            Route::get('/',     [TeamController::class, 'index'])->middleware(CheckPermission::class . ':teams.list')->name('teams.index');
+            Route::post('/',    [TeamController::class, 'store'])->middleware(CheckPermission::class . ':teams.manage')->name('teams.store');
+            Route::get('/{id}', [TeamController::class, 'show'])->middleware(CheckPermission::class . ':teams.list')->name('teams.show');
+            Route::put('/{id}', [TeamController::class, 'update'])->middleware(CheckPermission::class . ':teams.manage')->name('teams.update');
+            Route::delete('/{id}', [TeamController::class, 'destroy'])->middleware(CheckPermission::class . ':teams.manage')->name('teams.destroy');
         });
 
         // ── Pipelines ─────────────────────────────────────────────

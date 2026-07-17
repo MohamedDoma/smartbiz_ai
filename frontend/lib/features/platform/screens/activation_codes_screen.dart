@@ -16,7 +16,10 @@ class _State extends State<ActivationCodesScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PlatformState>().loadCodes());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PlatformState>().loadCodes();
+    });
   }
 
   @override

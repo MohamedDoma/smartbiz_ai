@@ -15,7 +15,6 @@ use Illuminate\Support\Str;
  */
 class DepartmentController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     /**
      * GET /api/departments
@@ -41,7 +40,7 @@ class DepartmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $this->requireAdminRole($wsId, $request);
+
 
         $validated = $request->validate([
             'name'                  => 'required|string|max:255',
@@ -93,7 +92,7 @@ class DepartmentController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $this->requireAdminRole($wsId, $request);
+
 
         $department = Department::where('workspace_id', $wsId)->findOrFail($id);
 
@@ -129,7 +128,7 @@ class DepartmentController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $this->requireAdminRole($wsId, $request);
+
 
         $department = Department::where('workspace_id', $wsId)->findOrFail($id);
 
@@ -182,31 +181,7 @@ class DepartmentController extends Controller
         ];
     }
 
-    private function requireAdminRole(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return;
-        }
 
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
-
-        if (! $membership) {
-            abort(403, 'Not a member of this workspace.');
-        }
-
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')
-            ->toArray();
-
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) {
-            abort(403, 'Insufficient permissions.');
-        }
-    }
 
     private function validateMembershipBelongsToWorkspace(string $membershipId, string $wsId): void
     {

@@ -48,7 +48,7 @@ class AuthSessionPayloadBuilder
             $onboardingCompleted = false;
             if ($workspace) {
                 $onboardingCompleted = ProvisioningRun::where('workspace_id', $workspace->id)
-                        ->where('status', 'completed')
+                        ->whereIn('status', ['applied', 'onboarding_complete'])
                         ->exists()
                     || WorkspaceTemplateApplication::where('workspace_id', $workspace->id)
                         ->where('status', 'applied')

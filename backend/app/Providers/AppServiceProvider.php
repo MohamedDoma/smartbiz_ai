@@ -37,6 +37,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Ai\LlmProviderInterface::class,
             fn () => \App\Services\Ai\LlmService::resolveProvider(),
         );
+
+        // AI: LlmService wraps the provider and adds fallback routing.
+        // Registered so DiscoverySessionService receives it via DI.
+        $this->app->singleton(\App\Services\Ai\LlmService::class, function ($app) {
+            return new \App\Services\Ai\LlmService(
+                $app->make(\App\Services\Ai\LlmProviderInterface::class)
+            );
+        });
     }
 
     /**

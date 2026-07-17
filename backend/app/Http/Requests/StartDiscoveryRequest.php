@@ -10,6 +10,7 @@ class StartDiscoveryRequest extends FormRequest
     {
         return [
             'business_description' => ['required', 'string', 'min:20'],
+            'locale'               => ['sometimes', 'string', 'in:ar,en'],
         ];
     }
 
