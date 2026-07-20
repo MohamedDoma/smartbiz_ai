@@ -54,13 +54,29 @@ class EmailConfigService
     {
         $ws = $this->getWorkspaceSettings($workspaceId);
 
-        $globalFromName  = DB::table('platform_settings')->where('key', 'email.default_from_name')->value('value') ?? 'SmartBiz AI';
-        $globalFromEmail = DB::table('platform_settings')->where('key', 'email.default_from_email')->value('value') ?? 'noreply@smartbiz.ai';
+        $globalFromName = DB::table('platform_settings')
+            ->where('key', 'email.default_from_name')
+            ->value('value');
+        $globalFromEmail = DB::table('platform_settings')
+            ->where('key', 'email.default_from_email')
+            ->value('value');
+
+        $configuredFromName = (string) config('mail.from.name', 'SmartBiz AI');
+        $configuredFromEmail = (string) config('mail.from.address', 'noreply@smartbiz.ai');
+
+        // Fresh installations seed noreply@smartbiz.ai as a placeholder. When
+        // MAIL_FROM_ADDRESS is configured (for example with a verified Resend
+        // domain), use it automatically unless an explicit platform/workspace
+        // sender override has been configured.
+        if (! $globalFromEmail || $globalFromEmail === 'noreply@smartbiz.ai') {
+            $globalFromEmail = $configuredFromEmail;
+        }
+        $globalFromName = $globalFromName ?: $configuredFromName;
 
         return [
-            'from_name'  => $ws?->from_name_override ?? $globalFromName,
-            'from_email' => $ws?->from_email_override ?? $globalFromEmail,
-            'reply_to'   => $ws?->reply_to ?? null,
+            'from_name'  => $ws?->from_name_override ?: $globalFromName,
+            'from_email' => $ws?->from_email_override ?: $globalFromEmail,
+            'reply_to'   => $ws?->reply_to ?: null,
         ];
     }
 

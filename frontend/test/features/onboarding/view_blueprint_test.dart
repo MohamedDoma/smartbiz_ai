@@ -59,6 +59,7 @@ class _TrackingDiscoveryService extends DiscoveryService {
   @override
   Future<DiscoverySession> startSession({
     required String businessDescription,
+    String locale = 'ar',
   }) =>
       throw UnimplementedError();
 
@@ -67,6 +68,7 @@ class _TrackingDiscoveryService extends DiscoveryService {
     required String sessionId,
     required String messageId,
     required List<Map<String, String>> answers,
+    String locale = 'ar',
   }) =>
       throw UnimplementedError();
 }

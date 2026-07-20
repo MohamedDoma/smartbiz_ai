@@ -7,25 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- * WorkspaceInvitation — employee invite link.
- *
- * Token is stored as SHA-256 hash. Raw token is only returned once at creation.
- *
- * @property string $id
- * @property string $workspace_id
- * @property string $email
- * @property string|null $full_name
- * @property string|null $role_id
- * @property string $invited_by_user_id
- * @property string|null $accepted_user_id
- * @property string $token_hash
- * @property string $status  (pending|accepted|revoked|expired)
- * @property \Carbon\Carbon $expires_at
- * @property \Carbon\Carbon|null $accepted_at
- * @property \Carbon\Carbon|null $revoked_at
- * @property array|null $metadata
- */
 class WorkspaceInvitation extends Model
 {
     use HasUuids;
@@ -39,11 +20,20 @@ class WorkspaceInvitation extends Model
         'email',
         'full_name',
         'role_id',
+        'department_id',
+        'team_id',
+        'job_title',
+        'preferred_locale',
         'invited_by_user_id',
         'accepted_user_id',
         'token_hash',
+        'token_encrypted',
         'status',
         'expires_at',
+        'last_sent_at',
+        'send_count',
+        'delivery_status',
+        'delivery_error',
         'accepted_at',
         'revoked_at',
         'metadata',
@@ -52,14 +42,15 @@ class WorkspaceInvitation extends Model
     protected function casts(): array
     {
         return [
-            'expires_at'  => 'datetime',
-            'accepted_at' => 'datetime',
-            'revoked_at'  => 'datetime',
-            'metadata'    => 'array',
+            'token_encrypted' => 'encrypted',
+            'expires_at'      => 'datetime',
+            'last_sent_at'    => 'datetime',
+            'accepted_at'     => 'datetime',
+            'revoked_at'      => 'datetime',
+            'send_count'      => 'integer',
+            'metadata'        => 'array',
         ];
     }
-
-    // ── Relationships ──────────────────────────────────────────
 
     public function workspace(): BelongsTo
     {
@@ -69,6 +60,16 @@ class WorkspaceInvitation extends Model
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'team_id');
     }
 
     public function invitedByUser(): BelongsTo
@@ -81,33 +82,29 @@ class WorkspaceInvitation extends Model
         return $this->belongsTo(User::class, 'accepted_user_id');
     }
 
-    /**
-     * Multi-role pivot rows for this invitation.
-     */
     public function invitationRoles(): HasMany
     {
         return $this->hasMany(WorkspaceInvitationRole::class, 'workspace_invitation_id');
     }
 
-    /**
-     * Get the primary invitation role (new pivot-based or old role_id fallback).
-     */
     public function primaryInvitationRole(): ?Role
     {
+        if ($this->relationLoaded('invitationRoles')) {
+            $primary = $this->invitationRoles->firstWhere('is_primary', true)
+                ?? $this->invitationRoles->first();
+
+            if ($primary?->role) {
+                return $primary->role;
+            }
+        }
+
         $primary = $this->invitationRoles()
             ->with('role')
             ->where('is_primary', true)
             ->first();
 
-        if ($primary?->role) {
-            return $primary->role;
-        }
-
-        // Fallback to legacy role_id
-        return $this->role;
+        return $primary?->role ?? $this->role;
     }
-
-    // ── Scopes ─────────────────────────────────────────────────
 
     public function scopePending($query)
     {
@@ -119,8 +116,6 @@ class WorkspaceInvitation extends Model
         return $query->where('expires_at', '>', now());
     }
 
-    // ── Helpers ────────────────────────────────────────────────
-
     public function isPending(): bool
     {
         return $this->status === 'pending';
@@ -128,7 +123,7 @@ class WorkspaceInvitation extends Model
 
     public function isExpired(): bool
     {
-        return $this->expires_at->isPast();
+        return $this->expires_at?->isPast() ?? true;
     }
 
     public function isAccepted(): bool

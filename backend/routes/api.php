@@ -342,9 +342,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Workspace Invitations ──────────────────────────────────
         Route::prefix('workspace-invitations')->group(function () {
-            Route::get('/',             [WorkspaceInvitationController::class, 'index'])->name('workspace-invitations.index');
-            Route::post('/',            [WorkspaceInvitationController::class, 'store'])->name('workspace-invitations.store');
-            Route::post('/{id}/revoke', [WorkspaceInvitationController::class, 'revoke'])->name('workspace-invitations.revoke');
+            Route::get('/', [WorkspaceInvitationController::class, 'index'])
+                ->middleware(CheckPermission::class . ':employees.list')
+                ->name('workspace-invitations.index');
+            Route::post('/', [WorkspaceInvitationController::class, 'store'])
+                ->middleware(CheckPermission::class . ':employees.create')
+                ->name('workspace-invitations.store');
+            Route::post('/{id}/resend', [WorkspaceInvitationController::class, 'resend'])
+                ->middleware(CheckPermission::class . ':employees.create')
+                ->name('workspace-invitations.resend');
+            Route::post('/{id}/revoke', [WorkspaceInvitationController::class, 'revoke'])
+                ->middleware(CheckPermission::class . ':employees.update')
+                ->name('workspace-invitations.revoke');
         });
 
         // ── Workspace Roles (CRUD + permission catalog) ──────────
@@ -360,9 +369,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Workspace Employees (role assignment + org assignment) ─
         Route::prefix('workspace-employees')->group(function () {
-            Route::get('/',                    [WorkspaceEmployeeRoleController::class, 'index'])->name('workspace-employees.index');
-            Route::put('/{id}/roles',          [WorkspaceEmployeeRoleController::class, 'updateRoles'])->name('workspace-employees.updateRoles');
-            Route::put('/{id}/assignment',     [WorkspaceEmployeeRoleController::class, 'updateAssignment'])->name('workspace-employees.updateAssignment');
+            Route::get('/', [WorkspaceEmployeeRoleController::class, 'index'])
+                ->middleware(CheckPermission::class . ':employees.list')
+                ->name('workspace-employees.index');
+            Route::put('/{id}/roles', [WorkspaceEmployeeRoleController::class, 'updateRoles'])
+                ->middleware(CheckPermission::class . ':roles.manage')
+                ->name('workspace-employees.updateRoles');
+            Route::put('/{id}/assignment', [WorkspaceEmployeeRoleController::class, 'updateAssignment'])
+                ->middleware(CheckPermission::class . ':employees.update')
+                ->name('workspace-employees.updateAssignment');
+            Route::put('/{id}/status', [WorkspaceEmployeeRoleController::class, 'updateStatus'])
+                ->middleware(CheckPermission::class . ':employees.update')
+                ->name('workspace-employees.updateStatus');
         });
 
         // ── Departments ───────────────────────────────────────────

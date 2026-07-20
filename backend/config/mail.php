@@ -115,4 +115,6 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'logo_url' => env('MAIL_LOGO_URL', rtrim(env('APP_URL', 'http://localhost'), '/') . '/images/smartbiz-logo.png'),
+
 ];

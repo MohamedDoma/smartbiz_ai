@@ -98,9 +98,9 @@ void main() {
         final initialInstance = firstInstance;
         expect(buildCount, 1);
 
-        // Trigger AppState notification
+        // Trigger a real AppState notification without creating a mock session.
         final appState = tester.element(find.byType(SizedBox)).read<AppState>();
-        appState.signInAsOwner();
+        appState.completeOnboarding();
         await tester.pump();
 
         // OnboardingState instance should be the same object

@@ -65,7 +65,7 @@ const _liveFixture = <String, dynamic>{
   'pipelines': [
     {
       'key': 'sales_pipeline',
-      'name': 'Sales Pipeline',
+      'name': 'مسار المبيعات',
       'entity_type': 'deal',
       'stages': [
         {'key': 'new', 'name': 'New', 'order': 1},
@@ -78,7 +78,7 @@ const _liveFixture = <String, dynamic>{
   'approval_workflows': [
     {
       'key': 'high_value_approval',
-      'name': 'High Value Approval',
+      'name': 'موافقة القيمة العالية',
       'entity_type': 'invoice',
       'steps': [
         {'name': 'Manager Approval', 'step_order': 1, 'action_on_approve': 'finalize'},
@@ -172,10 +172,10 @@ void main() {
       final state = OnboardingState();
       final model = state.testConvertBlueprint(dto);
 
-      expect(model.suggestedWorkflows, contains('Sales Pipeline'));
+      expect(model.suggestedWorkflows, contains('مسار المبيعات'));
       expect(model.suggestedDashboards, contains('Sales Department'));
       expect(model.suggestedDashboards, contains('Parts Department'));
-      expect(model.suggestedAutomations, contains('High Value Approval'));
+      expect(model.suggestedAutomations, contains('موافقة القيمة العالية'));
     });
 
     test('4. BlueprintModel is created successfully with all fields', () {
@@ -183,7 +183,7 @@ void main() {
       final model = state.testConvertBlueprint(dto);
 
       expect(model.businessName, 'شركة لبيع السيارات');
-      expect(model.businessType, 'retail');
+      expect(model.businessType, 'تجارة التجزئة');
       expect(model.businessDescription, contains('السيارات'));
       expect(model.requiredModules, isNotEmpty);
       expect(model.suggestedRoles, isNotEmpty);

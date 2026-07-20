@@ -144,6 +144,8 @@ class OrgEmployee {
   final String email;
   final String? phoneNumber;
   final String status;
+  final String? preferredLocale;
+  final DateTime? joinedAt;
   final String? jobTitle;
   final OrgNameRef? department;
   final OrgNameRef? team;
@@ -158,6 +160,8 @@ class OrgEmployee {
     required this.email,
     this.phoneNumber,
     this.status = 'active',
+    this.preferredLocale,
+    this.joinedAt,
     this.jobTitle,
     this.department,
     this.team,
@@ -173,6 +177,10 @@ class OrgEmployee {
         email: json['email'] as String? ?? '',
         phoneNumber: json['phone_number'] as String?,
         status: json['status'] as String? ?? 'active',
+        preferredLocale: json['preferred_locale'] as String?,
+        joinedAt: json['joined_at'] != null
+            ? DateTime.tryParse(json['joined_at'] as String)
+            : null,
         jobTitle: json['job_title'] as String?,
         department: json['department'] != null
             ? OrgNameRef.fromJson(json['department'] as Map<String, dynamic>)

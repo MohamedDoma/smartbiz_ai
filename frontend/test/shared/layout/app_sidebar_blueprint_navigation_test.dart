@@ -302,76 +302,30 @@ void main() {
   });
 
   // ═══════════════════════════════════════════════════════════
-  //  5. Super Admin
+  //  5. Platform Admin Isolation
   // ═══════════════════════════════════════════════════════════
-  group('Super Admin', () {
-    testWidgets('super admin section appears in dynamic mode', (tester) async {
-      appState.signInAsSuperAdmin();
-      navCtrl.attachModuleState(moduleState);
-      navCtrl.setMode(nav.NavigationMode.advanced);
-      navCtrl.updatePermissions(_ownerPerms());
+  group('Platform Admin Isolation', () {
+    testWidgets(
+      'workspace owner does not receive the platform admin section',
+      (tester) async {
+        navCtrl.attachModuleState(moduleState);
+        navCtrl.setMode(nav.NavigationMode.advanced);
+        navCtrl.updatePermissions(_ownerPerms());
 
-      await tester.pumpWidget(_buildHarness(
-        appState: appState,
-        shellState: shellState,
-        navCtrl: navCtrl,
-        moduleState: moduleState,
-        tapRecorder: tapRecorder,
-      ));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_buildHarness(
+          appState: appState,
+          shellState: shellState,
+          navCtrl: navCtrl,
+          moduleState: moduleState,
+          tapRecorder: tapRecorder,
+        ));
+        await tester.pumpAndSettle();
 
-      // Admin section header.
-      expect(find.text(trEn('nav_section_admin').toUpperCase()), findsOneWidget);
-      // Admin nav item. Note: 'Super Admin' text also appears in the
-      // header role badge, so use findsWidgets (≥ 1).
-      expect(find.text(trEn('nav_admin')), findsWidgets);
-    });
+        expect(appState.isSuperAdmin, isFalse);
+        expect(find.text(trEn('nav_admin')), findsNothing);
+      },
+    );
 
-    testWidgets('super admin section does NOT appear for non-admin in dynamic mode', (tester) async {
-      // Default owner is not superAdmin.
-      navCtrl.attachModuleState(moduleState);
-      navCtrl.setMode(nav.NavigationMode.advanced);
-      navCtrl.updatePermissions(_ownerPerms());
-
-      await tester.pumpWidget(_buildHarness(
-        appState: appState,
-        shellState: shellState,
-        navCtrl: navCtrl,
-        moduleState: moduleState,
-        tapRecorder: tapRecorder,
-      ));
-      await tester.pumpAndSettle();
-
-      expect(find.text(trEn('nav_admin')), findsNothing);
-    });
-
-    testWidgets('super admin section appears in fallback mode', (tester) async {
-      appState.signInAsSuperAdmin();
-      // navCtrl not attached → fallback.
-      expect(navCtrl.useFallbackNavigation, isTrue);
-      expect(appState.isSuperAdmin, isTrue);
-
-      await tester.pumpWidget(_buildHarness(
-        appState: appState,
-        shellState: shellState,
-        navCtrl: navCtrl,
-        moduleState: moduleState,
-        tapRecorder: tapRecorder,
-      ));
-      await tester.pumpAndSettle();
-
-      // In legacy mode all nav sections are rendered. The admin section
-      // is at the very bottom of the ListView, below the viewport fold.
-      // Scroll to the bottom to mount the lazy-built admin items.
-      await tester.scrollUntilVisible(
-        find.text(trEn('nav_admin')),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text(trEn('nav_admin')), findsOneWidget);
-    });
   });
 
   // ═══════════════════════════════════════════════════════════

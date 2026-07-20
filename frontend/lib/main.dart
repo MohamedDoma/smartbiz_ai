@@ -107,7 +107,12 @@ class SmartBizApp extends StatelessWidget {
           update: (_, __, prev) => prev!,
           lazy: true,
         ),
-        ChangeNotifierProvider(create: (_) => EmployeesState(), lazy: true),
+        ChangeNotifierProxyProvider<AppState, EmployeesState>(
+          create: (ctx) =>
+              EmployeesState(OrgService(ctx.read<AppState>().apiClient)),
+          update: (_, __, prev) => prev!,
+          lazy: true,
+        ),
         ChangeNotifierProvider(create: (_) => SettingsState(), lazy: true),
         ProxyProvider<AppState, ContactService>(
           create: (ctx) => ContactService(ctx.read<AppState>().apiClient),

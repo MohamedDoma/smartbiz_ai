@@ -303,8 +303,9 @@ class _TeamsScreenState extends State<TeamsScreen> {
               onPressed: saving
                   ? null
                   : () async {
-                      if (nameC.text.trim().isEmpty || selectedDept == null)
+                      if (nameC.text.trim().isEmpty || selectedDept == null) {
                         return;
+                      }
                       setD(() => saving = true);
                       final err = await state.addTeam(
                         departmentId: selectedDept!,

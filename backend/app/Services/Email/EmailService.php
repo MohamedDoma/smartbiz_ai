@@ -200,10 +200,16 @@ class EmailService
 
         // 7. Send or queue
         try {
+            // Resend's onboarding sandbox only accepts the exact account
+            // email address and rejects a named recipient address.
+            $pendingMail = $this->usesResendSandbox($sender['from_email'])
+                ? Mail::to($recipientEmail)
+                : Mail::to($recipientEmail, $recipientName);
+
             if ($deliveryMode === 'queued' && $mailable instanceof \Illuminate\Contracts\Queue\ShouldQueue) {
-                Mail::to($recipientEmail, $recipientName)->queue($mailable);
+                $pendingMail->queue($mailable);
             } else {
-                Mail::to($recipientEmail, $recipientName)->send($mailable);
+                $pendingMail->send($mailable);
             }
 
             DB::table('email_logs')->where('id', $logId)->update([
@@ -226,4 +232,15 @@ class EmailService
             return $logId;
         }
     }
+
+    /**
+     * The Resend testing sender requires an exact bare recipient address.
+     * A verified production domain can continue using recipient display names.
+     */
+    private function usesResendSandbox(string $fromEmail): bool
+    {
+        return config('mail.default') === 'resend'
+            && strcasecmp(trim($fromEmail), 'onboarding@resend.dev') === 0;
+    }
+
 }

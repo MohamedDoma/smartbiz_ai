@@ -47,9 +47,21 @@ class WorkspaceInviteService {
         data['data'] as Map<String, dynamic>);
   }
 
+  /// POST /api/workspace-invitations/{id}/resend
+  Future<WorkspaceInvitation> resendInvite(String id, {int? expiresInDays}) async {
+    final response = await _client.post(
+      '/workspace-invitations/$id/resend',
+      data: {if (expiresInDays != null) 'expires_in_days': expiresInDays},
+    );
+    final data = response.data as Map<String, dynamic>;
+    return WorkspaceInvitation.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
   /// POST /api/workspace-invitations/{id}/revoke
-  Future<void> revokeInvite(String id) async {
-    await _client.post('/workspace-invitations/$id/revoke');
+  Future<WorkspaceInvitation> revokeInvite(String id) async {
+    final response = await _client.post('/workspace-invitations/$id/revoke');
+    final data = response.data as Map<String, dynamic>;
+    return WorkspaceInvitation.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   // ── Public endpoints (no auth required) ─────────────────

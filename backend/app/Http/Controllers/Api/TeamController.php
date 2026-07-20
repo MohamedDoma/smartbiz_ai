@@ -11,41 +11,32 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-/**
- * TeamController — workspace team CRUD.
- */
 class TeamController extends Controller
 {
-
-    /**
-     * GET /api/teams
-     */
     public function index(Request $request): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-
-        $query = Team::where('workspace_id', $wsId)
+        $workspaceId = app(WorkspaceContextManager::class)->workspaceId();
+        $query = Team::where('workspace_id', $workspaceId)
             ->with(['department:id,name', 'managerMembership.user:id,full_name,email'])
+            ->withCount(['members as member_count' => fn ($q) => $q->where('status', 'active')])
             ->orderBy('sort_order')
             ->orderBy('name');
 
-        if ($request->has('department_id')) {
-            $query->where('department_id', $request->input('department_id'));
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->string('department_id')->toString());
+        }
+        if (! $request->boolean('include_inactive')) {
+            $query->where('is_active', true);
         }
 
         return response()->json([
-            'data' => $query->get()->map(fn ($t) => $this->formatTeam($t)),
+            'data' => $query->get()->map(fn (Team $team) => $this->formatTeam($team)),
         ]);
     }
 
-    /**
-     * POST /api/teams
-     */
     public function store(Request $request): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-
-
+        $workspaceId = app(WorkspaceContextManager::class)->workspaceId();
         $validated = $request->validate([
             'name'                  => 'required|string|max:255',
             'department_id'         => 'nullable|uuid',
@@ -54,141 +45,198 @@ class TeamController extends Controller
             'sort_order'            => 'nullable|integer|min:0',
         ]);
 
-        if (! empty($validated['department_id'])) {
-            $this->validateDepartmentBelongsToWorkspace($validated['department_id'], $wsId);
-        }
-        if (! empty($validated['manager_membership_id'])) {
-            $this->validateMembershipBelongsToWorkspace($validated['manager_membership_id'], $wsId);
-        }
+        $name = trim($validated['name']);
+        $this->ensureUniqueName($workspaceId, $name);
+        $department = $this->validateDepartment($validated['department_id'] ?? null, $workspaceId);
+        $this->validateManager($validated['manager_membership_id'] ?? null, $workspaceId, $department?->id);
 
         $team = Team::create([
-            'workspace_id'          => $wsId,
-            'department_id'         => $validated['department_id'] ?? null,
-            'team_key'              => Str::slug($validated['name'], '_'),
-            'name'                  => $validated['name'],
-            'description'           => $validated['description'] ?? null,
+            'workspace_id'          => $workspaceId,
+            'department_id'         => $department?->id,
+            'team_key'              => $this->uniqueKey($workspaceId, $name),
+            'name'                  => $name,
+            'description'           => $this->nullableTrim($validated['description'] ?? null),
             'manager_membership_id' => $validated['manager_membership_id'] ?? null,
             'is_active'             => true,
             'sort_order'            => $validated['sort_order'] ?? 0,
         ]);
 
-        $team->load(['department:id,name', 'managerMembership.user:id,full_name,email']);
-
-        return response()->json([
-            'data' => $this->formatTeam($team),
-        ], 201);
+        return response()->json(['data' => $this->formatTeam($this->loadTeam($team))], 201);
     }
 
-    /**
-     * GET /api/teams/{id}
-     */
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-
-        $team = Team::where('workspace_id', $wsId)
-            ->with(['department:id,name', 'managerMembership.user:id,full_name,email', 'members.user:id,full_name,email'])
+        $workspaceId = app(WorkspaceContextManager::class)->workspaceId();
+        $team = Team::where('workspace_id', $workspaceId)
+            ->with([
+                'department:id,name',
+                'managerMembership.user:id,full_name,email',
+                'members.user:id,full_name,email',
+            ])
+            ->withCount(['members as member_count' => fn ($q) => $q->where('status', 'active')])
             ->findOrFail($id);
 
-        return response()->json([
-            'data' => $this->formatTeam($team),
-        ]);
+        return response()->json(['data' => $this->formatTeam($team)]);
     }
 
-    /**
-     * PUT /api/teams/{id}
-     */
     public function update(Request $request, string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-
-
-        $team = Team::where('workspace_id', $wsId)->findOrFail($id);
-
+        $workspaceId = app(WorkspaceContextManager::class)->workspaceId();
+        $team = Team::where('workspace_id', $workspaceId)->findOrFail($id);
         $validated = $request->validate([
             'name'                  => 'sometimes|required|string|max:255',
-            'department_id'         => 'nullable|uuid',
-            'description'           => 'nullable|string|max:1000',
-            'manager_membership_id' => 'nullable|uuid',
+            'department_id'         => 'sometimes|nullable|uuid',
+            'description'           => 'sometimes|nullable|string|max:1000',
+            'manager_membership_id' => 'sometimes|nullable|uuid',
             'is_active'             => 'sometimes|boolean',
-            'sort_order'            => 'nullable|integer|min:0',
+            'sort_order'            => 'sometimes|integer|min:0',
         ]);
 
-        if (! empty($validated['department_id'])) {
-            $this->validateDepartmentBelongsToWorkspace($validated['department_id'], $wsId);
-        }
-        if (! empty($validated['manager_membership_id'])) {
-            $this->validateMembershipBelongsToWorkspace($validated['manager_membership_id'], $wsId);
+        if (array_key_exists('name', $validated)) {
+            $validated['name'] = trim($validated['name']);
+            $this->ensureUniqueName($workspaceId, $validated['name'], $team->id);
+            $validated['team_key'] = $this->uniqueKey($workspaceId, $validated['name'], $team->id);
         }
 
-        if (isset($validated['name'])) {
-            $validated['team_key'] = Str::slug($validated['name'], '_');
+        $departmentId = array_key_exists('department_id', $validated)
+            ? $this->validateDepartment($validated['department_id'], $workspaceId)?->id
+            : $team->department_id;
+        if (array_key_exists('department_id', $validated)) {
+            $validated['department_id'] = $departmentId;
+        }
+        $managerId = array_key_exists('manager_membership_id', $validated)
+            ? $validated['manager_membership_id']
+            : $team->manager_membership_id;
+        $this->validateManager($managerId, $workspaceId, $departmentId);
+
+        if (array_key_exists('description', $validated)) {
+            $validated['description'] = $this->nullableTrim($validated['description']);
+        }
+
+        if (array_key_exists('is_active', $validated)
+            && $validated['is_active'] === false
+            && $team->is_active) {
+            $this->ensureCanDeactivate($team, $workspaceId);
+            $validated['manager_membership_id'] = null;
         }
 
         $team->update($validated);
-        $team->load(['department:id,name', 'managerMembership.user:id,full_name,email']);
 
-        return response()->json([
-            'data' => $this->formatTeam($team),
-        ]);
+        return response()->json(['data' => $this->formatTeam($this->loadTeam($team->fresh()))]);
     }
 
-    /**
-     * DELETE /api/teams/{id}
-     */
-    public function destroy(Request $request, string $id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-
-
-        $team = Team::where('workspace_id', $wsId)->findOrFail($id);
-        $team->update(['is_active' => false]);
-
-        return response()->json([
-            'message' => 'Team deactivated.',
-        ]);
+        $workspaceId = app(WorkspaceContextManager::class)->workspaceId();
+        $team = Team::where('workspace_id', $workspaceId)->findOrFail($id);
+        $this->ensureCanDeactivate($team, $workspaceId);
+        $team->update(['is_active' => false, 'manager_membership_id' => null]);
+        return response()->json(['message' => 'Team deactivated.']);
     }
 
-    // ═══════════════════════════════════════════════════════════
-
-    private function formatTeam(Team $t): array
+    private function ensureCanDeactivate(Team $team, string $workspaceId): void
     {
-        $manager = $t->managerMembership?->user;
+        $activeMembers = WorkspaceMembership::where('workspace_id', $workspaceId)
+            ->where('team_id', $team->id)
+            ->where('status', 'active')
+            ->count();
+
+        abort_if(
+            $activeMembers > 0,
+            409,
+            'Move active employees out of this team before deactivating it.',
+        );
+    }
+
+    private function loadTeam(Team $team): Team
+    {
+        return $team->load(['department:id,name', 'managerMembership.user:id,full_name,email'])
+            ->loadCount(['members as member_count' => fn ($q) => $q->where('status', 'active')]);
+    }
+
+    private function formatTeam(Team $team): array
+    {
+        $manager = $team->managerMembership?->user;
 
         return [
-            'id'             => $t->id,
-            'workspace_id'   => $t->workspace_id,
-            'department_id'  => $t->department_id,
-            'department'     => $t->department ? ['id' => $t->department->id, 'name' => $t->department->name] : null,
-            'team_key'       => $t->team_key,
-            'name'           => $t->name,
-            'description'    => $t->description,
-            'is_active'      => $t->is_active,
-            'sort_order'     => $t->sort_order,
-            'manager'        => $manager ? [
-                'membership_id' => $t->manager_membership_id,
-                'full_name'     => $manager->full_name,
-                'email'         => $manager->email,
+            'id'            => $team->id,
+            'workspace_id'  => $team->workspace_id,
+            'department_id' => $team->department_id,
+            'department'    => $team->department ? ['id' => $team->department->id, 'name' => $team->department->name] : null,
+            'team_key'      => $team->team_key,
+            'name'          => $team->name,
+            'description'   => $team->description,
+            'is_active'     => $team->is_active,
+            'sort_order'    => $team->sort_order,
+            'manager'       => $manager ? [
+                'membership_id' => $team->manager_membership_id,
+                'full_name' => $manager->full_name,
+                'email' => $manager->email,
             ] : null,
-            'member_count'   => $t->members_count ?? $t->members()->where('status', 'active')->count(),
-            'created_at'     => $t->created_at?->toISOString(),
-            'updated_at'     => $t->updated_at?->toISOString(),
+            'member_count'  => (int) ($team->member_count ?? 0),
+            'created_at'    => $team->created_at?->toISOString(),
+            'updated_at'    => $team->updated_at?->toISOString(),
         ];
     }
 
-
-
-    private function validateDepartmentBelongsToWorkspace(string $deptId, string $wsId): void
+    private function validateDepartment(?string $departmentId, string $workspaceId): ?Department
     {
-        if (! Department::where('id', $deptId)->where('workspace_id', $wsId)->exists()) {
-            abort(422, 'Department does not belong to this workspace.');
+        if (! $departmentId) {
+            return null;
+        }
+
+        $department = Department::where('workspace_id', $workspaceId)
+            ->where('is_active', true)
+            ->find($departmentId);
+        abort_unless($department, 422, 'Department does not belong to this workspace or is inactive.');
+
+        return $department;
+    }
+
+    private function validateManager(?string $membershipId, string $workspaceId, ?string $departmentId): void
+    {
+        if (! $membershipId) {
+            return;
+        }
+
+        $manager = WorkspaceMembership::where('id', $membershipId)
+            ->where('workspace_id', $workspaceId)
+            ->where('status', 'active')
+            ->first();
+        abort_unless($manager, 422, 'Manager membership does not belong to this workspace or is inactive.');
+
+        if ($departmentId && $manager->department_id && $manager->department_id !== $departmentId) {
+            abort(422, 'Team manager belongs to a different department.');
         }
     }
 
-    private function validateMembershipBelongsToWorkspace(string $membershipId, string $wsId): void
+    private function ensureUniqueName(string $workspaceId, string $name, ?string $ignoreId = null): void
     {
-        if (! WorkspaceMembership::where('id', $membershipId)->where('workspace_id', $wsId)->where('status', 'active')->exists()) {
-            abort(422, 'Manager membership does not belong to this workspace.');
+        $exists = Team::where('workspace_id', $workspaceId)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists();
+        abort_if($exists, 422, 'A team with this name already exists.');
+    }
+
+    private function uniqueKey(string $workspaceId, string $name, ?string $ignoreId = null): string
+    {
+        $base = Str::slug($name, '_') ?: 'team';
+        $key = $base;
+        $suffix = 2;
+        while (Team::where('workspace_id', $workspaceId)
+            ->where('team_key', $key)
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists()) {
+            $key = "{$base}_{$suffix}";
+            $suffix++;
         }
+        return $key;
+    }
+
+    private function nullableTrim(?string $value): ?string
+    {
+        $value = $value !== null ? trim($value) : null;
+        return $value === '' ? null : $value;
     }
 }

@@ -48,7 +48,10 @@ class _FakeDiscoveryService extends DiscoveryService {
   }
 
   @override
-  Future<DiscoverySession> startSession({required String businessDescription}) =>
+  Future<DiscoverySession> startSession({
+    required String businessDescription,
+    String locale = 'ar',
+  }) =>
       throw UnimplementedError('Should not be called during resume');
 
   @override
@@ -56,6 +59,7 @@ class _FakeDiscoveryService extends DiscoveryService {
     required String sessionId,
     required String messageId,
     required List<Map<String, String>> answers,
+    String locale = 'ar',
   }) =>
       throw UnimplementedError();
 

@@ -60,6 +60,18 @@ class OrgService {
     return list.map((e) => OrgEmployee.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+
+  Future<OrgEmployee> updateEmployeeStatus(
+    String membershipId,
+    String status,
+  ) async {
+    final response = await _client.put(
+      '/workspace-employees/$membershipId/status',
+      data: {'status': status},
+    );
+    return OrgEmployee.fromJson(response.data['data'] as Map<String, dynamic>);
+  }
+
   Future<OrgEmployee> updateEmployeeAssignment(
     String membershipId,
     EmployeeAssignmentPayload payload,

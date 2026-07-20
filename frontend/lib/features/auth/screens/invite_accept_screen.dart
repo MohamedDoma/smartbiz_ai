@@ -185,6 +185,18 @@ class _InviteAcceptScreenState extends State<InviteAcceptScreen> {
             _infoRow(Icons.email_outlined, tr(context, 'invite_email'), preview.email),
             const SizedBox(height: 8),
             _infoRow(Icons.badge_outlined, tr(context, 'invite_role'), preview.roleNamesDisplay.isNotEmpty ? preview.roleNamesDisplay : preview.roleName ?? '—'),
+            if (preview.jobTitle?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              _infoRow(Icons.work_outline, tr(context, 'emp_job_title'), preview.jobTitle!),
+            ],
+            if (preview.departmentName?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              _infoRow(Icons.account_tree_outlined, tr(context, 'emp_department'), preview.departmentName!),
+            ],
+            if (preview.teamName?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              _infoRow(Icons.groups_outlined, tr(context, 'emp_team'), preview.teamName!),
+            ],
           ]),
         ),
         const SizedBox(height: 22),
