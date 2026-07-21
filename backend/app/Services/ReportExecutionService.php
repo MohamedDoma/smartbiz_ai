@@ -55,7 +55,10 @@ class ReportExecutionService
 
             // Set RLS context
             try {
-                DB::statement("SET app.workspace_id = '{$wsId}'");
+                DB::selectOne(
+                    "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+                    [$wsId],
+                );
             } catch (\Throwable $e) {
                 // Ignore — not all setups use RLS
             }
@@ -145,7 +148,10 @@ class ReportExecutionService
         $limit = min($parameters['limit'] ?? self::DEFAULT_LIMIT, self::MAX_LIMIT);
 
         try {
-            DB::statement("SET app.workspace_id = '{$wsId}'");
+            DB::selectOne(
+                "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+                [$wsId],
+            );
         } catch (\Throwable $e) {
             // Ignore
         }

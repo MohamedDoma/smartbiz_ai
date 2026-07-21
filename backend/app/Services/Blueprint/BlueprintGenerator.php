@@ -35,7 +35,9 @@ class BlueprintGenerator
             array_filter($bp['modules'], fn(array $m) => $m['enabled']),
             'key'
         );
-        $bp['roles'] = $this->buildRoles($businessType, $knownFacts, $deptRegistry, $enabledModuleKeys);
+        $bp['roles'] = $this->normalizeRolePermissions(
+            $this->buildRoles($businessType, $knownFacts, $deptRegistry, $enabledModuleKeys)
+        );
 
         // ── Prune template departments with no references ──────────
         // Removes unused template depts (like management/operations) when
@@ -734,6 +736,37 @@ class BlueprintGenerator
         }
 
         return null;
+    }
+
+    /**
+     * Normalize every generated role against the canonical permission catalog.
+     *
+     * Role builders merge permissions from several semantic signals. A single
+     * permission can therefore be discovered through more than one signal.
+     * Normalize once at the generator boundary so all downstream validators
+     * and provisioners receive deterministic, duplicate-free arrays.
+     */
+    private function normalizeRolePermissions(array $roles): array
+    {
+        $validPermissions = array_flip(PermissionCatalog::allKeys());
+
+        foreach ($roles as &$role) {
+            $permissions = is_array($role['permissions'] ?? null)
+                ? $role['permissions']
+                : [];
+
+            $permissions = array_values(array_unique(array_filter(
+                $permissions,
+                fn ($permission) => is_string($permission)
+                    && isset($validPermissions[$permission]),
+            )));
+
+            sort($permissions);
+            $role['permissions'] = $permissions;
+        }
+        unset($role);
+
+        return $roles;
     }
 
     /**

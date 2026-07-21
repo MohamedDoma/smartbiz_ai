@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Database\Seeders\FoundationSeeder;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -10,13 +11,15 @@ use Tests\TestCase;
 /**
  * Base class for SmartBiz API integration tests.
  *
- * Uses the live PostgreSQL database. All tests run inside a DB transaction
- * that is rolled back after each test to avoid persistent side effects.
+ * Uses the isolated smartbiz_test PostgreSQL database. Every test runs inside
+ * a transaction that is rolled back automatically.
  *
- * Requires FoundationSeeder to have been run at least once.
+ * Run backend/scripts/prepare-test-database.sh before the suite to rebuild and
+ * seed the test database. Never point this suite at the development database.
  */
 abstract class SmartBizTestCase extends TestCase
 {
+    use DatabaseTransactions;
     protected string $token = '';
     protected string $workspaceId = FoundationSeeder::WORKSPACE_ID;
 

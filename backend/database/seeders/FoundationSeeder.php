@@ -231,12 +231,12 @@ class FoundationSeeder extends Seeder
             // Discovery
             ['key' => 'discovery.manage', 'module' => 'system', 'entity' => 'discovery', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // ── Scope-based contact & pipeline permissions ──────
-            ['key' => 'contacts.own',         'module' => 'crm', 'entity' => 'contacts',         'action' => 'own',         'scope_type' => 'own',       'applicable_scopes' => '{"own"}'],
-            ['key' => 'contacts.manage_team', 'module' => 'crm', 'entity' => 'contacts',         'action' => 'manage_team', 'scope_type' => 'team',      'applicable_scopes' => '{"team"}'],
+            ['key' => 'contacts.own',         'module' => 'crm', 'entity' => 'contacts',         'action' => 'own',         'scope_type' => 'workspace',       'applicable_scopes' => '{"own"}'],
+            ['key' => 'contacts.manage_team', 'module' => 'crm', 'entity' => 'contacts',         'action' => 'manage_team', 'scope_type' => 'workspace',      'applicable_scopes' => '{"team"}'],
             ['key' => 'contacts.manage_all',  'module' => 'crm', 'entity' => 'contacts',         'action' => 'manage_all',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'contacts.assign',      'module' => 'crm', 'entity' => 'contacts',         'action' => 'assign',      'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
-            ['key' => 'pipeline_records.own',         'module' => 'crm', 'entity' => 'pipeline_records', 'action' => 'own',         'scope_type' => 'own',  'applicable_scopes' => '{"own"}'],
-            ['key' => 'pipeline_records.manage_team', 'module' => 'crm', 'entity' => 'pipeline_records', 'action' => 'manage_team', 'scope_type' => 'team', 'applicable_scopes' => '{"team"}'],
+            ['key' => 'pipeline_records.own',         'module' => 'crm', 'entity' => 'pipeline_records', 'action' => 'own',         'scope_type' => 'workspace',  'applicable_scopes' => '{"own"}'],
+            ['key' => 'pipeline_records.manage_team', 'module' => 'crm', 'entity' => 'pipeline_records', 'action' => 'manage_team', 'scope_type' => 'workspace', 'applicable_scopes' => '{"team"}'],
         ];
 
         foreach ($permissions as $perm) {

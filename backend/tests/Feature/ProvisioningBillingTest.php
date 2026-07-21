@@ -12,6 +12,8 @@ use App\Models\ProvisioningRun;
 use App\Models\WebhookEvent;
 use App\Models\WorkspaceConfiguration;
 use App\Models\WorkspaceSubscription;
+use App\Services\Blueprint\BlueprintGenerator;
+use App\Services\Blueprint\BlueprintSchema;
 use App\Services\StripeService;
 use Database\Seeders\FoundationSeeder;
 use Database\Seeders\PlatformSeeder;
@@ -57,15 +59,33 @@ class ProvisioningBillingTest extends SmartBizTestCase
             ],
         );
 
-        $blueprint = DiscoveryBlueprint::firstOrCreate(
+        $canonicalBlueprint = app(BlueprintGenerator::class)->generate('retail', [
+            'business_name'        => 'Test Electronics',
+            'business_description' => 'A retail electronics shop with 5 staff',
+            'employee_count'       => 5,
+            'branch_count'         => 1,
+            'sells_products'       => true,
+            'sells_services'       => false,
+            'country'              => 'MY',
+            'currency'             => 'MYR',
+            'primary_language'     => 'en',
+            // Keep the fixture focused on the canonical owner role so it does
+            // not collide with FoundationSeeder's pre-existing admin role.
+            'role_details'         => [[
+                'name'             => 'Owner',
+                'responsibilities' => ['Full system access and ownership'],
+                'headcount'        => 1,
+            ]],
+        ]);
+
+        $blueprint = DiscoveryBlueprint::updateOrCreate(
             ['session_id' => $session->id, 'workspace_id' => FoundationSeeder::WORKSPACE_ID],
             [
                 'business_type'     => 'retail',
-                'blueprint'         => app(\App\Services\BlueprintGeneratorService::class)
-                    ->generateBlueprint('retail', 'A retail electronics shop with 5 staff'),
+                'blueprint'         => $canonicalBlueprint,
                 'version'           => 1,
-                'generator_method'  => 'rule_based_v1',
-                'generator_version' => '1.0.0',
+                'generator_method'  => 'canonical_v1',
+                'generator_version' => BlueprintSchema::VERSION,
             ],
         );
         $this->blueprintId = $blueprint->id;
@@ -119,10 +139,10 @@ class ProvisioningBillingTest extends SmartBizTestCase
         $response->assertOk();
         $data = $response->json('data');
         $this->assertEquals('preview', $data['status']);
-        $this->assertArrayHasKey('config', $data);
-        $this->assertArrayHasKey('enabled_modules', $data['config']);
-        $this->assertArrayHasKey('role_configs', $data['config']);
-        $this->assertContains('contacts', $data['config']['enabled_modules']);
+        $this->assertArrayHasKey('config_mapping', $data);
+        $this->assertArrayHasKey('enabled_modules', $data['config_mapping']);
+        $this->assertArrayHasKey('role_configs', $data['config_mapping']);
+        $this->assertContains('customers', $data['config_mapping']['enabled_modules']);
 
         // Run should be in preview status
         $run = ProvisioningRun::find($data['run_id']);
@@ -131,27 +151,36 @@ class ProvisioningBillingTest extends SmartBizTestCase
 
     public function test_ep02_apply_provisioning(): void
     {
-        $response = $this->wsPost('/api/provisioning/apply', [
+        // Phase 1: apply the foundational entities and workspace config.
+        $foundation = $this->wsPost('/api/provisioning/apply', [
             'blueprint_id' => $this->blueprintId,
         ]);
 
-        $response->assertOk();
-        $data = $response->json('data');
-        $this->assertEquals('applied', $data['status']);
-        $this->assertNotNull($data['version']);
+        $foundation->assertOk();
+        $foundationData = $foundation->json('data');
+        $this->assertEquals('foundation_applied', $foundationData['status']);
+        $this->assertNotNull($foundationData['blueprint_version']);
+        $this->assertNotEmpty($foundationData['run_id']);
 
-        // Workspace config should exist
+        // Phase 2: apply operational entities using the run-specific endpoint.
+        $operational = $this->wsPost(
+            '/api/provisioning/' . $foundationData['run_id'] . '/apply-operational'
+        );
+        $operational->assertOk();
+        $this->assertEquals('applied', $operational->json('data.status'));
+
+        // Workspace config should exist and use the canonical module vocabulary.
         $config = WorkspaceConfiguration::where('workspace_id', FoundationSeeder::WORKSPACE_ID)->first();
         $this->assertNotNull($config);
-        $this->assertContains('contacts', $config->enabled_modules);
+        $this->assertContains('customers', $config->enabled_modules);
         $this->assertArrayHasKey('owner', $config->role_configs);
 
-        // Role configs should have all expected fields
+        // Canonical provisioning stores role identity and permission summary.
         $ownerConfig = $config->role_configs['owner'];
-        $this->assertArrayHasKey('homepage', $ownerConfig);
-        $this->assertArrayHasKey('navigation', $ownerConfig);
-        $this->assertArrayHasKey('quick_actions', $ownerConfig);
-        $this->assertArrayHasKey('dashboard_widgets', $ownerConfig);
+        $this->assertArrayHasKey('name', $ownerConfig);
+        $this->assertArrayHasKey('description', $ownerConfig);
+        $this->assertArrayHasKey('department_key', $ownerConfig);
+        $this->assertArrayHasKey('permission_count', $ownerConfig);
     }
 
     public function test_ep03_rollback_provisioning(): void

@@ -2,6 +2,7 @@ FROM php:8.3-fpm-alpine
 
 # System dependencies
 RUN apk add --no-cache \
+    postgresql-client \
     postgresql-dev \
     libzip-dev \
     icu-dev \

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class WarehouseService
 {
@@ -21,15 +22,20 @@ class WarehouseService
 
     public function create(string $workspaceId, array $data): Warehouse
     {
-        return Warehouse::create(array_merge($data, [
-            'workspace_id' => $workspaceId,
-        ]));
+        return DB::transaction(
+            fn (): Warehouse => Warehouse::create(array_merge($data, [
+                'workspace_id' => $workspaceId,
+            ])),
+        );
     }
 
     public function update(Warehouse $warehouse, array $data): Warehouse
     {
-        $warehouse->update($data);
-        return $warehouse->fresh();
+        return DB::transaction(function () use ($warehouse, $data): Warehouse {
+            $warehouse->update($data);
+
+            return $warehouse->fresh();
+        });
     }
 
     public function delete(Warehouse $warehouse): void

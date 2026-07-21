@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Ai\AiActionService;
-use App\Services\Ai\AiGatewayService;
+use App\Services\Ai\AiGateway;
 use App\Services\Ai\AiInsightService;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class AiChatController extends Controller
 {
     public function __construct(
-        private readonly AiGatewayService         $gateway,
+        private readonly AiGateway                $gateway,
         private readonly AiActionService          $actions,
         private readonly AiInsightService         $insights,
         private readonly WorkspaceContextManager  $context,
@@ -23,8 +23,8 @@ class AiChatController extends Controller
     /**
      * POST /api/ai/chat — Send a message to the AI assistant.
      *
-     * Uses AiGatewayService for OpenAI calls, tool execution,
-     * permission guard, and ai_conversations / ai_messages / ai_usage_logs persistence.
+     * Uses the canonical AiGateway for provider abstraction, tool calls,
+     * permission enforcement, memory, actions, credits, and conversation persistence.
      */
     public function chat(Request $request): JsonResponse
     {
@@ -37,17 +37,19 @@ class AiChatController extends Controller
         $workspaceId = $this->context->workspaceId();
         $membership  = $this->context->membership();
 
+        $permissions = $membership
+            ? app(\App\Services\PermissionResolver::class)->resolveAll($membership)
+            : [];
+
         $result = $this->gateway->chat(
-            message:        $request->input('message'),
             workspaceId:    $workspaceId,
             userId:         $user->id,
+            message:        $request->input('message'),
             conversationId: $request->input('conversation_id'),
-            membership:     $membership,
+            permissions:    $permissions,
         );
 
-        // If preflight returned an error (ai_disabled, ai_no_key, etc.)
-        $statusCode = $result['status'] ?? ($result['success'] ? 200 : 500);
-        return response()->json(['data' => $result], is_int($statusCode) ? $statusCode : 500);
+        return response()->json(['data' => $result]);
     }
 
     /**
@@ -67,7 +69,7 @@ class AiChatController extends Controller
             ->get();
 
         $data = $conversations->map(function ($convo) {
-            $messages = DB::table('ai_messages')
+            $messages = DB::table('ai_conversation_messages')
                 ->where('conversation_id', $convo->id)
                 ->orderBy('created_at')
                 ->limit(50)
@@ -79,7 +81,15 @@ class AiChatController extends Controller
                 'mode'            => $convo->mode,
                 'message_count'   => $convo->message_count,
                 'last_message_at' => $convo->last_message_at,
-                'messages'        => $messages,
+                'messages'        => $messages->map(fn ($message) => [
+                    'id'         => $message->id,
+                    'role'       => $message->role,
+                    'content'    => $message->content,
+                    'metadata'   => isset($message->metadata)
+                        ? json_decode($message->metadata, true)
+                        : [],
+                    'created_at' => $message->created_at,
+                ])->values(),
             ];
         });
 
@@ -143,7 +153,7 @@ class AiChatController extends Controller
             ], 404);
         }
 
-        $messages = DB::table('ai_messages')
+        $messages = DB::table('ai_conversation_messages')
             ->where('conversation_id', $convo->id)
             ->orderBy('created_at')
             ->limit(100)
@@ -152,8 +162,9 @@ class AiChatController extends Controller
                 'id'         => $m->id,
                 'role'       => $m->role,
                 'content'    => $m->content,
-                'model'      => $m->model,
-                'tokens'     => ($m->total_tokens ?? 0),
+                'metadata'   => isset($m->metadata)
+                    ? json_decode($m->metadata, true)
+                    : [],
                 'created_at' => $m->created_at,
             ]);
 

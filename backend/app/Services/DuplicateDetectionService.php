@@ -101,7 +101,10 @@ class DuplicateDetectionService
         $results = [];
 
         try {
-            \Illuminate\Support\Facades\DB::statement("SET app.workspace_id = '{$wsId}'");
+            \Illuminate\Support\Facades\DB::selectOne(
+                "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+                [$wsId],
+            );
         } catch (\Throwable $e) {
             // Ignore
         }
@@ -145,7 +148,10 @@ class DuplicateDetectionService
 
         try {
             // Set workspace context for RLS policies if applicable
-            \Illuminate\Support\Facades\DB::statement("SET app.workspace_id = '{$wsId}'");
+            \Illuminate\Support\Facades\DB::selectOne(
+                "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+                [$wsId],
+            );
         } catch (\Throwable $e) {
             // Ignore — not all setups use RLS
         }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Blueprint\BlueprintSchema;
 use Database\Seeders\CertificationSeeder;
 
 /**
@@ -221,25 +222,20 @@ class DiscoveryTest extends SmartBizTestCase
         $blueprint = $response->json('data.blueprint');
         $this->assertNotEmpty($blueprint);
 
-        // Validate core blueprint structure
-        $this->assertArrayHasKey('business_type', $blueprint);
-        $this->assertArrayHasKey('enabled_modules', $blueprint);
-        $this->assertArrayHasKey('recommended_roles', $blueprint);
-        $this->assertArrayHasKey('role_homepages', $blueprint);
-        $this->assertArrayHasKey('role_navigation', $blueprint);
-        $this->assertArrayHasKey('role_quick_actions', $blueprint);
-        $this->assertArrayHasKey('role_allowed_screens', $blueprint);
-        $this->assertArrayHasKey('role_dashboard_widgets', $blueprint);
-        $this->assertArrayHasKey('recommended_pages', $blueprint);
-        $this->assertArrayHasKey('recommended_workflows', $blueprint);
-        $this->assertArrayHasKey('recommended_dashboards', $blueprint);
-        $this->assertArrayHasKey('recommended_automations', $blueprint);
-        $this->assertArrayHasKey('assumptions', $blueprint);
-        $this->assertArrayHasKey('missing_info', $blueprint);
+        // Validate the canonical blueprint schema (legacy flat aliases were removed).
+        foreach (BlueprintSchema::REQUIRED_FIELDS as $field) {
+            $this->assertArrayHasKey($field, $blueprint);
+        }
+        $this->assertEquals(
+            'distribution',
+            $blueprint['business_profile']['business_type'] ?? null,
+        );
+        $this->assertNotEmpty($blueprint['modules']);
+        $this->assertNotEmpty($blueprint['roles']);
 
         // Generator metadata
-        $this->assertEquals('rule_based_v1', $response->json('data.generator_method'));
-        $this->assertEquals('1.0.0', $response->json('data.generator_version'));
+        $this->assertEquals('canonical_v1', $response->json('data.generator_method'));
+        $this->assertEquals(BlueprintSchema::VERSION, $response->json('data.generator_version'));
         $this->assertEquals(1, $response->json('data.version'));
     }
 

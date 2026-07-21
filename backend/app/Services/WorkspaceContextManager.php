@@ -53,11 +53,12 @@ class WorkspaceContextManager
             );
         }
 
-        // Set the PostgreSQL session variable for RLS enforcement.
-        // NOTE: SET does not support parameterized queries in PostgreSQL,
-        // so we use DB::unprepared with PDO::quote for safe escaping.
-        $quoted = DB::getPdo()->quote($workspaceId);
-        DB::unprepared("SET app.workspace_id = {$quoted}");
+        // Set the PostgreSQL session variable for RLS enforcement using
+        // a parameterized call. This avoids interpolating workspace IDs into SQL.
+        DB::selectOne(
+            "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+            [$workspaceId],
+        );
 
         $this->isResolved = true;
     }
@@ -67,14 +68,18 @@ class WorkspaceContextManager
      */
     public function clear(): void
     {
-        if ($this->isResolved) {
-            // Reset the session variable so the connection can be safely returned to the pool.
-            DB::unprepared("RESET app.workspace_id");
+        try {
+            if ($this->isResolved) {
+                // Reset the session variable so the connection can be safely returned to the pool.
+                DB::selectOne(
+                    "SELECT set_config('app.workspace_id', '', false) AS workspace_id",
+                );
+            }
+        } finally {
+            $this->workspace = null;
+            $this->membership = null;
+            $this->isResolved = false;
         }
-
-        $this->workspace = null;
-        $this->membership = null;
-        $this->isResolved = false;
     }
 
     public function isResolved(): bool

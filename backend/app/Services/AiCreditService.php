@@ -121,16 +121,37 @@ class AiCreditService
                 ]);
             }
 
-            // Log usage
+            // Log usage using the canonical ai_usage_logs schema.
+            $promptTokens = (int) ($responseMeta['prompt_tokens'] ?? 0);
+            $completionTokens = (int) ($responseMeta['completion_tokens'] ?? 0);
+            $totalTokens = (int) (
+                $responseMeta['total_tokens']
+                ?? $requestMeta['tokens']
+                ?? ($promptTokens + $completionTokens)
+            );
+
+            $provider = trim((string) ($responseMeta['provider'] ?? 'unknown'));
+            $model = trim((string) ($responseMeta['model'] ?? 'unknown'));
+
             AiUsageLog::create([
                 'workspace_id'      => $workspaceId,
                 'user_id'           => $userId,
-                'action_type'       => $actionType,
-                'credits_charged'   => $credits - $remaining,
-                'request_metadata'  => $requestMeta,
-                'response_metadata' => $responseMeta,
-                'duration_ms'       => $durationMs,
-                'created_at'        => now(),
+                'conversation_id'   => $requestMeta['conversation_id'] ?? null,
+                'provider'          => $provider !== '' ? $provider : 'unknown',
+                'model'             => $model !== '' ? $model : 'unknown',
+                'operation'         => $actionType,
+                'input_tokens'      => $promptTokens,
+                'output_tokens'     => $completionTokens,
+                'total_tokens'      => $totalTokens,
+                'estimated_cost_usd'=> (float) ($responseMeta['estimated_cost_usd'] ?? 0),
+                'success'           => true,
+                'duration_ms'       => $durationMs ?? 0,
+                'metadata'          => [
+                    'credits_charged' => $credits - $remaining,
+                    'buckets'         => $buckets,
+                    'request'         => $requestMeta ?? [],
+                    'response'        => $responseMeta ?? [],
+                ],
             ]);
 
             return [

@@ -234,8 +234,12 @@ return new class extends Migration
             DB::statement("
                 DO \$\$ BEGIN
                     CREATE POLICY {$t}_tenant_isolation ON {$t}
-                        USING (workspace_id = current_setting('app.current_workspace_id', TRUE)::UUID
-                               OR current_setting('app.current_workspace_id', TRUE) IS NULL);
+                        USING (
+                            workspace_id = NULLIF(current_setting('app.workspace_id', TRUE), '')::UUID
+                        )
+                        WITH CHECK (
+                            workspace_id = NULLIF(current_setting('app.workspace_id', TRUE), '')::UUID
+                        );
                 EXCEPTION WHEN duplicate_object THEN NULL;
                 END \$\$
             ");

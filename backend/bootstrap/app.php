@@ -51,7 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             // Workspace isolation trigger violations
-            if (str_contains($e->getMessage(), 'Workspace isolation violation') || str_contains($e->getMessage(), 'workspace')) {
+            if (str_contains($e->getMessage(), 'Workspace isolation violation')) {
                 return response()->json([
                     'message' => 'Workspace isolation violation: the referenced record does not belong to this workspace.',
                     'error'   => 'workspace_isolation',

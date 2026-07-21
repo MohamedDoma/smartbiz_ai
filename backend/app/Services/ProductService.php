@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ProductService
 {
@@ -42,15 +43,20 @@ class ProductService
 
     public function create(string $workspaceId, array $data): Product
     {
-        return Product::create(array_merge($data, [
-            'workspace_id' => $workspaceId,
-        ]));
+        return DB::transaction(
+            fn (): Product => Product::create(array_merge($data, [
+                'workspace_id' => $workspaceId,
+            ])),
+        );
     }
 
     public function update(Product $product, array $data): Product
     {
-        $product->update($data);
-        return $product->fresh('category');
+        return DB::transaction(function () use ($product, $data): Product {
+            $product->update($data);
+
+            return $product->fresh('category');
+        });
     }
 
     /**

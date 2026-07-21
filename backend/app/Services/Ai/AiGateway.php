@@ -179,13 +179,10 @@ class AiGateway
             $convo = DB::table('ai_conversations')
                 ->where('id', $convoId)
                 ->where('workspace_id', $wsId)
+                ->where('user_id', $userId)
                 ->first();
+
             if ($convo) {
-                DB::table('ai_conversations')->where('id', $convoId)->update([
-                    'message_count'  => DB::raw('message_count + 1'),
-                    'last_message_at' => now(),
-                    'updated_at'     => now(),
-                ]);
                 return $convo;
             }
         }
@@ -195,9 +192,10 @@ class AiGateway
             'id'              => $id,
             'workspace_id'    => $wsId,
             'user_id'         => $userId,
+            'type'            => 'chat',
             'mode'            => 'chat',
             'status'          => 'active',
-            'message_count'   => 1,
+            'message_count'   => 0,
             'last_message_at' => now(),
             'metadata'        => '{}',
             'created_at'      => now(),
@@ -229,6 +227,14 @@ class AiGateway
             'metadata'        => json_encode($metadata ?? []),
             'created_at'      => now(),
         ]);
+
+        DB::table('ai_conversations')
+            ->where('id', $convoId)
+            ->update([
+                'message_count'   => DB::raw('message_count + 1'),
+                'last_message_at' => now(),
+                'updated_at'      => now(),
+            ]);
     }
 
     // ── Memory tracking ────────────────────────────────────
@@ -273,28 +279,7 @@ class AiGateway
             'tokens'          => $totalTokens,
         ], $llm->toAuditMeta(), $latencyMs);
 
-        // Log to ai_request_logs
-        DB::table('ai_request_logs')->insert([
-            'id'                => Str::uuid()->toString(),
-            'workspace_id'      => $wsId,
-            'user_id'           => $userId,
-            'conversation_id'   => $convoId,
-            'request_type'      => $hasActions ? 'ai_action' : (empty($toolsUsed) ? 'ai_chat' : 'ai_read'),
-            'ai_model'          => $llm->model,
-            'tokens_used'       => $totalTokens,
-            'prompt_tokens'     => $llm->promptTokens,
-            'completion_tokens' => $llm->completionTokens,
-            'latency_ms'        => $latencyMs,
-            'status'            => 'success',
-            'structured_output' => json_encode([
-                'provider'       => $llm->provider,
-                'prompt_version' => $this->prompt->promptVersion(),
-                'tools_used'     => $toolsUsed,
-                'finish_reason'  => $llm->finishReason,
-                'credit_cost'    => $creditCost,
-            ]),
-            'created_at'        => now(),
-        ]);
+        // AiCreditService stores the canonical usage record.
     }
 
     // ── Response builders ───────────────────────────────────

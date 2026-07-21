@@ -1,0 +1,11 @@
+
+# Local SmartBiz patch backups
+.smartbiz_patch_backups/
+*.bak
+*.bak_*
+*.bak-*
+*.bak.*
+
+# Generated database backups
+backend/storage/backups/*
+!backend/storage/backups/.gitkeep

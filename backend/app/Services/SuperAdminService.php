@@ -107,7 +107,7 @@ class SuperAdminService
         // AI usage totals (current month)
         $monthStart = now()->startOfMonth();
         $aiUsage = AiUsageLog::where('created_at', '>=', $monthStart)
-            ->selectRaw('COUNT(*) as total_requests, COALESCE(SUM(credits_charged), 0) as total_credits')
+            ->selectRaw("COUNT(*) as total_requests, COALESCE(SUM(COALESCE((metadata->>'credits_charged')::integer, 0)), 0) as total_credits")
             ->first();
 
         return [
@@ -146,12 +146,12 @@ class SuperAdminService
         };
 
         $byAction = AiUsageLog::where('created_at', '>=', $start)
-            ->selectRaw('action_type, COUNT(*) as count, COALESCE(SUM(credits_charged), 0) as credits')
-            ->groupBy('action_type')
+            ->selectRaw("operation as action_type, COUNT(*) as count, COALESCE(SUM(COALESCE((metadata->>'credits_charged')::integer, 0)), 0) as credits")
+            ->groupBy('operation')
             ->get();
 
         $byWorkspace = AiUsageLog::where('created_at', '>=', $start)
-            ->selectRaw('workspace_id, COUNT(*) as count, COALESCE(SUM(credits_charged), 0) as credits')
+            ->selectRaw("workspace_id, COUNT(*) as count, COALESCE(SUM(COALESCE((metadata->>'credits_charged')::integer, 0)), 0) as credits")
             ->groupBy('workspace_id')
             ->orderByDesc('credits')
             ->limit(10)

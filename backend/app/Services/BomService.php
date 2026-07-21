@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BillOfMaterial;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class BomService
 {
@@ -31,15 +32,20 @@ class BomService
 
     public function create(string $workspaceId, array $data): BillOfMaterial
     {
-        return BillOfMaterial::create(array_merge($data, [
-            'workspace_id' => $workspaceId,
-        ]));
+        return DB::transaction(
+            fn (): BillOfMaterial => BillOfMaterial::create(array_merge($data, [
+                'workspace_id' => $workspaceId,
+            ])),
+        );
     }
 
     public function update(BillOfMaterial $bom, array $data): BillOfMaterial
     {
-        $bom->update($data);
-        return $bom->fresh();
+        return DB::transaction(function () use ($bom, $data): BillOfMaterial {
+            $bom->update($data);
+
+            return $bom->fresh();
+        });
     }
 
     public function delete(BillOfMaterial $bom): void
