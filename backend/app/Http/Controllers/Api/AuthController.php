@@ -85,26 +85,6 @@ class AuthController extends Controller
             'activation_code'       => 'nullable|string|max:50',
         ]);
 
-        // ── Activation Code Validation (before transaction) ────
-        $activationCode = null;
-        if (!empty($validated['activation_code'])) {
-            $codeSvc = new PlatformActivationCodeService();
-            $codeResult = $codeSvc->validate($validated['activation_code']);
-            if (!$codeResult['valid']) {
-                $reasons = [
-                    'not_found' => 'Activation code not found.',
-                    'disabled'  => 'Activation code is disabled.',
-                    'expired'   => 'Activation code has expired.',
-                    'used'      => 'Activation code has already been used.',
-                ];
-                return response()->json([
-                    'message' => $reasons[$codeResult['reason']] ?? 'Invalid activation code.',
-                    'errors'  => ['activation_code' => [$reasons[$codeResult['reason']] ?? 'Invalid.']],
-                ], 422);
-            }
-            $activationCode = $codeResult['code'];
-        }
-
         // Normalize workspace name: accept either field.
         $workspaceName = $validated['workspace_name']
             ?? $validated['business_name']
@@ -121,7 +101,29 @@ class AuthController extends Controller
 
         // ── Transaction ───────────────────────────────────────
         try {
-            $result = DB::transaction(function () use ($validated, $workspaceName, $activationCode) {
+            $result = DB::transaction(function () use ($validated, $workspaceName) {
+                $activationCode = null;
+
+                if (! empty($validated['activation_code'])) {
+                    $codeResult = (new PlatformActivationCodeService())
+                        ->validateForUpdate($validated['activation_code']);
+
+                    if (! $codeResult['valid']) {
+                        $reasons = [
+                            'not_found' => 'Activation code not found.',
+                            'disabled' => 'Activation code is disabled.',
+                            'expired' => 'Activation code has expired.',
+                            'used' => 'Activation code has already been used.',
+                        ];
+                        $message = $reasons[$codeResult['reason']] ?? 'Invalid activation code.';
+
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'activation_code' => [$message],
+                        ]);
+                    }
+
+                    $activationCode = $codeResult['code'];
+                }
 
                 // 1. Create User
                 $user = User::create([

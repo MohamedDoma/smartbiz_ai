@@ -103,8 +103,10 @@ Route::post('/invites/{token}/accept', [WorkspaceInvitationController::class, 'a
 
 // ── Public Activation Code Validation ──────────────────────────
 Route::get('/activation-codes/{code}', [PlatformActivationCodeController::class, 'publicShow'])
+    ->middleware('throttle:activation')
     ->name('activation-codes.public-show');
 Route::post('/activation-codes/{code}/validate', [PlatformActivationCodeController::class, 'publicValidate'])
+    ->middleware('throttle:activation')
     ->name('activation-codes.public-validate');
 
 // ── Authenticated (no workspace required) ───────────────────────

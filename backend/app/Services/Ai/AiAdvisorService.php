@@ -54,48 +54,56 @@ class AiAdvisorService
      */
     public function runAnalysis(string $workspaceId): array
     {
-        // Set RLS context so analyzer queries pass through row-level security
-        DB::statement("SET LOCAL app.workspace_id = '{$workspaceId}'");
+        DB::selectOne(
+            "SELECT set_config('app.workspace_id', ?, false) AS workspace_id",
+            [$workspaceId],
+        );
 
-        $allRecs = [];
+        try {
+            $allRecs = [];
 
-        foreach ($this->analyzers as $analyzer) {
-            try {
-                $recs = $analyzer->analyze($workspaceId);
-                $allRecs = array_merge($allRecs, $recs);
-            } catch (\Throwable $e) {
-                Log::warning("Analyzer " . get_class($analyzer) . " failed: {$e->getMessage()}", [
-                    'workspace_id' => $workspaceId,
-                ]);
-            }
-        }
-
-        // Store recommendations (dedup handled by unique index)
-        $stored = [];
-        foreach ($allRecs as $rec) {
-            try {
-                $id = Str::uuid()->toString();
-                DB::table('ai_recommendations')->insert(array_merge($rec, [
-                    'id'           => $id,
-                    'workspace_id' => $workspaceId,
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]));
-                $rec['id'] = $id;
-                $stored[] = $rec;
-
-                // Notify on high-impact recommendations
-                $this->maybeNotify($workspaceId, $rec);
-            } catch (\Illuminate\Database\QueryException $e) {
-                // Dedup constraint violation — skip silently
-                if (str_contains($e->getMessage(), 'uq_ai_rec_dedup')) {
-                    continue;
+            foreach ($this->analyzers as $analyzer) {
+                try {
+                    $recs = $analyzer->analyze($workspaceId);
+                    $allRecs = array_merge($allRecs, $recs);
+                } catch (\Throwable $e) {
+                    Log::warning("Analyzer ".get_class($analyzer)." failed: {$e->getMessage()}", [
+                        'workspace_id' => $workspaceId,
+                    ]);
                 }
-                throw $e;
             }
-        }
 
-        return $stored;
+            // Store recommendations (dedup handled by unique index)
+            $stored = [];
+            foreach ($allRecs as $rec) {
+                try {
+                    $id = Str::uuid()->toString();
+                    DB::table('ai_recommendations')->insert(array_merge($rec, [
+                        'id' => $id,
+                        'workspace_id' => $workspaceId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]));
+                    $rec['id'] = $id;
+                    $stored[] = $rec;
+
+                    // Notify on high-impact recommendations
+                    $this->maybeNotify($workspaceId, $rec);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Dedup constraint violation — skip silently
+                    if (str_contains($e->getMessage(), 'uq_ai_rec_dedup')) {
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
+
+            return $stored;
+        } finally {
+            DB::selectOne(
+                "SELECT set_config('app.workspace_id', '', false) AS workspace_id",
+            );
+        }
     }
 
     /**

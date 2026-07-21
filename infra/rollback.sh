@@ -31,7 +31,7 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 healthy=false
 for attempt in $(seq 1 40); do
   if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/up >/dev/null 2>&1 \
-    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json >/dev/null 2>&1; then
+    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json --fail-on-warning >/dev/null 2>&1; then
     healthy=true
     break
   fi

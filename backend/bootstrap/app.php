@@ -25,14 +25,21 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust only the reverse-proxy chain configured by the deployment.
         // HTTPS redirection belongs at Nginx / the load balancer.
         if (env('APP_ENV') === 'production') {
-            $middleware->trustProxies(
-                at: env('TRUSTED_PROXIES', '*'),
-                headers: Request::HEADER_X_FORWARDED_FOR
-                    | Request::HEADER_X_FORWARDED_HOST
-                    | Request::HEADER_X_FORWARDED_PORT
-                    | Request::HEADER_X_FORWARDED_PROTO
-                    | Request::HEADER_X_FORWARDED_AWS_ELB,
-            );
+            $trustedProxies = array_values(array_filter(array_map(
+                static fn (string $proxy): string => trim($proxy),
+                explode(',', (string) env('TRUSTED_PROXIES', '')),
+            )));
+
+            if ($trustedProxies !== []) {
+                $middleware->trustProxies(
+                    at: $trustedProxies,
+                    headers: Request::HEADER_X_FORWARDED_FOR
+                        | Request::HEADER_X_FORWARDED_HOST
+                        | Request::HEADER_X_FORWARDED_PORT
+                        | Request::HEADER_X_FORWARDED_PROTO
+                        | Request::HEADER_X_FORWARDED_AWS_ELB,
+                );
+            }
         }
     })
     ->withExceptions(function (Exceptions $exceptions): void {

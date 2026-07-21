@@ -29,6 +29,11 @@ class RateLimitServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip());
         });
 
+        // Public activation-code lookups: reduce enumeration and abuse.
+        RateLimiter::for('activation', function (Request $request) {
+            return Limit::perMinute(20)->by($request->ip());
+        });
+
         // Admin endpoints: 30 requests/minute
         RateLimiter::for('admin', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());

@@ -30,6 +30,8 @@ done
 
 grep -Eq '^APP_ENV=production$' "$ENV_FILE" || fail "APP_ENV must be production."
 grep -Eq '^APP_DEBUG=(false|0)$' "$ENV_FILE" || fail "APP_DEBUG must be false."
+trusted_proxies="$(grep -E '^TRUSTED_PROXIES=' "$ENV_FILE" | tail -n1 | cut -d= -f2- || true)"
+[[ "$trusted_proxies" != "*" ]] || fail "TRUSTED_PROXIES=* is unsafe; configure explicit proxy IPs/CIDRs or leave it empty."
 
 chmod 600 "$ENV_FILE" || true
 cd "$PROJECT_DIR"
@@ -67,6 +69,12 @@ log "Running database migrations"
 log "Starting application, worker, scheduler and Nginx"
 "${COMPOSE[@]}" up -d --remove-orphans app worker scheduler nginx
 
+files_backup_before_readiness="$(grep -E '^DEPLOY_FILES_BACKUP_BEFORE_READINESS=' "$ENV_FILE" | tail -n1 | cut -d= -f2- || true)"
+if [[ "${files_backup_before_readiness:-true}" =~ ^(true|1|yes)$ ]]; then
+  log "Creating a verified application-files backup before readiness"
+  "${COMPOSE[@]}" exec -T app php artisan files:backup --no-interaction
+fi
+
 log "Restarting queue workers gracefully"
 "${COMPOSE[@]}" exec -T app php artisan queue:restart
 
@@ -74,7 +82,7 @@ log "Waiting for application liveness and deep operational readiness"
 healthy=false
 for attempt in $(seq 1 40); do
   if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/up >/dev/null 2>&1 \
-    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json >/dev/null 2>&1; then
+    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json --fail-on-warning >/dev/null 2>&1; then
     healthy=true
     break
   fi

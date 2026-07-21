@@ -72,23 +72,20 @@ class PlatformActivationCodeService
     {
         $code = PlatformActivationCode::where('code', strtoupper(trim($codeStr)))->first();
 
-        if (!$code) {
-            return ['valid' => false, 'code' => null, 'reason' => 'not_found'];
-        }
-        if ($code->status === 'disabled') {
-            return ['valid' => false, 'code' => $code, 'reason' => 'disabled'];
-        }
-        if ($code->status === 'expired') {
-            return ['valid' => false, 'code' => $code, 'reason' => 'expired'];
-        }
-        if ($code->expires_at && $code->expires_at->isPast()) {
-            $code->update(['status' => 'expired']);
-            return ['valid' => false, 'code' => $code, 'reason' => 'expired'];
-        }
-        if ($code->used_count >= $code->max_uses) {
-            return ['valid' => false, 'code' => $code, 'reason' => 'used'];
-        }
-        return ['valid' => true, 'code' => $code, 'reason' => null];
+        return $this->evaluate($code);
+    }
+
+    /**
+     * Validate and lock a code for a registration transaction.
+     * The caller must already be inside a database transaction.
+     */
+    public function validateForUpdate(string $codeStr): array
+    {
+        $code = PlatformActivationCode::where('code', strtoupper(trim($codeStr)))
+            ->lockForUpdate()
+            ->first();
+
+        return $this->evaluate($code);
     }
 
     /**
@@ -129,6 +126,33 @@ class PlatformActivationCodeService
     {
         $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
         return "{$frontendUrl}/#/activate?code={$code}";
+    }
+
+
+    /**
+     * @return array{valid: bool, code: ?PlatformActivationCode, reason: ?string}
+     */
+    private function evaluate(?PlatformActivationCode $code): array
+    {
+        if (! $code) {
+            return ['valid' => false, 'code' => null, 'reason' => 'not_found'];
+        }
+        if ($code->status === 'disabled') {
+            return ['valid' => false, 'code' => $code, 'reason' => 'disabled'];
+        }
+        if ($code->status === 'expired') {
+            return ['valid' => false, 'code' => $code, 'reason' => 'expired'];
+        }
+        if ($code->expires_at && $code->expires_at->isPast()) {
+            $code->update(['status' => 'expired']);
+
+            return ['valid' => false, 'code' => $code, 'reason' => 'expired'];
+        }
+        if ($code->used_count >= $code->max_uses) {
+            return ['valid' => false, 'code' => $code, 'reason' => 'used'];
+        }
+
+        return ['valid' => true, 'code' => $code, 'reason' => null];
     }
 
     private function segment(int $len): string
