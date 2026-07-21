@@ -182,7 +182,9 @@ class FoundationSeeder extends Seeder
             ['key' => 'audit.list', 'module' => 'system', 'entity' => 'audit_logs', 'action' => 'list', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'audit.show', 'module' => 'system', 'entity' => 'audit_logs', 'action' => 'show', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Reports
-            ['key' => 'reports.view', 'module' => 'reports', 'entity' => 'reports', 'action' => 'view', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'reports.view',   'module' => 'reports', 'entity' => 'reports', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'reports.run',    'module' => 'reports', 'entity' => 'reports', 'action' => 'run',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'reports.manage', 'module' => 'reports', 'entity' => 'reports', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Pipelines
             ['key' => 'pipelines.list',              'module' => 'crm', 'entity' => 'pipelines',        'action' => 'list',       'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'pipelines.manage',            'module' => 'crm', 'entity' => 'pipelines',        'action' => 'manage',     'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
@@ -193,6 +195,7 @@ class FoundationSeeder extends Seeder
             ['key' => 'pipeline_records.assign',     'module' => 'crm', 'entity' => 'pipeline_records', 'action' => 'assign',     'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Commissions
             ['key' => 'commissions.list',      'module' => 'crm', 'entity' => 'commission_entries', 'action' => 'list',      'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'commissions.view_own',  'module' => 'crm', 'entity' => 'commission_entries', 'action' => 'view_own',  'scope_type' => 'workspace', 'applicable_scopes' => '{"own"}'],
             ['key' => 'commissions.view_all',  'module' => 'crm', 'entity' => 'commission_entries', 'action' => 'view_all',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'commissions.view_team', 'module' => 'crm', 'entity' => 'commission_entries', 'action' => 'view_team', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'commissions.calculate', 'module' => 'crm', 'entity' => 'commission_entries', 'action' => 'calculate', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
@@ -202,13 +205,33 @@ class FoundationSeeder extends Seeder
             // Commission Settings
             ['key' => 'commissions.settings.view',   'module' => 'crm', 'entity' => 'commission_settings', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'commissions.settings.manage', 'module' => 'crm', 'entity' => 'commission_settings', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            // Document Checklists
+            ['key' => 'document_checklists.view',   'module' => 'crm', 'entity' => 'document_checklists', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'document_checklists.manage', 'module' => 'crm', 'entity' => 'document_checklists', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            // Ownership Assignments
+            ['key' => 'ownership.view',   'module' => 'crm', 'entity' => 'ownership_assignments', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ownership.manage', 'module' => 'crm', 'entity' => 'ownership_assignments', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            // Data Quality / Duplicates
+            ['key' => 'duplicates.view',    'module' => 'crm', 'entity' => 'duplicates', 'action' => 'view',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'duplicates.check',   'module' => 'crm', 'entity' => 'duplicates', 'action' => 'check',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'duplicates.manage',  'module' => 'crm', 'entity' => 'duplicates', 'action' => 'manage',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'duplicates.resolve', 'module' => 'crm', 'entity' => 'duplicates', 'action' => 'resolve', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // ── Navigation-gate & module-access permissions ─────
             // AI
-            ['key' => 'ai_advisor.view', 'module' => 'ai', 'entity' => 'ai_advisor', 'action' => 'view', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai.chat',            'module' => 'ai', 'entity' => 'ai_chat',     'action' => 'chat',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai.actions',         'module' => 'ai', 'entity' => 'ai_actions',  'action' => 'confirm', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai.insights.view',   'module' => 'ai', 'entity' => 'ai_insights', 'action' => 'view',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai.insights.manage', 'module' => 'ai', 'entity' => 'ai_insights', 'action' => 'manage',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai.manage',          'module' => 'ai', 'entity' => 'ai',          'action' => 'manage',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai_advisor.view',    'module' => 'ai', 'entity' => 'ai_advisor',  'action' => 'view',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'ai_advisor.manage',  'module' => 'ai', 'entity' => 'ai_advisor',  'action' => 'manage',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // POS
             ['key' => 'pos.view', 'module' => 'sales', 'entity' => 'pos', 'action' => 'view', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Accounting module gate
             ['key' => 'accounting.view', 'module' => 'finance', 'entity' => 'accounting', 'action' => 'view', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'finance.view',     'module' => 'finance', 'entity' => 'finance_operations', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'finance.manage',   'module' => 'finance', 'entity' => 'finance_operations', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'finance.post',     'module' => 'finance', 'entity' => 'finance_operations', 'action' => 'post',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Employees
             ['key' => 'employees.list',   'module' => 'people', 'entity' => 'employees', 'action' => 'list',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'employees.show',   'module' => 'people', 'entity' => 'employees', 'action' => 'show',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
@@ -228,8 +251,17 @@ class FoundationSeeder extends Seeder
             // Settings
             ['key' => 'settings.view',   'module' => 'system', 'entity' => 'settings', 'action' => 'view',   'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             ['key' => 'settings.manage', 'module' => 'system', 'entity' => 'settings', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            // Workspace Billing
+            ['key' => 'billing.manual_payment', 'module' => 'billing', 'entity' => 'manual_payments', 'action' => 'create', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // Discovery
             ['key' => 'discovery.manage', 'module' => 'system', 'entity' => 'discovery', 'action' => 'manage', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            // Approvals
+            ['key' => 'approvals.list',    'module' => 'approvals', 'entity' => 'approval_requests',  'action' => 'list',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'approvals.show',    'module' => 'approvals', 'entity' => 'approval_requests',  'action' => 'show',    'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'approvals.request', 'module' => 'approvals', 'entity' => 'approval_requests',  'action' => 'request', 'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'approvals.decide',  'module' => 'approvals', 'entity' => 'approval_requests',  'action' => 'decide',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'approvals.manage',  'module' => 'approvals', 'entity' => 'approval_workflows', 'action' => 'manage',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
+            ['key' => 'approvals.cancel',  'module' => 'approvals', 'entity' => 'approval_requests',  'action' => 'cancel',  'scope_type' => 'workspace', 'applicable_scopes' => '{"workspace"}'],
             // ── Scope-based contact & pipeline permissions ──────
             ['key' => 'contacts.own',         'module' => 'crm', 'entity' => 'contacts',         'action' => 'own',         'scope_type' => 'workspace',       'applicable_scopes' => '{"own"}'],
             ['key' => 'contacts.manage_team', 'module' => 'crm', 'entity' => 'contacts',         'action' => 'manage_team', 'scope_type' => 'workspace',      'applicable_scopes' => '{"team"}'],

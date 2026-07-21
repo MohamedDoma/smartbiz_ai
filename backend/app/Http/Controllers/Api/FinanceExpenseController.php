@@ -12,12 +12,10 @@ use Illuminate\Http\Request;
 
 class FinanceExpenseController extends Controller
 {
-    private const ADMIN_ROLES = ['owner', 'admin', 'general_manager', 'accountant'];
 
     public function index(Request $request): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $this->requireFinanceAccess($wsId, $request);
 
         $q = FinanceExpense::where('workspace_id', $wsId)
             ->orderByDesc('expense_date');
@@ -39,7 +37,6 @@ class FinanceExpenseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $v = $request->validate([
             'expense_date'   => 'required|date',
@@ -76,7 +73,6 @@ class FinanceExpenseController extends Controller
     public function void(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $expense = FinanceExpense::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
         if ($expense->status === 'void') {
@@ -96,24 +92,5 @@ class FinanceExpenseController extends Controller
         }
 
         return response()->json(['data' => $expense->fresh(), 'message' => 'Expense voided.']);
-    }
-
-    private function requireFinanceAccess(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return;
-        }
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) {
-            abort(403, 'Not a member.');
-        }
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLES))) {
-            abort(403, 'Insufficient permissions for finance.');
-        }
     }
 }

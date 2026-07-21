@@ -12,12 +12,10 @@ use Illuminate\Http\Request;
 
 class FinanceTransactionController extends Controller
 {
-    private const ADMIN_ROLES = ['owner', 'admin', 'general_manager', 'accountant'];
 
     public function index(Request $request): JsonResponse
     {
         $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $this->requireFinanceAccess($wsId, $request);
 
         $q = FinanceTransaction::where('workspace_id', $wsId)
             ->with('lines.account:id,code,name')
@@ -42,7 +40,6 @@ class FinanceTransactionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $v = $request->validate([
             'transaction_date'              => 'required|date',
@@ -79,7 +76,6 @@ class FinanceTransactionController extends Controller
     public function void(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $svc = new FinancePostingService();
         try {
@@ -96,7 +92,6 @@ class FinanceTransactionController extends Controller
     public function postCommissionEntry(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $user = $request->user();
         $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
@@ -119,7 +114,6 @@ class FinanceTransactionController extends Controller
     public function postInvoice(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $user = $request->user();
         $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
@@ -140,7 +134,6 @@ class FinanceTransactionController extends Controller
     public function postPayment(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $user = $request->user();
         $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
@@ -152,25 +145,6 @@ class FinanceTransactionController extends Controller
             return response()->json(['data' => $txn, 'message' => 'Payment posted to finance.'], 201);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
-        }
-    }
-
-    private function requireFinanceAccess(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return;
-        }
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) {
-            abort(403, 'Not a member.');
-        }
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLES))) {
-            abort(403, 'Insufficient permissions for finance.');
         }
     }
 }

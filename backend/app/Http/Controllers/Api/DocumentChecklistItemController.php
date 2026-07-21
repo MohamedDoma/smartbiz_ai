@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentChecklist;
 use App\Models\DocumentChecklistItem;
-use App\Models\WorkspaceMembership;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +12,6 @@ use Illuminate\Support\Str;
 
 class DocumentChecklistItemController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function index(string $checklistId): JsonResponse
     {
@@ -31,7 +29,6 @@ class DocumentChecklistItemController extends Controller
     public function store(Request $request, string $checklistId): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         DocumentChecklist::where('workspace_id', $ctx->workspaceId())->findOrFail($checklistId);
 
         $validated = $request->validate([
@@ -63,7 +60,6 @@ class DocumentChecklistItemController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $item = DocumentChecklistItem::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $validated = $request->validate([
@@ -88,7 +84,6 @@ class DocumentChecklistItemController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $item = DocumentChecklistItem::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
         $item->update(['is_active' => false]);
@@ -110,18 +105,5 @@ class DocumentChecklistItemController extends Controller
             'is_active'               => $i->is_active,
             'created_at'              => $i->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

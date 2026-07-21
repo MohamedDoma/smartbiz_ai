@@ -12,7 +12,6 @@ use Illuminate\Http\Request;
 
 class DuplicateMatchController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function check(Request $request): JsonResponse
     {
@@ -51,7 +50,6 @@ class DuplicateMatchController extends Controller
     public function resolve(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $match = DuplicateMatch::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
@@ -95,18 +93,5 @@ class DuplicateMatchController extends Controller
             'resolved_at'       => $m->resolved_at?->toIso8601String(),
             'created_at'        => $m->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) abort(403, 'Not a member.');
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentChecklist;
 use App\Models\Pipeline;
 use App\Models\PipelineStage;
-use App\Models\WorkspaceMembership;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +13,6 @@ use Illuminate\Support\Str;
 
 class DocumentChecklistController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function index(Request $request): JsonResponse
     {
@@ -38,7 +36,6 @@ class DocumentChecklistController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -93,7 +90,6 @@ class DocumentChecklistController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $checklist = DocumentChecklist::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
@@ -115,7 +111,6 @@ class DocumentChecklistController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $checklist = DocumentChecklist::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
         $checklist->update(['is_active' => false]);
@@ -147,18 +142,5 @@ class DocumentChecklistController extends Controller
                 : null,
             'created_at' => $c->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$membership) abort(403, 'Not a member.');
-        $roleKeys = $membership->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($roleKeys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

@@ -312,32 +312,33 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Manual Payment Submission ──────────────────────────────
         Route::post('/billing/manual-payment', [SuperAdminController::class, 'submitManualPayment'])
+            ->middleware(CheckPermission::class . ':billing.manual_payment')
             ->name('billing.manual-payment');
 
         // ── AI Chat ──────────────────────────────────────────────────
         Route::prefix('ai')->middleware('throttle:ai')->group(function () {
-            Route::post('/chat',           [AiChatController::class, 'chat'])->middleware(CheckAiCredits::class . ':ai_chat')->name('ai.chat');
-            Route::get('/history',         [AiChatController::class, 'history'])->name('ai.history');
-            Route::post('/confirm-action', [AiChatController::class, 'confirmAction'])->name('ai.confirm');
-            Route::post('/reject-action',  [AiChatController::class, 'rejectAction'])->name('ai.reject');
-            Route::get('/insights',                [AiChatController::class, 'insights'])->name('ai.insights');
-            Route::post('/insights/generate',      [AiChatController::class, 'generateInsights'])->name('ai.insights.generate');
-            Route::post('/insights/{id}/dismiss',  [AiChatController::class, 'dismissInsight'])->name('ai.insights.dismiss');
+            Route::post('/chat',           [AiChatController::class, 'chat'])->middleware([CheckPermission::class . ':ai.chat', CheckAiCredits::class . ':ai_chat'])->name('ai.chat');
+            Route::get('/history',         [AiChatController::class, 'history'])->middleware(CheckPermission::class . ':ai.chat')->name('ai.history');
+            Route::post('/confirm-action', [AiChatController::class, 'confirmAction'])->middleware(CheckPermission::class . ':ai.actions')->name('ai.confirm');
+            Route::post('/reject-action',  [AiChatController::class, 'rejectAction'])->middleware(CheckPermission::class . ':ai.actions')->name('ai.reject');
+            Route::get('/insights',                [AiChatController::class, 'insights'])->middleware(CheckPermission::class . ':ai.insights.view')->name('ai.insights');
+            Route::post('/insights/generate',      [AiChatController::class, 'generateInsights'])->middleware(CheckPermission::class . ':ai.insights.manage')->name('ai.insights.generate');
+            Route::post('/insights/{id}/dismiss',  [AiChatController::class, 'dismissInsight'])->middleware(CheckPermission::class . ':ai.insights.manage')->name('ai.insights.dismiss');
 
             // AI Advisor
-            Route::get('/advisor/recommendations',   [\App\Http\Controllers\Api\AiAdvisorController::class, 'index'])->name('ai.advisor.recommendations');
-            Route::post('/advisor/run-analysis',     [\App\Http\Controllers\Api\AiAdvisorController::class, 'runAnalysis'])->name('ai.advisor.run');
-            Route::post('/advisor/{id}/accept',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'accept'])->name('ai.advisor.accept');
-            Route::post('/advisor/{id}/reject',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'reject'])->name('ai.advisor.reject');
-            Route::post('/advisor/{id}/apply',       [\App\Http\Controllers\Api\AiAdvisorController::class, 'apply'])->name('ai.advisor.apply');
+            Route::get('/advisor/recommendations',   [\App\Http\Controllers\Api\AiAdvisorController::class, 'index'])->middleware(CheckPermission::class . ':ai_advisor.view')->name('ai.advisor.recommendations');
+            Route::post('/advisor/run-analysis',     [\App\Http\Controllers\Api\AiAdvisorController::class, 'runAnalysis'])->middleware(CheckPermission::class . ':ai_advisor.manage')->name('ai.advisor.run');
+            Route::post('/advisor/{id}/accept',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'accept'])->middleware(CheckPermission::class . ':ai_advisor.manage')->name('ai.advisor.accept');
+            Route::post('/advisor/{id}/reject',      [\App\Http\Controllers\Api\AiAdvisorController::class, 'reject'])->middleware(CheckPermission::class . ':ai_advisor.manage')->name('ai.advisor.reject');
+            Route::post('/advisor/{id}/apply',       [\App\Http\Controllers\Api\AiAdvisorController::class, 'apply'])->middleware(CheckPermission::class . ':ai_advisor.manage')->name('ai.advisor.apply');
         });
 
         // ── AI Foundation (Step 59.1) — non-conflicting utilities ────
         Route::prefix('ai')->group(function () {
-            Route::post('/test',              [AiFoundationController::class, 'test'])->name('ai.foundation.test');
+            Route::post('/test',              [AiFoundationController::class, 'test'])->middleware(CheckPermission::class . ':ai.manage')->name('ai.foundation.test');
             // /chat is handled by AiChatController above (the canonical route)
-            Route::get('/conversations',      [AiFoundationController::class, 'conversations'])->name('ai.foundation.conversations');
-            Route::get('/conversations/{id}', [AiFoundationController::class, 'showConversation'])->name('ai.foundation.conversation');
+            Route::get('/conversations',      [AiFoundationController::class, 'conversations'])->middleware(CheckPermission::class . ':ai.chat')->name('ai.foundation.conversations');
+            Route::get('/conversations/{id}', [AiFoundationController::class, 'showConversation'])->middleware(CheckPermission::class . ':ai.chat')->name('ai.foundation.conversation');
         });
 
         // ── Workspace Invitations ──────────────────────────────────
@@ -432,7 +433,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{recordId}/documents',       [RecordDocumentController::class, 'index'])->middleware(CheckPermission::class . ':pipelines.list')->name('record-documents.index');
             Route::post('/{recordId}/documents',      [RecordDocumentController::class, 'store'])->middleware(CheckPermission::class . ':pipeline_records.update')->name('record-documents.store');
             Route::get('/{recordId}/document-status',  [RecordDocumentController::class, 'documentStatus'])->middleware(CheckPermission::class . ':pipelines.list')->name('record-documents.status');
-            Route::post('/{recordId}/calculate-commissions', [CommissionEntryController::class, 'calculateForRecord'])->name('commission-entries.calculate');
+            Route::post('/{recordId}/calculate-commissions', [CommissionEntryController::class, 'calculateForRecord'])->middleware(CheckPermission::class . ':commissions.calculate')->name('commission-entries.calculate');
         });
 
         // ── Custom Fields ─────────────────────────────────────────
@@ -446,122 +447,122 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Document Checklists ───────────────────────────────
         Route::prefix('document-checklists')->group(function () {
-            Route::get('/',     [DocumentChecklistController::class, 'index'])->name('document-checklists.index');
-            Route::post('/',    [DocumentChecklistController::class, 'store'])->name('document-checklists.store');
-            Route::get('/{id}', [DocumentChecklistController::class, 'show'])->name('document-checklists.show');
-            Route::put('/{id}', [DocumentChecklistController::class, 'update'])->name('document-checklists.update');
-            Route::delete('/{id}', [DocumentChecklistController::class, 'destroy'])->name('document-checklists.destroy');
+            Route::get('/',     [DocumentChecklistController::class, 'index'])->middleware(CheckPermission::class . ':document_checklists.view')->name('document-checklists.index');
+            Route::post('/',    [DocumentChecklistController::class, 'store'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklists.store');
+            Route::get('/{id}', [DocumentChecklistController::class, 'show'])->middleware(CheckPermission::class . ':document_checklists.view')->name('document-checklists.show');
+            Route::put('/{id}', [DocumentChecklistController::class, 'update'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklists.update');
+            Route::delete('/{id}', [DocumentChecklistController::class, 'destroy'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklists.destroy');
 
             // Nested items
-            Route::get('/{checklistId}/items',  [DocumentChecklistItemController::class, 'index'])->name('document-checklist-items.index');
-            Route::post('/{checklistId}/items', [DocumentChecklistItemController::class, 'store'])->name('document-checklist-items.store');
+            Route::get('/{checklistId}/items',  [DocumentChecklistItemController::class, 'index'])->middleware(CheckPermission::class . ':document_checklists.view')->name('document-checklist-items.index');
+            Route::post('/{checklistId}/items', [DocumentChecklistItemController::class, 'store'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklist-items.store');
         });
 
         // ── Document Checklist Items (standalone) ─────────────────
-        Route::put('/document-checklist-items/{id}',    [DocumentChecklistItemController::class, 'update'])->name('document-checklist-items.update');
-        Route::delete('/document-checklist-items/{id}', [DocumentChecklistItemController::class, 'destroy'])->name('document-checklist-items.destroy');
+        Route::put('/document-checklist-items/{id}',    [DocumentChecklistItemController::class, 'update'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklist-items.update');
+        Route::delete('/document-checklist-items/{id}', [DocumentChecklistItemController::class, 'destroy'])->middleware(CheckPermission::class . ':document_checklists.manage')->name('document-checklist-items.destroy');
 
         // ── Record Documents (standalone) ───────────────────────
         Route::delete('/record-documents/{id}', [RecordDocumentController::class, 'destroy'])->middleware(CheckPermission::class . ':pipeline_records.delete')->name('record-documents.destroy');
 
         // ── Commission Settings Options ───────────────────
-        Route::get("commission-settings/options", [CommissionSettingsController::class, "options"])->name("commission-settings.options");
+        Route::get('commission-settings/options', [CommissionSettingsController::class, 'options'])->middleware(CheckPermission::class . ':commissions.settings.view')->name('commission-settings.options');
 
         // ── Commission Plans ───────────────────────────────
         Route::prefix('commission-plans')->group(function () {
-            Route::get('/',     [CommissionPlanController::class, 'index'])->name('commission-plans.index');
-            Route::post('/',    [CommissionPlanController::class, 'store'])->name('commission-plans.store');
-            Route::get('/{id}', [CommissionPlanController::class, 'show'])->name('commission-plans.show');
-            Route::put('/{id}', [CommissionPlanController::class, 'update'])->name('commission-plans.update');
-            Route::delete('/{id}', [CommissionPlanController::class, 'destroy'])->name('commission-plans.destroy');
+            Route::get('/',     [CommissionPlanController::class, 'index'])->middleware(CheckPermission::class . ':commissions.settings.view')->name('commission-plans.index');
+            Route::post('/',    [CommissionPlanController::class, 'store'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-plans.store');
+            Route::get('/{id}', [CommissionPlanController::class, 'show'])->middleware(CheckPermission::class . ':commissions.settings.view')->name('commission-plans.show');
+            Route::put('/{id}', [CommissionPlanController::class, 'update'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-plans.update');
+            Route::delete('/{id}', [CommissionPlanController::class, 'destroy'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-plans.destroy');
         });
 
         // ── Commission Rules ───────────────────────────────
         Route::prefix('commission-rules')->group(function () {
-            Route::get('/',     [CommissionRuleController::class, 'index'])->name('commission-rules.index');
-            Route::post('/',    [CommissionRuleController::class, 'store'])->name('commission-rules.store');
-            Route::get('/{id}', [CommissionRuleController::class, 'show'])->name('commission-rules.show');
-            Route::put('/{id}', [CommissionRuleController::class, 'update'])->name('commission-rules.update');
-            Route::delete('/{id}', [CommissionRuleController::class, 'destroy'])->name('commission-rules.destroy');
+            Route::get('/',     [CommissionRuleController::class, 'index'])->middleware(CheckPermission::class . ':commissions.settings.view')->name('commission-rules.index');
+            Route::post('/',    [CommissionRuleController::class, 'store'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-rules.store');
+            Route::get('/{id}', [CommissionRuleController::class, 'show'])->middleware(CheckPermission::class . ':commissions.settings.view')->name('commission-rules.show');
+            Route::put('/{id}', [CommissionRuleController::class, 'update'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-rules.update');
+            Route::delete('/{id}', [CommissionRuleController::class, 'destroy'])->middleware(CheckPermission::class . ':commissions.settings.manage')->name('commission-rules.destroy');
         });
 
         // ── Commission Entries ─────────────────────────────
         Route::prefix('commission-entries')->group(function () {
-            Route::get('/',     [CommissionEntryController::class, 'index'])->name('commission-entries.index');
-            Route::get('/{id}', [CommissionEntryController::class, 'show'])->name('commission-entries.show');
-            Route::post('/{id}/mark-approved', [CommissionEntryController::class, 'markApproved'])->name('commission-entries.approve');
-            Route::post('/{id}/mark-paid',     [CommissionEntryController::class, 'markPaid'])->name('commission-entries.pay');
-            Route::post('/{id}/cancel',        [CommissionEntryController::class, 'cancel'])->name('commission-entries.cancel');
+            Route::get('/',     [CommissionEntryController::class, 'index'])->middleware(CheckPermission::class . ':commissions.list')->name('commission-entries.index');
+            Route::get('/{id}', [CommissionEntryController::class, 'show'])->middleware(CheckPermission::class . ':commissions.list')->name('commission-entries.show');
+            Route::post('/{id}/mark-approved', [CommissionEntryController::class, 'markApproved'])->middleware(CheckPermission::class . ':commissions.approve')->name('commission-entries.approve');
+            Route::post('/{id}/mark-paid',     [CommissionEntryController::class, 'markPaid'])->middleware(CheckPermission::class . ':commissions.pay')->name('commission-entries.pay');
+            Route::post('/{id}/cancel',        [CommissionEntryController::class, 'cancel'])->middleware(CheckPermission::class . ':commissions.cancel')->name('commission-entries.cancel');
         });
 
         // ── Ownership Assignments ───────────────────────
         Route::prefix('ownership-assignments')->group(function () {
-            Route::get('/',     [OwnershipController::class, 'index'])->name('ownership.index');
-            Route::post('/',    [OwnershipController::class, 'store'])->name('ownership.store');
-            Route::get('/{id}', [OwnershipController::class, 'show'])->name('ownership.show');
-            Route::put('/{id}/transfer', [OwnershipController::class, 'transfer'])->name('ownership.transfer');
+            Route::get('/',     [OwnershipController::class, 'index'])->middleware(CheckPermission::class . ':ownership.view')->name('ownership.index');
+            Route::post('/',    [OwnershipController::class, 'store'])->middleware(CheckPermission::class . ':ownership.manage')->name('ownership.store');
+            Route::get('/{id}', [OwnershipController::class, 'show'])->middleware(CheckPermission::class . ':ownership.view')->name('ownership.show');
+            Route::put('/{id}/transfer', [OwnershipController::class, 'transfer'])->middleware(CheckPermission::class . ':ownership.manage')->name('ownership.transfer');
         });
-        Route::get('/ownership/resolve', [OwnershipController::class, 'resolve'])->name('ownership.resolve');
+        Route::get('/ownership/resolve', [OwnershipController::class, 'resolve'])->middleware(CheckPermission::class . ':ownership.view')->name('ownership.resolve');
 
         // ── Duplicate Rules ────────────────────────────
         Route::prefix('duplicate-rules')->group(function () {
-            Route::get('/',     [DuplicateRuleController::class, 'index'])->name('duplicate-rules.index');
-            Route::post('/',    [DuplicateRuleController::class, 'store'])->name('duplicate-rules.store');
-            Route::get('/{id}', [DuplicateRuleController::class, 'show'])->name('duplicate-rules.show');
-            Route::put('/{id}', [DuplicateRuleController::class, 'update'])->name('duplicate-rules.update');
-            Route::delete('/{id}', [DuplicateRuleController::class, 'destroy'])->name('duplicate-rules.destroy');
+            Route::get('/',     [DuplicateRuleController::class, 'index'])->middleware(CheckPermission::class . ':duplicates.view')->name('duplicate-rules.index');
+            Route::post('/',    [DuplicateRuleController::class, 'store'])->middleware(CheckPermission::class . ':duplicates.manage')->name('duplicate-rules.store');
+            Route::get('/{id}', [DuplicateRuleController::class, 'show'])->middleware(CheckPermission::class . ':duplicates.view')->name('duplicate-rules.show');
+            Route::put('/{id}', [DuplicateRuleController::class, 'update'])->middleware(CheckPermission::class . ':duplicates.manage')->name('duplicate-rules.update');
+            Route::delete('/{id}', [DuplicateRuleController::class, 'destroy'])->middleware(CheckPermission::class . ':duplicates.manage')->name('duplicate-rules.destroy');
         });
 
         // ── Duplicate Checks & Matches ─────────────────
-        Route::post('/duplicates/check', [DuplicateMatchController::class, 'check'])->name('duplicates.check');
-        Route::get('/duplicate-matches', [DuplicateMatchController::class, 'index'])->name('duplicate-matches.index');
-        Route::post('/duplicate-matches/{id}/resolve', [DuplicateMatchController::class, 'resolve'])->name('duplicate-matches.resolve');
+        Route::post('/duplicates/check', [DuplicateMatchController::class, 'check'])->middleware(CheckPermission::class . ':duplicates.check')->name('duplicates.check');
+        Route::get('/duplicate-matches', [DuplicateMatchController::class, 'index'])->middleware(CheckPermission::class . ':duplicates.view')->name('duplicate-matches.index');
+        Route::post('/duplicate-matches/{id}/resolve', [DuplicateMatchController::class, 'resolve'])->middleware(CheckPermission::class . ':duplicates.resolve')->name('duplicate-matches.resolve');
 
         // ── Report Catalog ────────────────────────────
-        Route::get('/report-catalog',               [ReportCatalogController::class, 'index'])->name('report-catalog.index');
-        Route::get('/report-catalog/{data_source}', [ReportCatalogController::class, 'show'])->name('report-catalog.show');
+        Route::get('/report-catalog',               [ReportCatalogController::class, 'index'])->middleware(CheckPermission::class . ':reports.view')->name('report-catalog.index');
+        Route::get('/report-catalog/{data_source}', [ReportCatalogController::class, 'show'])->middleware(CheckPermission::class . ':reports.view')->name('report-catalog.show');
 
         // ── Report Templates ──────────────────────────
         Route::prefix('report-templates')->group(function () {
-            Route::get('/',         [ReportTemplateController::class, 'index'])->name('report-templates.index');
-            Route::post('/',        [ReportTemplateController::class, 'store'])->name('report-templates.store');
-            Route::get('/{id}',     [ReportTemplateController::class, 'show'])->name('report-templates.show');
-            Route::put('/{id}',     [ReportTemplateController::class, 'update'])->name('report-templates.update');
-            Route::delete('/{id}',  [ReportTemplateController::class, 'destroy'])->name('report-templates.destroy');
-            Route::post('/{id}/run', [ReportTemplateController::class, 'run'])->name('report-templates.run');
+            Route::get('/',         [ReportTemplateController::class, 'index'])->middleware(CheckPermission::class . ':reports.view')->name('report-templates.index');
+            Route::post('/',        [ReportTemplateController::class, 'store'])->middleware(CheckPermission::class . ':reports.run')->name('report-templates.store');
+            Route::get('/{id}',     [ReportTemplateController::class, 'show'])->middleware(CheckPermission::class . ':reports.view')->name('report-templates.show');
+            Route::put('/{id}',     [ReportTemplateController::class, 'update'])->middleware(CheckPermission::class . ':reports.manage')->name('report-templates.update');
+            Route::delete('/{id}',  [ReportTemplateController::class, 'destroy'])->middleware(CheckPermission::class . ':reports.manage')->name('report-templates.destroy');
+            Route::post('/{id}/run', [ReportTemplateController::class, 'run'])->middleware(CheckPermission::class . ':reports.run')->name('report-templates.run');
         });
 
         // ── Report Runs ───────────────────────────────
-        Route::get('/report-runs',      [ReportRunController::class, 'index'])->name('report-runs.index');
-        Route::get('/report-runs/{id}', [ReportRunController::class, 'show'])->name('report-runs.show');
-        Route::post('/reports/run',     [ReportRunController::class, 'runAdHoc'])->name('reports.run-adhoc');
+        Route::get('/report-runs',      [ReportRunController::class, 'index'])->middleware(CheckPermission::class . ':reports.view')->name('report-runs.index');
+        Route::get('/report-runs/{id}', [ReportRunController::class, 'show'])->middleware(CheckPermission::class . ':reports.view')->name('report-runs.show');
+        Route::post('/reports/run',     [ReportRunController::class, 'runAdHoc'])->middleware(CheckPermission::class . ':reports.run')->name('reports.run-adhoc');
 
         // ── Finance ──────────────────────────────────────
         Route::prefix('finance')->group(function () {
-            Route::get('/accounts',              [FinanceAccountController::class, 'index'])->name('finance.accounts.index');
-            Route::post('/accounts',             [FinanceAccountController::class, 'store'])->name('finance.accounts.store');
-            Route::put('/accounts/{id}',         [FinanceAccountController::class, 'update'])->name('finance.accounts.update');
-            Route::post('/bootstrap',            [FinanceAccountController::class, 'bootstrap'])->name('finance.bootstrap');
+            Route::get('/accounts',              [FinanceAccountController::class, 'index'])->middleware(CheckPermission::class . ':finance.view')->name('finance.accounts.index');
+            Route::post('/accounts',             [FinanceAccountController::class, 'store'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.accounts.store');
+            Route::put('/accounts/{id}',         [FinanceAccountController::class, 'update'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.accounts.update');
+            Route::post('/bootstrap',            [FinanceAccountController::class, 'bootstrap'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.bootstrap');
 
-            Route::get('/transactions',          [FinanceTransactionController::class, 'index'])->name('finance.transactions.index');
-            Route::get('/transactions/{id}',     [FinanceTransactionController::class, 'show'])->name('finance.transactions.show');
-            Route::post('/transactions',         [FinanceTransactionController::class, 'store'])->name('finance.transactions.store');
-            Route::post('/transactions/{id}/void', [FinanceTransactionController::class, 'void'])->name('finance.transactions.void');
+            Route::get('/transactions',          [FinanceTransactionController::class, 'index'])->middleware(CheckPermission::class . ':finance.view')->name('finance.transactions.index');
+            Route::get('/transactions/{id}',     [FinanceTransactionController::class, 'show'])->middleware(CheckPermission::class . ':finance.view')->name('finance.transactions.show');
+            Route::post('/transactions',         [FinanceTransactionController::class, 'store'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.transactions.store');
+            Route::post('/transactions/{id}/void', [FinanceTransactionController::class, 'void'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.transactions.void');
 
-            Route::get('/expenses',              [FinanceExpenseController::class, 'index'])->name('finance.expenses.index');
-            Route::post('/expenses',             [FinanceExpenseController::class, 'store'])->name('finance.expenses.store');
-            Route::get('/expenses/{id}',         [FinanceExpenseController::class, 'show'])->name('finance.expenses.show');
-            Route::post('/expenses/{id}/void',   [FinanceExpenseController::class, 'void'])->name('finance.expenses.void');
+            Route::get('/expenses',              [FinanceExpenseController::class, 'index'])->middleware(CheckPermission::class . ':finance.view')->name('finance.expenses.index');
+            Route::post('/expenses',             [FinanceExpenseController::class, 'store'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.expenses.store');
+            Route::get('/expenses/{id}',         [FinanceExpenseController::class, 'show'])->middleware(CheckPermission::class . ':finance.view')->name('finance.expenses.show');
+            Route::post('/expenses/{id}/void',   [FinanceExpenseController::class, 'void'])->middleware(CheckPermission::class . ':finance.manage')->name('finance.expenses.void');
 
-            Route::get('/summary',               [FinanceSummaryController::class, 'summary'])->name('finance.summary');
-            Route::get('/profit-loss',           [FinanceSummaryController::class, 'profitLoss'])->name('finance.profit-loss');
-            Route::get('/account-balances',      [FinanceSummaryController::class, 'accountBalances'])->name('finance.account-balances');
+            Route::get('/summary',               [FinanceSummaryController::class, 'summary'])->middleware(CheckPermission::class . ':finance.view')->name('finance.summary');
+            Route::get('/profit-loss',           [FinanceSummaryController::class, 'profitLoss'])->middleware(CheckPermission::class . ':finance.view')->name('finance.profit-loss');
+            Route::get('/account-balances',      [FinanceSummaryController::class, 'accountBalances'])->middleware(CheckPermission::class . ':finance.view')->name('finance.account-balances');
         });
 
         // ── Finance Posting Integrations ──────────────────
-        Route::post('/commission-entries/{id}/post-to-finance', [FinanceTransactionController::class, 'postCommissionEntry'])->name('finance.post-commission');
-        Route::post('/invoices/{id}/post-to-finance',           [FinanceTransactionController::class, 'postInvoice'])->name('finance.post-invoice');
-        Route::post('/payments/{id}/post-to-finance',           [FinanceTransactionController::class, 'postPayment'])->name('finance.post-payment');
+        Route::post('/commission-entries/{id}/post-to-finance', [FinanceTransactionController::class, 'postCommissionEntry'])->middleware(CheckPermission::class . ':finance.post')->name('finance.post-commission');
+        Route::post('/invoices/{id}/post-to-finance',           [FinanceTransactionController::class, 'postInvoice'])->middleware(CheckPermission::class . ':finance.post')->name('finance.post-invoice');
+        Route::post('/payments/{id}/post-to-finance',           [FinanceTransactionController::class, 'postPayment'])->middleware(CheckPermission::class . ':finance.post')->name('finance.post-payment');
 
         // ── Approval Workflows (admin CRUD) ──────────────────
         Route::prefix('approval-workflows')->middleware(CheckPermission::class . ':approvals.manage')->group(function () {
@@ -592,7 +593,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}',  [ApprovalController::class, 'show'])->middleware(CheckPermission::class . ':approvals.show')->name('approvals.show');
             Route::post('/',     [ApprovalController::class, 'store'])->middleware(CheckPermission::class . ':approvals.request')->name('approvals.store');
             Route::post('/{id}/decide', [ApprovalController::class, 'decide'])->middleware(CheckPermission::class . ':approvals.decide')->name('approvals.decide');
-            Route::post('/{id}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
+            Route::post('/{id}/cancel', [ApprovalController::class, 'cancel'])->middleware(CheckPermission::class . ':approvals.cancel')->name('approvals.cancel');
         });
     });
 });

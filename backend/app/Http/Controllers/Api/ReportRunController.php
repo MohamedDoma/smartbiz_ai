@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ReportRun;
 use App\Models\WorkspaceMembership;
+use App\Services\PermissionResolver;
 use App\Services\ReportCatalogService;
 use App\Services\ReportExecutionService;
 use App\Services\WorkspaceContextManager;
@@ -13,22 +14,20 @@ use Illuminate\Http\Request;
 
 class ReportRunController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function index(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
         $wsId = $ctx->workspaceId();
-        $user = $request->user();
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->first();
+        $membership = $ctx->membership();
 
         $q = ReportRun::where('workspace_id', $wsId)
             ->with(['template:id,name,data_source'])
             ->orderByDesc('started_at');
 
-        // Non-admin sees only their runs
-        if (!$this->isAdmin($wsId, $request)) {
+        // Users with reports.manage can audit all workspace runs.
+        // Other report viewers only see runs they initiated.
+        if (! $this->canManageReports($membership)) {
             $q->where('run_by_membership_id', $membership?->id);
         }
 
@@ -41,9 +40,17 @@ class ReportRunController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $run = ReportRun::where('workspace_id', $wsId)
-            ->with(['template:id,name,data_source'])->findOrFail($id);
+        $ctx = app(WorkspaceContextManager::class);
+        $membership = $ctx->membership();
+
+        $query = ReportRun::where('workspace_id', $ctx->workspaceId())
+            ->with(['template:id,name,data_source']);
+
+        if (! $this->canManageReports($membership)) {
+            $query->where('run_by_membership_id', $membership?->id);
+        }
+
+        $run = $query->findOrFail($id);
         return response()->json(['data' => $this->fmt($run)]);
     }
 
@@ -98,9 +105,7 @@ class ReportRunController extends Controller
             }
         }
 
-        $user = $request->user();
-        $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
-            ->where('user_id', $user->id)->first();
+        $membership = $ctx->membership();
 
         $executor = new ReportExecutionService($catalog);
 
@@ -143,20 +148,11 @@ class ReportRunController extends Controller
         ];
     }
 
-    private function isAdmin(string $wsId, Request $request): bool
+
+    private function canManageReports(?WorkspaceMembership $membership): bool
     {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return true;
-        }
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) {
-            return false;
-        }
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        return !empty(array_intersect($keys, self::ADMIN_ROLE_KEYS));
+        return $membership !== null
+            && app(PermissionResolver::class)->can($membership, 'reports.manage');
     }
+
 }

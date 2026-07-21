@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Database\Seeders\CertificationSeeder;
 use Database\Seeders\FoundationSeeder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Batch 2, Part B — RBAC Permission Tests (R01–R14).
@@ -219,4 +220,36 @@ class RbacTest extends SmartBizTestCase
         $this->wsDeleteAs('manager@cert.test', "/api/accounts/{$id}")
             ->assertForbidden();
     }
+
+    // ── R15: Permission grant works for an arbitrary role key ─────
+
+    public function test_r15_custom_role_permission_grants_finance_access(): void
+    {
+        DB::table('roles')
+            ->where('id', CertificationSeeder::ROLE_NOPERM)
+            ->update(['permissions' => json_encode(['finance.view'])]);
+
+        $this->wsGetAs('noperm@cert.test', '/api/finance/summary')
+            ->assertOk();
+    }
+
+    // ── R16: Role name alone never grants access ──────────────────
+
+    public function test_r16_manager_role_name_does_not_bypass_permission(): void
+    {
+        $permissions = json_decode(
+            DB::table('roles')->where('id', CertificationSeeder::ROLE_MANAGER)->value('permissions'),
+            true,
+        );
+
+        $permissions = array_values(array_diff($permissions, ['finance.view']));
+
+        DB::table('roles')
+            ->where('id', CertificationSeeder::ROLE_MANAGER)
+            ->update(['permissions' => json_encode($permissions)]);
+
+        $this->wsGetAs('manager@cert.test', '/api/finance/summary')
+            ->assertForbidden();
+    }
+
 }

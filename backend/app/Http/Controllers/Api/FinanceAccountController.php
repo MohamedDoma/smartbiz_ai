@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FinanceAccount;
-use App\Models\WorkspaceMembership;
 use App\Services\FinanceBootstrapService;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +11,6 @@ use Illuminate\Http\Request;
 
 class FinanceAccountController extends Controller
 {
-    private const ADMIN_ROLES = ['owner', 'admin', 'general_manager', 'accountant'];
 
     public function index(): JsonResponse
     {
@@ -25,7 +23,6 @@ class FinanceAccountController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $v = $request->validate([
             'code'           => 'required|string|max:20',
@@ -52,7 +49,6 @@ class FinanceAccountController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $acct = FinanceAccount::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
@@ -68,7 +64,6 @@ class FinanceAccountController extends Controller
     public function bootstrap(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireFinanceAccess($ctx->workspaceId(), $request);
 
         $svc = new FinanceBootstrapService();
         $result = $svc->bootstrap($ctx->workspaceId());
@@ -77,24 +72,5 @@ class FinanceAccountController extends Controller
             'message' => "Finance bootstrapped ({$result['created']} accounts created).",
             'data'    => $result['accounts'],
         ]);
-    }
-
-    private function requireFinanceAccess(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return;
-        }
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) {
-            abort(403, 'Not a member.');
-        }
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLES))) {
-            abort(403, 'Insufficient permissions for finance.');
-        }
     }
 }

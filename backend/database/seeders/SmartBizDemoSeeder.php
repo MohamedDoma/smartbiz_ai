@@ -205,6 +205,16 @@ class SmartBizDemoSeeder
         $empP = ["contacts.list","contacts.show","products.list","products.show","orders.list","orders.show","notifications.list","notifications.update"];
         $viewP = ["contacts.list","contacts.show","categories.list","categories.show","products.list","products.show","orders.list","orders.show","warehouses.list","warehouses.show","notifications.list"];
 
+        $aiBase = ["ai.chat", "ai.actions", "ai.insights.view"];
+        $fin = array_values(array_unique(array_merge($fin, $aiBase, ["finance.view", "finance.manage", "finance.post", "reports.run"])));
+        $salesMgr = array_values(array_unique(array_merge($salesMgr, $aiBase, ["document_checklists.view", "ownership.view", "duplicates.view", "duplicates.check"])));
+        $salesAgent = array_values(array_unique(array_merge($salesAgent, $aiBase, ["document_checklists.view", "ownership.view", "duplicates.view", "duplicates.check"])));
+        $wh = array_values(array_unique(array_merge($wh, $aiBase)));
+        $cashierP = array_values(array_unique(array_merge($cashierP, $aiBase)));
+        $hrP = array_values(array_unique(array_merge($hrP, $aiBase)));
+        $empP = array_values(array_unique(array_merge($empP, $aiBase)));
+        $viewP = array_values(array_unique(array_merge($viewP, $aiBase)));
+
         $roles = [
             ['owner','Owner',$allPerms,1],['admin','Admin',$allPerms,2],
             ['general_manager','General Manager',$allPerms,3],
@@ -665,9 +675,19 @@ class SmartBizDemoSeeder
         $empP = ["contacts.list","contacts.show","products.list","products.show","orders.list","orders.show","notifications.list","notifications.update"];
         $viewP = ["contacts.list","contacts.show","categories.list","categories.show","products.list","products.show","orders.list","orders.show","warehouses.list","warehouses.show","notifications.list"];
 
+        $aiBase = ["ai.chat", "ai.actions", "ai.insights.view"];
+        $salesMgr = array_values(array_unique(array_merge($salesMgr, $aiBase, ["document_checklists.view", "ownership.view", "duplicates.view", "duplicates.check"])));
+        $salesAgent = array_values(array_unique(array_merge($salesAgent, $aiBase, ["document_checklists.view", "ownership.view", "duplicates.view", "duplicates.check"])));
+        $wh = array_values(array_unique(array_merge($wh, $aiBase)));
+        $cashierP = array_values(array_unique(array_merge($cashierP, $aiBase)));
+        $hrP = array_values(array_unique(array_merge($hrP, $aiBase)));
+        $empP = array_values(array_unique(array_merge($empP, $aiBase)));
+        $viewP = array_values(array_unique(array_merge($viewP, $aiBase)));
+
         // Specialized sales agents (created by business template application):
         // Base = SALES_PERMS + pipeline perms + commissions.list
         $specializedSalesAgent = ["contacts.list","contacts.show","contacts.create","contacts.update","contacts.own","products.list","products.show","invoices.list","invoices.show","invoices.create","orders.list","orders.show","orders.create","payments.list","payments.show","inventory.list","inventory.show","notifications.list","notifications.update","pipelines.list","pipeline_records.create","pipeline_records.update","pipeline_records.own","commissions.list","commissions.view_own","approvals.request","approvals.list","approvals.show"];
+        $specializedSalesAgent = array_values(array_unique(array_merge($specializedSalesAgent, $aiBase, ["document_checklists.view", "ownership.view", "duplicates.view", "duplicates.check"])));
 
         // Only override roles that must NOT have finance permissions
         $overrides = [

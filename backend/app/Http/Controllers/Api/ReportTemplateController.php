@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ReportTemplate;
 use App\Models\WorkspaceMembership;
+use App\Services\PermissionResolver;
 use App\Services\ReportCatalogService;
 use App\Services\ReportExecutionService;
 use App\Services\WorkspaceContextManager;
@@ -14,14 +15,12 @@ use Illuminate\Support\Str;
 
 class ReportTemplateController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function index(Request $request): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $user = $request->user();
-        $membership = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->first();
+        $ctx = app(WorkspaceContextManager::class);
+        $wsId = $ctx->workspaceId();
+        $membership = $ctx->membership();
 
         $q = ReportTemplate::where('workspace_id', $wsId)
             ->where('is_active', true)
@@ -94,15 +93,13 @@ class ReportTemplateController extends Controller
             }
         }
 
-        // Check visibility permission
+        // Private templates can be created by report runners. Workspace-wide
+        // templates require the explicit reports.manage capability.
         $visibility = $v['visibility'] ?? 'workspace';
-        if ($visibility === 'workspace') {
-            $this->requireAdmin($ctx->workspaceId(), $request);
+        $membership = $ctx->membership();
+        if ($visibility === 'workspace' && ! $this->canManageReports($membership)) {
+            abort(403, 'The reports.manage permission is required for workspace templates.');
         }
-
-        $user = $request->user();
-        $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
-            ->where('user_id', $user->id)->first();
 
         $template = ReportTemplate::create([
             'workspace_id'             => $ctx->workspaceId(),
@@ -124,15 +121,29 @@ class ReportTemplateController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $wsId = app(WorkspaceContextManager::class)->workspaceId();
-        $t = ReportTemplate::where('workspace_id', $wsId)->findOrFail($id);
-        return response()->json(['data' => $this->fmt($t)]);
+        $ctx = app(WorkspaceContextManager::class);
+        $membership = $ctx->membership();
+
+        $query = ReportTemplate::where('workspace_id', $ctx->workspaceId());
+        if (! $this->canManageReports($membership)) {
+            $query->where(function ($q) use ($membership) {
+                $q->where('visibility', 'workspace');
+                if ($membership) {
+                    $q->orWhere(function ($private) use ($membership) {
+                        $private->where('visibility', 'private')
+                            ->where('created_by_membership_id', $membership->id);
+                    });
+                }
+            });
+        }
+
+        $template = $query->findOrFail($id);
+        return response()->json(['data' => $this->fmt($template)]);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
         $catalog = new ReportCatalogService();
 
         $template = ReportTemplate::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
@@ -173,7 +184,6 @@ class ReportTemplateController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $template = ReportTemplate::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
         $template->update(['is_active' => false]);
@@ -184,17 +194,29 @@ class ReportTemplateController extends Controller
     public function run(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $template = ReportTemplate::where('workspace_id', $ctx->workspaceId())
-            ->where('is_active', true)->findOrFail($id);
+        $membership = $ctx->membership();
+
+        $query = ReportTemplate::where('workspace_id', $ctx->workspaceId())
+            ->where('is_active', true);
+
+        if (! $this->canManageReports($membership)) {
+            $query->where(function ($q) use ($membership) {
+                $q->where('visibility', 'workspace');
+                if ($membership) {
+                    $q->orWhere(function ($private) use ($membership) {
+                        $private->where('visibility', 'private')
+                            ->where('created_by_membership_id', $membership->id);
+                    });
+                }
+            });
+        }
+
+        $template = $query->findOrFail($id);
 
         $params = $request->validate([
             'parameters'       => 'nullable|array',
             'parameters.limit' => 'nullable|integer|min:1|max:500',
         ]);
-
-        $user = $request->user();
-        $membership = WorkspaceMembership::where('workspace_id', $ctx->workspaceId())
-            ->where('user_id', $user->id)->first();
 
         $catalog = new ReportCatalogService();
         $executor = new ReportExecutionService($catalog);
@@ -235,22 +257,11 @@ class ReportTemplateController extends Controller
         ];
     }
 
-    private function requireAdmin(string $wsId, Request $request): void
+
+    private function canManageReports(?WorkspaceMembership $membership): bool
     {
-        $user = $request->user();
-        if ($user->is_super_admin) {
-            return;
-        }
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) {
-            abort(403, 'Not a member.');
-        }
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLE_KEYS))) {
-            abort(403, 'Insufficient permissions.');
-        }
+        return $membership !== null
+            && app(PermissionResolver::class)->can($membership, 'reports.manage');
     }
+
 }

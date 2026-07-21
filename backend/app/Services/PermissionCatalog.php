@@ -28,7 +28,13 @@ class PermissionCatalog
                 'label_en' => 'AI & Advisor',
                 'label_ar' => 'الذكاء الاصطناعي والمستشار',
                 'permissions' => [
-                    ['key' => 'ai_advisor.view', 'label' => 'Access AI Advisor', 'label_en' => 'Access AI Advisor', 'label_ar' => 'الوصول إلى المستشار الذكي', 'description' => 'Can access the AI Advisor recommendations screen'],
+                    ['key' => 'ai.chat',             'label' => 'Use AI chat',              'label_en' => 'Use AI chat',              'label_ar' => 'استخدام محادثة الذكاء الاصطناعي', 'description' => 'Can use the AI assistant and view own AI conversation history'],
+                    ['key' => 'ai.actions',          'label' => 'Confirm AI actions',       'label_en' => 'Confirm AI actions',       'label_ar' => 'تأكيد إجراءات الذكاء الاصطناعي', 'description' => 'Can confirm or reject own pending AI actions; underlying business permissions are still enforced'],
+                    ['key' => 'ai.insights.view',    'label' => 'View AI insights',         'label_en' => 'View AI insights',         'label_ar' => 'عرض رؤى الذكاء الاصطناعي', 'description' => 'Can view proactive AI business insights'],
+                    ['key' => 'ai.insights.manage',  'label' => 'Manage AI insights',       'label_en' => 'Manage AI insights',       'label_ar' => 'إدارة رؤى الذكاء الاصطناعي', 'description' => 'Can generate and dismiss AI insights'],
+                    ['key' => 'ai.manage',           'label' => 'Manage AI settings',       'label_en' => 'Manage AI settings',       'label_ar' => 'إدارة إعدادات الذكاء الاصطناعي', 'description' => 'Can run AI connection tests and manage workspace AI operations'],
+                    ['key' => 'ai_advisor.view',     'label' => 'Access AI Advisor',        'label_en' => 'Access AI Advisor',        'label_ar' => 'الوصول إلى المستشار الذكي', 'description' => 'Can access the AI Advisor recommendations screen'],
+                    ['key' => 'ai_advisor.manage',   'label' => 'Manage AI recommendations','label_en' => 'Manage AI recommendations','label_ar' => 'إدارة توصيات المستشار الذكي', 'description' => 'Can run advisor analysis and accept, reject, or apply recommendations'],
                 ],
             ],
             [
@@ -117,6 +123,9 @@ class PermissionCatalog
                 'label_ar' => 'المحاسبة والقيود اليومية',
                 'permissions' => [
                     ['key' => 'accounting.view',        'label' => 'Access accounting', 'label_en' => 'Access accounting', 'label_ar' => 'الوصول إلى المحاسبة', 'description' => 'Can access the accounting module landing page (does not grant posting or editing entries)'],
+                    ['key' => 'finance.view',           'label' => 'View finance operations',   'label_en' => 'View finance operations',   'label_ar' => 'عرض العمليات المالية', 'description' => 'Can view finance accounts, transactions, expenses, summaries, and balances'],
+                    ['key' => 'finance.manage',         'label' => 'Manage finance operations', 'label_en' => 'Manage finance operations', 'label_ar' => 'إدارة العمليات المالية', 'description' => 'Can create and update finance accounts, transactions, and expenses and void posted records'],
+                    ['key' => 'finance.post',           'label' => 'Post records to finance',    'label_en' => 'Post records to finance',    'label_ar' => 'ترحيل السجلات إلى المالية', 'description' => 'Can post invoices, payments, and commission entries to the finance ledger'],
                     ['key' => 'accounts.list',          'label' => 'List accounts',   'label_en' => 'List accounts',   'label_ar' => 'عرض الحسابات',       'description' => 'Can view chart of accounts'],
                     ['key' => 'accounts.show',          'label' => 'View account',    'label_en' => 'View account',    'label_ar' => 'عرض حساب',          'description' => 'Can view account details'],
                     ['key' => 'accounts.create',        'label' => 'Create account',  'label_en' => 'Create account',  'label_ar' => 'إنشاء حساب',        'description' => 'Can create accounts'],
@@ -183,6 +192,38 @@ class PermissionCatalog
                 ],
             ],
             [
+                'category' => 'documents',
+                'label'    => 'Document Checklists',
+                'label_en' => 'Document Checklists',
+                'label_ar' => 'قوائم المستندات',
+                'permissions' => [
+                    ['key' => 'document_checklists.view',   'label' => 'View document checklists',   'label_en' => 'View document checklists',   'label_ar' => 'عرض قوائم المستندات', 'description' => 'Can view pipeline document checklists and checklist items'],
+                    ['key' => 'document_checklists.manage', 'label' => 'Manage document checklists', 'label_en' => 'Manage document checklists', 'label_ar' => 'إدارة قوائم المستندات', 'description' => 'Can create, edit, deactivate, and manage document checklists and items'],
+                ],
+            ],
+            [
+                'category' => 'ownership',
+                'label'    => 'Record Ownership',
+                'label_en' => 'Record Ownership',
+                'label_ar' => 'ملكية السجلات',
+                'permissions' => [
+                    ['key' => 'ownership.view',   'label' => 'View ownership assignments',   'label_en' => 'View ownership assignments',   'label_ar' => 'عرض تعيينات الملكية', 'description' => 'Can view and resolve customer and pipeline record ownership'],
+                    ['key' => 'ownership.manage', 'label' => 'Manage ownership assignments', 'label_en' => 'Manage ownership assignments', 'label_ar' => 'إدارة تعيينات الملكية', 'description' => 'Can assign and transfer customer and pipeline record ownership'],
+                ],
+            ],
+            [
+                'category' => 'data_quality',
+                'label'    => 'Data Quality & Duplicates',
+                'label_en' => 'Data Quality & Duplicates',
+                'label_ar' => 'جودة البيانات والتكرارات',
+                'permissions' => [
+                    ['key' => 'duplicates.view',    'label' => 'View duplicate rules and matches', 'label_en' => 'View duplicate rules and matches', 'label_ar' => 'عرض قواعد وحالات التكرار', 'description' => 'Can view duplicate detection rules and detected matches'],
+                    ['key' => 'duplicates.check',   'label' => 'Check for duplicates',             'label_en' => 'Check for duplicates',             'label_ar' => 'فحص التكرارات', 'description' => 'Can run duplicate checks for customers and pipeline records'],
+                    ['key' => 'duplicates.manage',  'label' => 'Manage duplicate rules',           'label_en' => 'Manage duplicate rules',           'label_ar' => 'إدارة قواعد التكرار', 'description' => 'Can create, edit, and deactivate duplicate detection rules'],
+                    ['key' => 'duplicates.resolve', 'label' => 'Resolve duplicate matches',        'label_en' => 'Resolve duplicate matches',        'label_ar' => 'معالجة حالات التكرار', 'description' => 'Can resolve detected duplicate matches'],
+                ],
+            ],
+            [
                 'category' => 'commissions',
                 'label'    => 'Commissions',
                 'label_en' => 'Commissions',
@@ -238,7 +279,18 @@ class PermissionCatalog
                 'label_en' => 'Reports & Analytics',
                 'label_ar' => 'التقارير والتحليلات',
                 'permissions' => [
-                    ['key' => 'reports.view', 'label' => 'View reports', 'label_en' => 'View reports', 'label_ar' => 'عرض التقارير', 'description' => 'Can access business reports and analytics'],
+                    ['key' => 'reports.view',   'label' => 'View reports',   'label_en' => 'View reports',   'label_ar' => 'عرض التقارير', 'description' => 'Can access business reports, report catalogs, saved templates, and own report runs'],
+                    ['key' => 'reports.run',    'label' => 'Run reports',    'label_en' => 'Run reports',    'label_ar' => 'تشغيل التقارير', 'description' => 'Can run saved and ad-hoc reports and create private report templates'],
+                    ['key' => 'reports.manage', 'label' => 'Manage reports', 'label_en' => 'Manage reports', 'label_ar' => 'إدارة التقارير', 'description' => 'Can create workspace report templates, edit templates, and view all workspace report runs'],
+                ],
+            ],
+            [
+                'category' => 'billing',
+                'label'    => 'Workspace Billing',
+                'label_en' => 'Workspace Billing',
+                'label_ar' => 'فوترة مساحة العمل',
+                'permissions' => [
+                    ['key' => 'billing.manual_payment', 'label' => 'Submit manual subscription payment', 'label_en' => 'Submit manual subscription payment', 'label_ar' => 'تقديم دفعة اشتراك يدوية', 'description' => 'Can submit a manual subscription payment request for the workspace'],
                 ],
             ],
             [
@@ -343,10 +395,14 @@ class PermissionCatalog
             'inventory'   => 'inventory',
             'production'  => null,       // only available via manufacturing module
             'pipelines'   => 'leads',
+            'documents'   => 'leads',
+            'ownership'   => 'customers',
+            'data_quality'=> 'customers',
             'commissions' => 'commissions',
             'recurring'   => 'invoices',
             'employees'   => null,       // platform: always available
             'reports'     => null,       // platform: always available
+            'billing'     => null,       // subscription billing: always available
             'system'      => null,       // platform: always available
             'approvals'   => null,       // platform: always available
         ];

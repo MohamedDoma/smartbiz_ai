@@ -155,10 +155,15 @@ class CertificationSeeder extends Seeder
     {
         // Derived from the canonical PermissionCatalog — prevents test-vs-production drift.
         $allPerms = PermissionCatalog::allKeys();
+        $baseAiPerms = ['ai.chat', 'ai.actions', 'ai.insights.view'];
 
-        $readOnly = array_filter($allPerms, fn ($p) =>
-            str_ends_with($p, '.list') || str_ends_with($p, '.show') || $p === 'reports.view'
-        );
+        $readOnly = array_values(array_unique(array_merge(
+            array_filter($allPerms, fn ($p) =>
+                str_ends_with($p, '.list') || str_ends_with($p, '.show') || $p === 'reports.view'
+            ),
+            $baseAiPerms,
+            ['reports.run'],
+        )));
 
         $financePerms = [
             'invoices.list','invoices.show','invoices.create','invoices.update',
@@ -166,8 +171,10 @@ class CertificationSeeder extends Seeder
             'accounts.list','accounts.show','accounts.create','accounts.update','accounts.delete',
             'journal_entries.list','journal_entries.show','journal_entries.create','journal_entries.update',
             'recurring.list','recurring.show','recurring.create','recurring.update','recurring.delete',
-            'reports.view',
+            'finance.view','finance.manage','finance.post',
+            'reports.view','reports.run',
             'notifications.list','notifications.update',
+            ...$baseAiPerms,
         ];
 
         $warehousePerms = [
@@ -176,6 +183,7 @@ class CertificationSeeder extends Seeder
             'reservations.list','reservations.show','reservations.create','reservations.update',
             'products.list','products.show',
             'notifications.list','notifications.update',
+            ...$baseAiPerms,
         ];
 
         $salesPerms = [
@@ -185,7 +193,9 @@ class CertificationSeeder extends Seeder
             'orders.list','orders.show','orders.create','orders.update',
             'payments.list','payments.show',
             'notifications.list','notifications.update',
-            'pipelines.list',
+            'pipelines.list','document_checklists.view','ownership.view',
+            'duplicates.view','duplicates.check',
+            ...$baseAiPerms,
         ];
 
         $managerPerms = array_values(array_diff($allPerms, [

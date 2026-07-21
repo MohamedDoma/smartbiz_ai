@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DuplicateRule;
-use App\Models\WorkspaceMembership;
 use App\Services\WorkspaceContextManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +11,6 @@ use Illuminate\Support\Str;
 
 class DuplicateRuleController extends Controller
 {
-    private const ADMIN_ROLE_KEYS = ['owner', 'admin', 'general_manager', 'manager'];
 
     public function index(Request $request): JsonResponse
     {
@@ -27,7 +25,6 @@ class DuplicateRuleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $v = $request->validate([
             'name'           => 'required|string|max:255',
@@ -64,7 +61,6 @@ class DuplicateRuleController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $rule = DuplicateRule::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
 
@@ -87,7 +83,6 @@ class DuplicateRuleController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $ctx = app(WorkspaceContextManager::class);
-        $this->requireAdmin($ctx->workspaceId(), $request);
 
         $rule = DuplicateRule::where('workspace_id', $ctx->workspaceId())->findOrFail($id);
         $rule->update(['is_active' => false]);
@@ -109,18 +104,5 @@ class DuplicateRuleController extends Controller
             'sort_order'     => $r->sort_order,
             'created_at'     => $r->created_at?->toIso8601String(),
         ];
-    }
-
-    private function requireAdmin(string $wsId, Request $request): void
-    {
-        $user = $request->user();
-        if ($user->is_super_admin) return;
-        $m = WorkspaceMembership::where('workspace_id', $wsId)
-            ->where('user_id', $user->id)->where('status', 'active')->first();
-        if (!$m) abort(403, 'Not a member.');
-        $keys = $m->membershipRoles()
-            ->join('roles', 'roles.id', '=', 'membership_roles.role_id')
-            ->pluck('roles.role_key')->toArray();
-        if (empty(array_intersect($keys, self::ADMIN_ROLE_KEYS))) abort(403, 'Insufficient permissions.');
     }
 }

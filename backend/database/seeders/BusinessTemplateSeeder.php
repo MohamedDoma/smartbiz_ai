@@ -40,7 +40,10 @@ class BusinessTemplateSeeder extends Seeder
         'inventory.list', 'inventory.show', 'inventory.create',
         'warehouses.list', 'warehouses.show',
         'notifications.list', 'notifications.update',
-        'reports.view',
+        'reports.view', 'reports.run',
+        'ai.chat', 'ai.actions', 'ai.insights.view',
+        'document_checklists.view', 'ownership.view',
+        'duplicates.view', 'duplicates.check',
     ];
 
     private const SALES_PERMS = [
@@ -52,6 +55,9 @@ class BusinessTemplateSeeder extends Seeder
         'payments.list', 'payments.show',
         'inventory.list', 'inventory.show',
         'notifications.list', 'notifications.update',
+        'ai.chat', 'ai.actions', 'ai.insights.view',
+        'document_checklists.view', 'ownership.view',
+        'duplicates.view', 'duplicates.check',
     ];
 
     private const FINANCE_PERMS = [
@@ -60,8 +66,10 @@ class BusinessTemplateSeeder extends Seeder
         'accounts.list', 'accounts.show', 'accounts.create', 'accounts.update',
         'journal_entries.list', 'journal_entries.show', 'journal_entries.create',
         'recurring.list', 'recurring.show', 'recurring.create', 'recurring.update',
-        'reports.view',
+        'finance.view', 'finance.manage', 'finance.post',
+        'reports.view', 'reports.run',
         'notifications.list', 'notifications.update',
+        'ai.chat', 'ai.actions', 'ai.insights.view',
     ];
 
     private const VIEWER_PERMS = [
@@ -71,8 +79,9 @@ class BusinessTemplateSeeder extends Seeder
         'orders.list', 'orders.show',
         'payments.list', 'payments.show',
         'inventory.list', 'inventory.show',
-        'reports.view',
+        'reports.view', 'reports.run',
         'notifications.list',
+        'ai.chat', 'ai.actions', 'ai.insights.view',
     ];
 
     public function run(): void
