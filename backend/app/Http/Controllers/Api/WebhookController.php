@@ -23,6 +23,8 @@ class WebhookController extends Controller
      */
     public function handleStripe(Request $request): JsonResponse
     {
+        abort_unless(config('services.stripe.enabled'), 404);
+
         $payload   = $request->getContent();
         $signature = $request->header('Stripe-Signature', '');
 

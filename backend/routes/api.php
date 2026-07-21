@@ -679,4 +679,7 @@ Route::prefix('platform')->middleware(['auth:sanctum', 'throttle:admin', SuperAd
 // ══════════════════════════════════════════════════════════════
 // Webhooks (no authentication — signature-verified)
 // ══════════════════════════════════════════════════════════════
-Route::post('/webhooks/stripe', [WebhookController::class, 'handleStripe'])->name('webhooks.stripe');
+if (config('services.stripe.enabled')) {
+    Route::post('/webhooks/stripe', [WebhookController::class, 'handleStripe'])
+        ->name('webhooks.stripe');
+}

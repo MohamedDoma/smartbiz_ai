@@ -1,12 +1,12 @@
 ##
 ## SmartBiz AI — Phase 1 Development Stack
-## Services: PHP 8.3 (app) + Nginx + PostgreSQL 16 + Redis 7
+## Services: PHP 8.4 (app) + Nginx + PostgreSQL 16 + Redis 7
 ## Source: 2_backend_architecture.md §2
 ##
 
 services:
 
-  # --- PHP 8.3 Application ---
+  # --- PHP 8.4 Application ---
   app:
     build:
       context: ./php
@@ -48,7 +48,7 @@ services:
     environment:
       POSTGRES_DB: smartbiz
       POSTGRES_USER: smartbiz
-      POSTGRES_PASSWORD: smartbiz_dev
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smartbiz_dev}
     ports:
       - "5433:5432"
     volumes:

@@ -219,6 +219,8 @@ class SuperAdminController extends Controller
 
     public function setupBilling(string $id): JsonResponse
     {
+        abort_unless(config('services.stripe.enabled'), 404);
+
         $sub = $this->payments->setupBilling($id);
         return response()->json(['data' => $sub]);
     }

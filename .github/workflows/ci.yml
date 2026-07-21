@@ -20,7 +20,7 @@ jobs:
         env:
           POSTGRES_DB: smartbiz_test
           POSTGRES_USER: smartbiz
-          POSTGRES_PASSWORD: smartbiz_dev
+          POSTGRES_PASSWORD: smartbiz_ci
         ports:
           - 5432:5432
         options: >-
@@ -45,14 +45,14 @@ jobs:
 
     env:
       APP_ENV: testing
-      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_KEY: base64:c21hcnRiaXotY2ktdGVzdC1rZXktMzItYnl0ZXMhISE=
       APP_DEBUG: "false"
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
       DB_DATABASE: smartbiz_test
       DB_USERNAME: smartbiz
-      DB_PASSWORD: smartbiz_dev
+      DB_PASSWORD: smartbiz_ci
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
@@ -63,6 +63,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Scan tracked files for secrets
+        run: python3 scripts/security/scan_tracked_secrets.py
+        working-directory: .
 
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client

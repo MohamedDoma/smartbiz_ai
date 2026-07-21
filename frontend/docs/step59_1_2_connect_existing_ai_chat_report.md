@@ -150,7 +150,7 @@ These appear in `/platform/usage` via `PlatformAiUsageController`.
 1. **Ensure AI is enabled** in backend `.env`:
    ```env
    AI_ENABLED=true
-   OPENAI_API_KEY=sk-...
+   OPENAI_API_KEY=your_openai_api_key_here
    ```
 2. **Clear config**: `docker exec smartbiz_app php artisan config:clear`
 3. **Open `/ai-chat`** in browser

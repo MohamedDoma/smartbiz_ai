@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT_DIR="${1:-$HOME/Desktop/final/smartbiz_ai}"
 INFRA_DIR="$PROJECT_DIR/infra"
 TEST_DB="${TEST_DB:-smartbiz_test}"
+TEST_DB_PASSWORD="${DB_PASSWORD:-smartbiz_dev}"
 
 cd "$INFRA_DIR"
 
@@ -30,7 +31,7 @@ artisan_test() {
     -e DB_PORT=5432 \
     -e DB_DATABASE="$TEST_DB" \
     -e DB_USERNAME=smartbiz \
-    -e DB_PASSWORD=smartbiz_dev \
+    -e DB_PASSWORD="$TEST_DB_PASSWORD" \
     -e REDIS_HOST=redis \
     -e REDIS_PORT=6379 \
     app php artisan "$@"

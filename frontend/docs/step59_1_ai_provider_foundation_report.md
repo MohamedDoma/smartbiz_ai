@@ -55,7 +55,7 @@ AI_MONTHLY_MESSAGE_LIMIT=3000
 User must add to backend `.env`:
 ```env
 AI_ENABLED=true
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 ---
@@ -180,7 +180,7 @@ GROUP BY provider, model, operation;
 1. Add to backend `.env`:
    ```env
    AI_ENABLED=true
-   OPENAI_API_KEY=sk-your-key-here
+   OPENAI_API_KEY=your_openai_api_key_here
    ```
 2. Clear config: `docker exec smartbiz_app php artisan config:clear`
 3. Test endpoint:

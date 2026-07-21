@@ -14,6 +14,20 @@ return [
     |
     */
 
+
+    'stripe' => [
+        // Stripe remains available for future use, but is disabled by default
+        // outside the automated test environment. Manual cash/bank payments
+        // do not depend on this integration.
+        'enabled' => filter_var(
+            env('STRIPE_ENABLED', env('APP_ENV') === 'testing'),
+            FILTER_VALIDATE_BOOL,
+        ),
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

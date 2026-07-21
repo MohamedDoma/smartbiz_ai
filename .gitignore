@@ -9,3 +9,18 @@
 # Generated database backups
 backend/storage/backups/*
 !backend/storage/backups/.gitkeep
+
+# Environment and local virtual environments
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.testing.example
+!backend/.env.production.example
+backend/.venv/
+**/.venv/
+infra/.env
+infra/.env.*
+!infra/.env.example
+__pycache__/
+*.py[cod]
+!backend/.env.production.example

@@ -4,6 +4,7 @@ use App\Http\Middleware\CorrelationIdMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,9 +22,17 @@ return Application::configure(basePath: dirname(__DIR__))
         // Correlation ID on every request
         $middleware->prepend(CorrelationIdMiddleware::class);
 
-        // Enforce HTTPS in production
+        // Trust only the reverse-proxy chain configured by the deployment.
+        // HTTPS redirection belongs at Nginx / the load balancer.
         if (env('APP_ENV') === 'production') {
-            $middleware->prepend(\Illuminate\Http\Middleware\TrustProxies::class);
+            $middleware->trustProxies(
+                at: env('TRUSTED_PROXIES', '*'),
+                headers: Request::HEADER_X_FORWARDED_FOR
+                    | Request::HEADER_X_FORWARDED_HOST
+                    | Request::HEADER_X_FORWARDED_PORT
+                    | Request::HEADER_X_FORWARDED_PROTO
+                    | Request::HEADER_X_FORWARDED_AWS_ELB,
+            );
         }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
