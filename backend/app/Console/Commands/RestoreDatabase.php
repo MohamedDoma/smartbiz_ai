@@ -41,7 +41,12 @@ class RestoreDatabase extends Command
                 return self::SUCCESS;
             }
 
-            $connection = config('database.connections.pgsql');
+            $connectionName = (string) config('operations.restore.database_connection', 'pgsql_owner');
+            $connection = config("database.connections.{$connectionName}");
+
+            if (! is_array($connection)) {
+                throw new \RuntimeException("Restore database connection [{$connectionName}] is not configured.");
+            }
             $configuredDatabase = (string) $connection['database'];
             $targetDatabase = trim((string) ($this->option('database') ?: $configuredDatabase));
 

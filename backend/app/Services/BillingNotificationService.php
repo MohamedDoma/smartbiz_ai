@@ -5,19 +5,19 @@ namespace App\Services;
 use App\Models\AiCreditBalance;
 use App\Models\Notification;
 use App\Models\WorkspaceSubscription;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Billing notification service.
- * Creates auditable notification records for billing events.
  *
- * Uses the existing notifications table (type: info|warning|alert|success).
+ * Cross-workspace discovery runs on the limited control connection. Every
+ * tenant write is then executed through the strict tenant runtime connection.
  */
 class BillingNotificationService
 {
-    /**
-     * Send trial-expiring notifications (3 days before expiry).
-     */
+    public function __construct(
+        private readonly WorkspaceContextManager $workspaceContext,
+    ) {}
+
     public function processTrialExpiring(): array
     {
         $expiring = WorkspaceSubscription::where('status', 'trial')
@@ -26,103 +26,126 @@ class BillingNotificationService
 
         $sent = [];
         foreach ($expiring as $sub) {
-            $exists = Notification::where('workspace_id', $sub->workspace_id)
-                ->where('title', 'Trial Expiring Soon')
-                ->where('created_at', '>=', now()->subDay())
-                ->exists();
+            $created = $this->workspaceContext->runSystemInWorkspace(
+                $sub->workspace_id,
+                function () use ($sub): bool {
+                    $exists = Notification::where('workspace_id', $sub->workspace_id)
+                        ->where('title', 'Trial Expiring Soon')
+                        ->where('created_at', '>=', now()->subDay())
+                        ->exists();
 
-            if ($exists) continue;
+                    if ($exists) {
+                        return false;
+                    }
 
-            Notification::create([
-                'workspace_id' => $sub->workspace_id,
-                'type'         => 'warning',
-                'title'        => 'Trial Expiring Soon',
-                'message'      => 'Your free trial will expire on ' . $sub->trial_ends_at->format('M d, Y') . '. Please add a payment method to continue using SmartBiz AI.',
-            ]);
-            $sent[] = $sub->workspace_id;
+                    Notification::create([
+                        'workspace_id' => $sub->workspace_id,
+                        'type' => 'warning',
+                        'title' => 'Trial Expiring Soon',
+                        'message' => 'Your free trial will expire on '.$sub->trial_ends_at->format('M d, Y').'. Please add a payment method to continue using SmartBiz AI.',
+                    ]);
+
+                    return true;
+                },
+            );
+
+            if ($created) {
+                $sent[] = $sub->workspace_id;
+            }
         }
 
         return $sent;
     }
 
-    /**
-     * Create payment-failed notification.
-     */
     public function notifyPaymentFailed(string $workspaceId, float $amount, string $currency): void
     {
-        Notification::create([
-            'workspace_id' => $workspaceId,
-            'type'         => 'alert',
-            'title'        => 'Payment Failed',
-            'message'      => "Your payment of {$currency} " . number_format($amount, 2) . " has failed. Please update your payment method to avoid service interruption.",
-        ]);
+        $this->workspaceContext->runSystemInWorkspace($workspaceId, function () use ($workspaceId, $amount, $currency): void {
+            Notification::create([
+                'workspace_id' => $workspaceId,
+                'type' => 'alert',
+                'title' => 'Payment Failed',
+                'message' => "Your payment of {$currency} ".number_format($amount, 2).' has failed. Please update your payment method to avoid service interruption.',
+            ]);
+        });
     }
 
-    /**
-     * Create subscription-activated notification.
-     */
     public function notifySubscriptionActivated(string $workspaceId): void
     {
-        Notification::create([
-            'workspace_id' => $workspaceId,
-            'type'         => 'success',
-            'title'        => 'Subscription Activated',
-            'message'      => 'Your subscription is now active. Welcome to SmartBiz AI!',
-        ]);
+        $this->workspaceContext->runSystemInWorkspace($workspaceId, function () use ($workspaceId): void {
+            Notification::create([
+                'workspace_id' => $workspaceId,
+                'type' => 'success',
+                'title' => 'Subscription Activated',
+                'message' => 'Your subscription is now active. Welcome to SmartBiz AI!',
+            ]);
+        });
     }
 
-    /**
-     * Create subscription-suspended notification.
-     */
     public function notifySubscriptionSuspended(string $workspaceId, string $reason = 'payment_failure'): void
     {
         $message = match ($reason) {
             'payment_failure' => 'Your subscription has been suspended due to failed payment. Please update your payment method to restore access.',
-            'trial_expired'   => 'Your free trial has expired. Subscribe to a plan to continue using SmartBiz AI.',
-            default           => 'Your subscription has been suspended. Contact support for assistance.',
+            'trial_expired' => 'Your free trial has expired. Subscribe to a plan to continue using SmartBiz AI.',
+            default => 'Your subscription has been suspended. Contact support for assistance.',
         };
 
-        Notification::create([
-            'workspace_id' => $workspaceId,
-            'type'         => 'alert',
-            'title'        => 'Subscription Suspended',
-            'message'      => $message,
-        ]);
+        $this->workspaceContext->runSystemInWorkspace($workspaceId, function () use ($workspaceId, $message): void {
+            Notification::create([
+                'workspace_id' => $workspaceId,
+                'type' => 'alert',
+                'title' => 'Subscription Suspended',
+                'message' => $message,
+            ]);
+        });
     }
 
-    /**
-     * Check for low/exhausted credits.
-     */
     public function processCreditsLow(): array
     {
         $balances = AiCreditBalance::all();
         $sent = [];
 
-        foreach ($balances as $bal) {
-            $total = ($bal->included_credits ?? 0) + ($bal->bonus_credits ?? 0) + ($bal->purchased_credits ?? 0);
-            $remaining = $total - ($bal->used_credits ?? 0);
+        foreach ($balances as $balance) {
+            $total = ($balance->included_credits ?? 0)
+                + ($balance->bonus_credits ?? 0)
+                + ($balance->purchased_credits ?? 0);
+            $remaining = $total - ($balance->used_credits ?? 0);
             $threshold = max(1, (int) ($total * 0.2));
 
-            if ($remaining > $threshold || $remaining < 0) continue;
+            if ($remaining > $threshold || $remaining < 0) {
+                continue;
+            }
 
-            $exists = Notification::where('workspace_id', $bal->workspace_id)
-                ->where('title', 'LIKE', '%AI Credits%')
-                ->where('created_at', '>=', now()->subDay())
-                ->exists();
-            if ($exists) continue;
+            $created = $this->workspaceContext->runSystemInWorkspace(
+                $balance->workspace_id,
+                function () use ($balance, $remaining): bool {
+                    $exists = Notification::where('workspace_id', $balance->workspace_id)
+                        ->where('title', 'LIKE', '%AI Credits%')
+                        ->where('created_at', '>=', now()->subDay())
+                        ->exists();
 
-            $title = $remaining <= 0 ? 'AI Credits Exhausted' : 'AI Credits Running Low';
-            $msg   = $remaining <= 0
-                ? 'You have no AI credits remaining. Purchase additional credits to continue using AI features.'
-                : "You have {$remaining} AI credits remaining. Consider purchasing more credits.";
+                    if ($exists) {
+                        return false;
+                    }
 
-            Notification::create([
-                'workspace_id' => $bal->workspace_id,
-                'type'         => 'warning',
-                'title'        => $title,
-                'message'      => $msg,
-            ]);
-            $sent[] = $bal->workspace_id;
+                    $title = $remaining <= 0 ? 'AI Credits Exhausted' : 'AI Credits Running Low';
+                    $message = $remaining <= 0
+                        ? 'You have no AI credits remaining. Purchase additional credits to continue using AI features.'
+                        : "You have {$remaining} AI credits remaining. Consider purchasing more credits.";
+
+                    Notification::create([
+                        'workspace_id' => $balance->workspace_id,
+                        'type' => 'warning',
+                        'title' => $title,
+                        'message' => $message,
+                    ]);
+
+                    return true;
+                },
+            );
+
+            if ($created) {
+                $sent[] = $balance->workspace_id;
+            }
         }
 
         return $sent;

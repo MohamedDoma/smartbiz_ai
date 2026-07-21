@@ -21,6 +21,8 @@ backend/.venv/
 infra/.env
 infra/.env.*
 !infra/.env.example
+!infra/.env.production.owner.example
+!infra/.env.production.backup.example
 __pycache__/
 *.py[cod]
 !backend/.env.production.example

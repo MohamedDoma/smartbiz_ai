@@ -128,6 +128,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('templates.show');
 
     Route::post('/business-templates/{template_key}/apply', [BusinessTemplateController::class, 'apply'])
+        ->middleware([
+            SetWorkspaceContext::class,
+            CheckPermission::class . ':discovery.manage',
+        ])
         ->name('templates.apply');
 
     // ── Workspace-Scoped (requires X-Workspace-Id header) ───────

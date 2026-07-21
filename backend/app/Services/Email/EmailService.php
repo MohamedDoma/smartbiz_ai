@@ -103,11 +103,26 @@ class EmailService
      */
     public function retryAllFailed(): int
     {
-        $failed = DB::table('email_logs')
-            ->where('status', 'failed')
-            ->whereRaw('retries < max_retries')
-            ->limit(50)
-            ->get();
+        return $this->retryFailedQuery(
+            DB::table('email_logs')
+                ->where('status', 'failed')
+                ->whereRaw('retries < max_retries'),
+        );
+    }
+
+    public function retryAllFailedForWorkspace(string $workspaceId): int
+    {
+        return $this->retryFailedQuery(
+            DB::table('email_logs')
+                ->where('workspace_id', $workspaceId)
+                ->where('status', 'failed')
+                ->whereRaw('retries < max_retries'),
+        );
+    }
+
+    private function retryFailedQuery($query): int
+    {
+        $failed = $query->limit(50)->get();
 
         $retried = 0;
         foreach ($failed as $log) {

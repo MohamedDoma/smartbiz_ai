@@ -1,9 +1,10 @@
 ##
 ## SmartBiz AI — Production Docker Compose
 ##
-## Start with:
-##   docker compose --env-file backend/.env.production \
-##     -f infra/docker-compose.prod.yml up -d
+## All production commands must load three separate env files:
+##   backend/.env.production          (control + tenant runtime)
+##   infra/.env.production.owner      (migrations / restore only)
+##   infra/.env.production.backup     (read-only backup identity)
 ##
 
 x-app-common: &app-common
@@ -16,6 +17,7 @@ x-app-common: &app-common
     - ../backend/.env.production
   environment:
     APP_ENV: production
+    SMARTBIZ_CONTAINER_ROLE: application
   restart: unless-stopped
   init: true
   stop_grace_period: 30s
@@ -31,7 +33,7 @@ x-app-common: &app-common
     - app_public_storage:/var/www/html/storage/app/public
     - app_private_storage:/var/www/html/storage/app/private
     - app_logs:/var/www/html/storage/logs
-    - ${BACKUP_VOLUME_SOURCE:-backup_data}:${BACKUP_PATH:-/var/backups/smartbiz}
+    - ${BACKUP_VOLUME_SOURCE:-backup_data}:${BACKUP_PATH:-/var/backups/smartbiz}:ro
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -116,6 +118,10 @@ services:
 
   scheduler:
     <<: *app-common
+    environment:
+      APP_ENV: production
+      SMARTBIZ_CONTAINER_ROLE: application-scheduler
+      SMARTBIZ_SCHEDULER_MODE: application
     command: ["php", "artisan", "schedule:work", "--no-interaction"]
     healthcheck:
       test: ["CMD-SHELL", "ps | grep -q '[a]rtisan schedule:work'"]
@@ -126,17 +132,138 @@ services:
     mem_limit: ${SCHEDULER_MEMORY_LIMIT:-192m}
     cpus: ${SCHEDULER_CPU_LIMIT:-0.50}
 
+  # Persistent backup scheduler: receives the read-only backup credential,
+  # never the database owner credential.
+  backup-scheduler:
+    build:
+      context: ..
+      dockerfile: infra/php/Dockerfile
+      target: production
+    image: smartbiz-app:${SMARTBIZ_IMAGE_TAG:-latest}
+    environment:
+      APP_NAME: ${APP_NAME:-SmartBiz AI}
+      APP_ENV: production
+      APP_KEY: ${APP_KEY:?APP_KEY is required}
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:?APP_URL is required}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_LEVEL: ${LOG_LEVEL:-warning}
+      CACHE_STORE: redis
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_CACHE_DB: ${REDIS_CACHE_DB:-1}
+      DB_CONNECTION: pgsql_backup
+      DB_BACKUP_HOST: ${DB_BACKUP_HOST:-postgres}
+      DB_BACKUP_PORT: ${DB_BACKUP_PORT:-5432}
+      DB_BACKUP_DATABASE: ${DB_BACKUP_DATABASE:?DB_BACKUP_DATABASE is required}
+      DB_BACKUP_USERNAME: ${DB_BACKUP_USERNAME:?DB_BACKUP_USERNAME is required}
+      DB_BACKUP_PASSWORD: ${DB_BACKUP_PASSWORD:?DB_BACKUP_PASSWORD is required}
+      DB_BACKUP_SSLMODE: ${DB_BACKUP_SSLMODE:-prefer}
+      BACKUP_DB_CONNECTION: pgsql_backup
+      BACKUP_PATH: ${BACKUP_PATH:-/var/backups/smartbiz}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+      BACKUP_MIN_FREE_MB: ${BACKUP_MIN_FREE_MB:-1024}
+      BACKUP_TIMEOUT_SECONDS: ${BACKUP_TIMEOUT_SECONDS:-1800}
+      BACKUP_VERIFY_ARCHIVE: ${BACKUP_VERIFY_ARCHIVE:-true}
+      BACKUP_MIRROR_DISK: ${BACKUP_MIRROR_DISK:-}
+      BACKUP_MIRROR_PREFIX: ${BACKUP_MIRROR_PREFIX:-smartbiz}
+      BACKUP_MIRROR_REQUIRED: ${BACKUP_MIRROR_REQUIRED:-false}
+      FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_BUCKET: ${AWS_BUCKET:-}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-}
+      AWS_USE_PATH_STYLE_ENDPOINT: ${AWS_USE_PATH_STYLE_ENDPOINT:-false}
+      SMARTBIZ_CONTAINER_ROLE: backup-scheduler
+      SMARTBIZ_SCHEDULER_MODE: backup
+    command: ["php", "artisan", "schedule:work", "--no-interaction"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - app_public_storage:/var/www/html/storage/app/public:ro
+      - app_private_storage:/var/www/html/storage/app/private:ro
+      - app_logs:/var/www/html/storage/logs
+      - ${BACKUP_VOLUME_SOURCE:-backup_data}:${BACKUP_PATH:-/var/backups/smartbiz}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD-SHELL", "ps | grep -q '[a]rtisan schedule:work'"]
+      interval: 20s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    mem_limit: ${BACKUP_SCHEDULER_MEMORY_LIMIT:-192m}
+    cpus: ${BACKUP_SCHEDULER_CPU_LIMIT:-0.50}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # One-off privileged operations container. It is never started by `up` and
+  # exists only under the `operations` profile for bootstrap/migrate/restore.
+  ops:
+    build:
+      context: ..
+      dockerfile: infra/php/Dockerfile
+      target: production
+    image: smartbiz-app:${SMARTBIZ_IMAGE_TAG:-latest}
+    profiles: ["operations"]
+    env_file:
+      - ../backend/.env.production
+      - ./.env.production.owner
+      - ./.env.production.backup
+    environment:
+      APP_ENV: production
+      SMARTBIZ_CONTAINER_ROLE: operations
+      SMARTBIZ_SCHEDULER_MODE: none
+    command: ["php", "artisan", "about", "--only=environment"]
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    volumes:
+      - app_public_storage:/var/www/html/storage/app/public
+      - app_private_storage:/var/www/html/storage/app/private
+      - app_logs:/var/www/html/storage/logs
+      - ${BACKUP_VOLUME_SOURCE:-backup_data}:${BACKUP_PATH:-/var/backups/smartbiz}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-smartbiz}
-      POSTGRES_USER: ${DB_USERNAME:-smartbiz}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_OWNER_DATABASE:?DB_OWNER_DATABASE is required}
+      POSTGRES_USER: ${DB_OWNER_USERNAME:?DB_OWNER_USERNAME is required}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?DB_OWNER_PASSWORD is required}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-smartbiz} -d ${DB_DATABASE:-smartbiz}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 10

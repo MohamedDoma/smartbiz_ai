@@ -1,7 +1,10 @@
 <?php
 
 return [
+    'scheduler_mode' => env('SMARTBIZ_SCHEDULER_MODE', 'all'),
+
     'backup' => [
+        'database_connection' => env('BACKUP_DB_CONNECTION', 'pgsql_backup'),
         'path' => env('BACKUP_PATH', storage_path('backups')),
         'retention_days' => (int) env('BACKUP_RETENTION_DAYS', 30),
         'max_age_hours' => (int) env('BACKUP_MAX_AGE_HOURS', 26),
@@ -11,6 +14,10 @@ return [
         'mirror_disk' => env('BACKUP_MIRROR_DISK'),
         'mirror_prefix' => trim((string) env('BACKUP_MIRROR_PREFIX', 'smartbiz'), '/'),
         'mirror_required' => filter_var(env('BACKUP_MIRROR_REQUIRED', false), FILTER_VALIDATE_BOOL),
+    ],
+
+    'restore' => [
+        'database_connection' => env('RESTORE_DB_CONNECTION', 'pgsql_owner'),
     ],
 
     'queue' => [

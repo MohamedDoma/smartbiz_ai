@@ -19,6 +19,11 @@ return [
 
     'default' => env('DB_CONNECTION', 'sqlite'),
 
+    // Production uses a control-plane connection before workspace resolution
+    // and a separate tenant runtime connection after RLS context is activated.
+    'control_connection' => env('DB_CONTROL_CONNECTION', env('DB_CONNECTION', 'pgsql')),
+    'tenant_connection' => env('DB_TENANT_CONNECTION', 'pgsql_tenant'),
+
     /*
     |--------------------------------------------------------------------------
     | Database Connections
@@ -97,6 +102,51 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        'pgsql_tenant' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_TENANT_URL'),
+            'host' => env('DB_TENANT_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_TENANT_PORT', env('DB_PORT', '5432')),
+            'database' => env('DB_TENANT_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('DB_TENANT_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DB_TENANT_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_TENANT_SSLMODE', env('DB_SSLMODE', 'prefer')),
+        ],
+
+        'pgsql_owner' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_OWNER_URL'),
+            'host' => env('DB_OWNER_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_OWNER_PORT', env('DB_PORT', '5432')),
+            'database' => env('DB_OWNER_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('DB_OWNER_USERNAME', ''),
+            'password' => env('DB_OWNER_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_OWNER_SSLMODE', env('DB_SSLMODE', 'prefer')),
+        ],
+
+        'pgsql_backup' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_BACKUP_URL'),
+            'host' => env('DB_BACKUP_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_BACKUP_PORT', env('DB_PORT', '5432')),
+            'database' => env('DB_BACKUP_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('DB_BACKUP_USERNAME', ''),
+            'password' => env('DB_BACKUP_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_BACKUP_SSLMODE', env('DB_SSLMODE', 'prefer')),
         ],
 
         'sqlsrv' => [

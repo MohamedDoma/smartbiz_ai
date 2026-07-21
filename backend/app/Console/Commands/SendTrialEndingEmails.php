@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\TrialEndingMail;
 use App\Models\WorkspaceSubscription;
 use App\Services\Email\EmailService;
+use App\Services\WorkspaceContextManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -13,40 +14,48 @@ class SendTrialEndingEmails extends Command
     protected $signature = 'email:send-trial-ending';
     protected $description = 'Send trial-ending warning emails (with dedup)';
 
-    public function handle(EmailService $emailService): int
+    public function handle(EmailService $emailService, WorkspaceContextManager $workspaceContext): int
     {
         $expiring = WorkspaceSubscription::where('status', 'trial')
             ->whereBetween('trial_ends_at', [now(), now()->addDays(3)])
             ->get();
 
         $sent = 0;
-        foreach ($expiring as $sub) {
-            $workspace = DB::table('workspaces')->where('id', $sub->workspace_id)->first();
-            $owner     = $this->getOwnerEmail($sub->workspace_id);
-            if (! $owner) continue;
+        foreach ($expiring as $subscription) {
+            $workspace = DB::table('workspaces')->where('id', $subscription->workspace_id)->first();
+            $owner = $this->getOwnerEmail($subscription->workspace_id);
 
-            $daysRemaining = (int) now()->diffInDays($sub->trial_ends_at, false);
+            if (! $owner) {
+                continue;
+            }
 
-            $logId = $emailService->send(
-                $sub->workspace_id,
-                $owner->email,
-                $owner->name ?? 'User',
-                new TrialEndingMail(
-                    $workspace->name ?? 'Your Workspace',
-                    max($daysRemaining, 0),
+            $daysRemaining = (int) now()->diffInDays($subscription->trial_ends_at, false);
+            $logId = $workspaceContext->runSystemInWorkspace(
+                $subscription->workspace_id,
+                fn (): ?string => $emailService->send(
+                    $subscription->workspace_id,
+                    $owner->email,
+                    $owner->name ?? 'User',
+                    new TrialEndingMail(
+                        $workspace->name ?? 'Your Workspace',
+                        max($daysRemaining, 0),
+                    ),
+                    'trial_ending',
+                    [
+                        'event_name' => 'scheduled:trial_ending',
+                        'related_entity_type' => 'subscription',
+                        'related_entity_id' => $subscription->id,
+                    ],
                 ),
-                'trial_ending',
-                [
-                    'event_name'          => 'scheduled:trial_ending',
-                    'related_entity_type' => 'subscription',
-                    'related_entity_id'   => $sub->id,
-                ],
             );
 
-            if ($logId) $sent++;
+            if ($logId) {
+                $sent++;
+            }
         }
 
         $this->info("Trial ending emails sent: {$sent}");
+
         return self::SUCCESS;
     }
 

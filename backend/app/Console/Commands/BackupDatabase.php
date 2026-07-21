@@ -23,7 +23,12 @@ class BackupDatabase extends Command
             $archives->assertFreeSpace();
             $lock = $archives->acquireLock('database-backup');
 
-            $connection = config('database.connections.pgsql');
+            $connectionName = (string) config('operations.backup.database_connection', config('database.default'));
+            $connection = config("database.connections.{$connectionName}");
+
+            if (! is_array($connection)) {
+                throw new \RuntimeException("Backup database connection [{$connectionName}] is not configured.");
+            }
             $timestamp = now()->utc()->format('Y-m-d_His');
             $filename = "smartbiz_db_{$timestamp}.dump";
             $temporaryPath = $archives->directory().DIRECTORY_SEPARATOR.'.'.$filename.'.part';

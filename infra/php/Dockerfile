@@ -34,10 +34,12 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY infra/php/conf.d/99-smartbiz.ini /usr/local/etc/php/conf.d/99-smartbiz.ini
 COPY infra/php/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY infra/php/entrypoint.sh /usr/local/bin/smartbiz-entrypoint
+COPY infra/postgres/bootstrap-roles.sh /usr/local/bin/smartbiz-bootstrap-db-roles
+COPY infra/postgres/verify-roles.sh /usr/local/bin/smartbiz-verify-db-roles
 
 RUN addgroup -g 1000 -S appuser \
     && adduser -u 1000 -S appuser -G appuser \
-    && chmod +x /usr/local/bin/smartbiz-entrypoint
+    && chmod +x /usr/local/bin/smartbiz-entrypoint /usr/local/bin/smartbiz-bootstrap-db-roles /usr/local/bin/smartbiz-verify-db-roles
 
 WORKDIR /var/www/html
 ENTRYPOINT ["smartbiz-entrypoint"]

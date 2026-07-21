@@ -30,6 +30,11 @@
         <env name="DB_DATABASE" value="smartbiz_test"/>
         <env name="DB_USERNAME" value="smartbiz"/>
         <env name="DB_PASSWORD" value="smartbiz_dev"/>
+        <env name="DB_CONTROL_CONNECTION" value="pgsql"/>
+        <env name="DB_TENANT_CONNECTION" value="pgsql"/>
+        <env name="BACKUP_DB_CONNECTION" value="pgsql"/>
+        <env name="RESTORE_DB_CONNECTION" value="pgsql"/>
+        <env name="SMARTBIZ_SCHEDULER_MODE" value="all"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="REDIS_HOST" value="redis"/>
