@@ -71,7 +71,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: "8.4"
           extensions: bcmath, intl, mbstring, pcntl, pdo_pgsql, pgsql, redis, zip
           coverage: none
 
@@ -81,6 +81,9 @@ jobs:
           path: ~/.composer/cache/files
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
+
+      - name: Validate Composer metadata
+        run: composer validate --strict
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
@@ -95,7 +98,6 @@ jobs:
         run: php artisan test
 
       - name: Composer security audit
-        continue-on-error: true
         run: composer audit --locked
 
   frontend:

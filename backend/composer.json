@@ -10,18 +10,18 @@
     ],
     "license": "proprietary",
     "require": {
-        "laravel/framework": "^11.0",
+        "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.9",
+        "laravel/tinker": "^3.0",
         "php": "^8.3",
         "resend/resend-php": "^0.10.0",
         "stripe/stripe-php": "^20.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "laravel/pint": "^1.17",
+        "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.1",
+        "nunomaduro/collision": "^8.6",
         "phpunit/phpunit": "^11.0"
     },
     "autoload": {
