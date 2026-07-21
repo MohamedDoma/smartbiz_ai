@@ -29,15 +29,20 @@ COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 "${COMPOSE[@]}" exec -T app php artisan queue:restart
 
 healthy=false
-for attempt in $(seq 1 30); do
-  if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+for attempt in $(seq 1 40); do
+  if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/up >/dev/null 2>&1 \
+    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json >/dev/null 2>&1; then
     healthy=true
     break
   fi
-  sleep 2
+  sleep 3
 done
 
-[[ "$healthy" == "true" ]] || { echo "Rollback health check failed." >&2; exit 1; }
+if [[ "$healthy" != "true" ]]; then
+  "${COMPOSE[@]}" exec -T app php artisan ops:check --json >&2 || true
+  echo "Rollback readiness check failed." >&2
+  exit 1
+fi
 
 printf '%s\n' "$PREVIOUS_RELEASE" > "$CURRENT_FILE"
 if [[ -n "$CURRENT_RELEASE" ]]; then

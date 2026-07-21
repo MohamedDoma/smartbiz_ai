@@ -75,18 +75,20 @@ COPY --chown=appuser:appuser backend/ ./
 
 RUN mkdir -p \
         bootstrap/cache \
+        storage/app/private \
         storage/app/public \
         storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
+        /var/backups/smartbiz \
     && ln -sfn ../storage/app/public public/storage \
     && composer dump-autoload \
         --no-dev \
         --no-interaction \
         --optimize \
         --classmap-authoritative \
-    && chown -R appuser:appuser /var/www/html
+    && chown -R appuser:appuser /var/www/html /var/backups/smartbiz
 
 USER appuser
 EXPOSE 9000

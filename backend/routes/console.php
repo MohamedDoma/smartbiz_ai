@@ -1,12 +1,40 @@
 <?php
 
+use App\Jobs\QueueHeartbeatJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Operational heartbeats. These verify that the scheduler is ticking and
+// that a real queue worker is consuming jobs, not merely that a process exists.
+Schedule::call(function (): void {
+    Cache::forever('ops:scheduler:last_seen_at', now()->utc()->toIso8601String());
+})
+    ->name('ops:scheduler-heartbeat')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::job(
+    new QueueHeartbeatJob,
+    (string) config('queue.connections.redis.queue', 'default'),
+    'redis',
+)
+    ->name('ops:queue-heartbeat')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('ops:check --notify')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/ops-monitor.log'));
 
 // Billing automation
 Schedule::command('billing:expire-trials')
@@ -65,9 +93,18 @@ Schedule::command('ai:run-advisor')
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/ai-advisor.log'));
 
-// Database backup
+// Verified backups. Database and application files are kept separately so
+// either can be restored independently. Both write checksum and metadata files.
 Schedule::command('db:backup')
     ->dailyAt('04:00')
-    ->withoutOverlapping()
+    ->withoutOverlapping(180)
     ->onOneServer()
+    ->runInBackground()
     ->appendOutputTo(storage_path('logs/db-backup.log'));
+
+Schedule::command('files:backup')
+    ->dailyAt('04:30')
+    ->withoutOverlapping(180)
+    ->onOneServer()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/files-backup.log'));

@@ -55,6 +55,12 @@ log "Building immutable release images: $NEW_RELEASE"
 log "Starting PostgreSQL and Redis"
 "${COMPOSE[@]}" up -d postgres redis
 
+backup_before_migrate="$(grep -E '^DEPLOY_BACKUP_BEFORE_MIGRATE=' "$ENV_FILE" | tail -n1 | cut -d= -f2- || true)"
+if [[ "${backup_before_migrate:-true}" =~ ^(true|1|yes)$ ]]; then
+  log "Creating a verified pre-migration database backup"
+  "${COMPOSE[@]}" run --rm app php artisan db:backup --no-interaction
+fi
+
 log "Running database migrations"
 "${COMPOSE[@]}" run --rm app php artisan migrate --force --no-interaction
 
@@ -64,22 +70,24 @@ log "Starting application, worker, scheduler and Nginx"
 log "Restarting queue workers gracefully"
 "${COMPOSE[@]}" exec -T app php artisan queue:restart
 
-log "Waiting for the deep health endpoint"
+log "Waiting for application liveness and deep operational readiness"
 healthy=false
-for attempt in $(seq 1 30); do
-  if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+for attempt in $(seq 1 40); do
+  if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/up >/dev/null 2>&1 \
+    && "${COMPOSE[@]}" exec -T app php artisan ops:check --json >/dev/null 2>&1; then
     healthy=true
     break
   fi
-  sleep 2
+  sleep 3
 done
 
 if [[ "$healthy" != "true" ]]; then
   "${COMPOSE[@]}" ps
-  "${COMPOSE[@]}" logs --tail=100 app nginx worker scheduler >&2 || true
+  "${COMPOSE[@]}" exec -T app php artisan ops:check --json >&2 || true
+  "${COMPOSE[@]}" logs --tail=150 app nginx worker scheduler >&2 || true
 
   if [[ -n "$OLD_RELEASE" ]]; then
-    printf '❌ Health check failed. Run: infra/rollback.sh %q\n' "$ENVIRONMENT" >&2
+    printf '❌ Readiness check failed. Run: infra/rollback.sh %q\n' "$ENVIRONMENT" >&2
   fi
   exit 1
 fi
