@@ -1,16 +1,14 @@
 ##
-## SmartBiz AI — Phase 1 Development Stack
-## Services: PHP 8.4 (app) + Nginx + PostgreSQL 16 + Redis 7
-## Source: 2_backend_architecture.md §2
+## SmartBiz AI — Development Stack
+## Services: PHP 8.4 + Nginx + PostgreSQL 16 + Redis 7
 ##
 
 services:
-
-  # --- PHP 8.4 Application ---
   app:
     build:
-      context: ./php
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: infra/php/Dockerfile
+      target: development
     container_name: smartbiz_app
     restart: unless-stopped
     working_dir: /var/www/html
@@ -25,7 +23,6 @@ services:
     networks:
       - smartbiz
 
-  # --- Nginx Reverse Proxy ---
   nginx:
     image: nginx:1.27-alpine
     container_name: smartbiz_nginx
@@ -34,13 +31,12 @@ services:
       - "8080:80"
     volumes:
       - ../backend:/var/www/html:ro
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - app
     networks:
       - smartbiz
 
-  # --- PostgreSQL 16 ---
   postgres:
     image: postgres:16-alpine
     container_name: smartbiz_postgres
@@ -55,14 +51,13 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ../_architecture:/architecture:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U smartbiz -d smartbiz" ]
+      test: ["CMD-SHELL", "pg_isready -U smartbiz -d smartbiz"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - smartbiz
 
-  # --- Redis 7 ---
   redis:
     image: redis:7-alpine
     container_name: smartbiz_redis
@@ -72,7 +67,7 @@ services:
     volumes:
       - redisdata:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -81,9 +76,7 @@ services:
 
 volumes:
   pgdata:
-    driver: local
   redisdata:
-    driver: local
 
 networks:
   smartbiz:

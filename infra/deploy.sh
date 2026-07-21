@@ -1,66 +1,93 @@
-#!/bin/bash
-##
-## SmartBiz AI — Deployment Script
-## Usage: ./deploy.sh [staging|production]
-##
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-set -euo pipefail
+ENVIRONMENT="${1:-production}"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSE_FILE="$PROJECT_DIR/infra/docker-compose.prod.yml"
+ENV_FILE="$PROJECT_DIR/backend/.env.${ENVIRONMENT}"
+STATE_DIR="${SMARTBIZ_DEPLOY_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/smartbiz}"
+CURRENT_FILE="$STATE_DIR/current-release"
+PREVIOUS_FILE="$STATE_DIR/previous-release"
+mkdir -p "$STATE_DIR"
 
-ENV="${1:-production}"
-COMPOSE_FILE="infra/docker-compose.prod.yml"
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
-echo "══════════════════════════════════════════════════"
-echo " SmartBiz AI — Deploying to: ${ENV}"
-echo "══════════════════════════════════════════════════"
-
-cd "$PROJECT_DIR"
-
-# 1. Pull latest code (if using git)
-if [ -d ".git" ]; then
-    echo "→ Pulling latest code..."
-    git pull origin main --ff-only
+if [[ "$ENVIRONMENT" == "production" ]]; then
+  ENV_FILE="$PROJECT_DIR/backend/.env.production"
 fi
 
-# 2. Build containers
-echo "→ Building containers..."
-docker compose -f "$COMPOSE_FILE" build --no-cache
+log() { printf '→ %s\n' "$*"; }
+fail() { printf '❌ %s\n' "$*" >&2; exit 1; }
 
-# 3. Start infrastructure (DB + Redis first)
-echo "→ Starting infrastructure..."
-docker compose -f "$COMPOSE_FILE" up -d postgres redis
-sleep 5
+command -v docker >/dev/null 2>&1 || fail "Docker is required."
+docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 is required."
+[[ -f "$ENV_FILE" ]] || fail "Missing environment file: $ENV_FILE"
+[[ -f "$COMPOSE_FILE" ]] || fail "Missing compose file: $COMPOSE_FILE"
 
-# 4. Install dependencies
-echo "→ Installing composer dependencies..."
-docker compose -f "$COMPOSE_FILE" run --rm app composer install --no-dev --optimize-autoloader --no-interaction
+required_keys=(APP_KEY APP_URL FRONTEND_URL DB_PASSWORD REDIS_PASSWORD)
+for key in "${required_keys[@]}"; do
+  value="$(grep -E "^${key}=" "$ENV_FILE" | tail -n1 | cut -d= -f2- || true)"
+  [[ -n "$value" ]] || fail "$key must be set in $ENV_FILE"
+done
 
-# 5. Run migrations
-echo "→ Running migrations..."
-docker compose -f "$COMPOSE_FILE" run --rm app php artisan migrate --force --no-interaction
+grep -Eq '^APP_ENV=production$' "$ENV_FILE" || fail "APP_ENV must be production."
+grep -Eq '^APP_DEBUG=(false|0)$' "$ENV_FILE" || fail "APP_DEBUG must be false."
 
-# 6. Cache configuration
-echo "→ Caching configuration..."
-docker compose -f "$COMPOSE_FILE" run --rm app php artisan config:cache
-docker compose -f "$COMPOSE_FILE" run --rm app php artisan route:cache
-docker compose -f "$COMPOSE_FILE" run --rm app php artisan view:cache
-docker compose -f "$COMPOSE_FILE" run --rm app php artisan event:cache
+chmod 600 "$ENV_FILE" || true
+cd "$PROJECT_DIR"
 
-# 7. Start all services
-echo "→ Starting application..."
-docker compose -f "$COMPOSE_FILE" up -d
+if [[ "${DEPLOY_PULL:-false}" == "true" ]]; then
+  log "Pulling the configured deployment branch"
+  git pull --ff-only
+fi
 
-# 8. Restart queue workers (pick up new code)
-echo "→ Restarting queue workers..."
-docker compose -f "$COMPOSE_FILE" exec -T app php artisan queue:restart
+NEW_RELEASE="${SMARTBIZ_IMAGE_TAG:-$(git rev-parse --short=12 HEAD)}"
+OLD_RELEASE=""
+[[ -f "$CURRENT_FILE" ]] && OLD_RELEASE="$(cat "$CURRENT_FILE")"
 
-# 9. Health check
-echo "→ Waiting for health check..."
-sleep 5
-HEALTH=$(curl -sf http://localhost:80/api/health || echo '{"status":"error"}')
-echo "  Health: ${HEALTH}"
+export SMARTBIZ_IMAGE_TAG="$NEW_RELEASE"
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 
-echo ""
-echo "══════════════════════════════════════════════════"
-echo " Deployment complete!"
-echo "══════════════════════════════════════════════════"
+log "Validating production configuration"
+"${COMPOSE[@]}" config --quiet
+
+log "Building immutable release images: $NEW_RELEASE"
+"${COMPOSE[@]}" build --pull app nginx
+
+log "Starting PostgreSQL and Redis"
+"${COMPOSE[@]}" up -d postgres redis
+
+log "Running database migrations"
+"${COMPOSE[@]}" run --rm app php artisan migrate --force --no-interaction
+
+log "Starting application, worker, scheduler and Nginx"
+"${COMPOSE[@]}" up -d --remove-orphans app worker scheduler nginx
+
+log "Restarting queue workers gracefully"
+"${COMPOSE[@]}" exec -T app php artisan queue:restart
+
+log "Waiting for the deep health endpoint"
+healthy=false
+for attempt in $(seq 1 30); do
+  if "${COMPOSE[@]}" exec -T nginx wget -qO- http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+    healthy=true
+    break
+  fi
+  sleep 2
+done
+
+if [[ "$healthy" != "true" ]]; then
+  "${COMPOSE[@]}" ps
+  "${COMPOSE[@]}" logs --tail=100 app nginx worker scheduler >&2 || true
+
+  if [[ -n "$OLD_RELEASE" ]]; then
+    printf '❌ Health check failed. Run: infra/rollback.sh %q\n' "$ENVIRONMENT" >&2
+  fi
+  exit 1
+fi
+
+if [[ -n "$OLD_RELEASE" && "$OLD_RELEASE" != "$NEW_RELEASE" ]]; then
+  printf '%s\n' "$OLD_RELEASE" > "$PREVIOUS_FILE"
+fi
+printf '%s\n' "$NEW_RELEASE" > "$CURRENT_FILE"
+
+log "Deployment complete: $NEW_RELEASE"
+"${COMPOSE[@]}" ps
